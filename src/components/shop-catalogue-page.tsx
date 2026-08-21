@@ -223,6 +223,8 @@ export function ShopCataloguePage() {
     () => filteredProducts.slice(0, visibleItemsCount),
     [filteredProducts, visibleItemsCount]
   );
+  const hasFilteredProducts = filteredProducts.length > 0;
+  const isEmptyFilteredState = !loading && !hasFilteredProducts;
 
   const alternateCategoryCards = useMemo(() => {
     const currentCuratedFilter = activeCuratedFilter.trim().toLowerCase();
@@ -401,15 +403,19 @@ export function ShopCataloguePage() {
           <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="brand-caption text-[0.62rem] font-semibold tracking-[0.18em] text-[#7d876f]">
-                CATALOGUE
+                {isEmptyFilteredState ? "COLLECTION UPDATE" : "CATALOGUE"}
               </p>
               <h2 className="brand-copy mt-3 text-2xl text-[#3f4738] sm:text-[2rem]">
-                Sarees for every celebration and everyday elegance.
+                {isEmptyFilteredState
+                  ? "This collection will be back soon"
+                  : "Sarees for every celebration and everyday elegance."}
               </h2>
             </div>
 
             <p className="text-sm text-[#667056]">
-              {filteredProducts.length} piece{filteredProducts.length === 1 ? "" : "s"} found
+              {isEmptyFilteredState
+                ? "Join the waitlist for updates"
+                : `${filteredProducts.length} piece${filteredProducts.length === 1 ? "" : "s"} found`}
             </p>
           </div>
 
@@ -422,10 +428,18 @@ export function ShopCataloguePage() {
           ) : filteredProducts.length === 0 ? (
             <div className="rounded-[1.6rem] border border-dashed border-[#d8cbb7] bg-[#fbf4e8] p-8 text-center sm:p-10">
               <div className="mx-auto max-w-2xl text-center">
-                <h3 className="brand-copy text-2xl text-[#3f4738]">No sarees match these filters</h3>
                 <p className="mt-3 text-sm leading-7 text-[#667056]">
-                  This category is currently unavailable. Explore other edits below and continue browsing.
+                  More sarees are being added. In the meantime, join the waitlist and we will keep
+                  you posted when this collection returns.
                 </p>
+                <div className="mt-6 flex justify-center">
+                  <Link
+                    href="#contact"
+                    className="brand-caption inline-flex min-w-[220px] items-center justify-center rounded-full bg-[#667056] px-7 py-3 text-[0.68rem] font-semibold tracking-[0.18em] !text-white transition-colors duration-300 hover:bg-[#556049] hover:!text-white"
+                  >
+                    JOIN WAITLIST
+                  </Link>
+                </div>
               </div>
             </div>
           ) : (

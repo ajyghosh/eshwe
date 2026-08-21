@@ -69,7 +69,19 @@ export function StorefrontHomeContent() {
         }}
       >
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,250,241,0.05),rgba(251,244,232,0.14))]" />
-        <div className="launch-fade-up launch-fade-up-late relative z-10 min-h-screen" />
+        <div className="launch-fade-up launch-fade-up-late relative z-10 flex min-h-screen items-end px-6 pb-14 sm:px-10 sm:pb-18 lg:px-12 lg:pb-20">
+          <div className="max-w-md rounded-[1.6rem] border border-[#f3dfaa]/40 bg-[rgba(67,79,57,0.56)] px-5 py-4 text-[#fbf4e8] shadow-[0_18px_40px_rgba(43,42,41,0.16)] backdrop-blur-[3px] sm:px-6 sm:py-5">
+            <p className="brand-caption text-[0.58rem] font-semibold tracking-[0.22em] text-[#f3dfaa]">
+              OPENING SHORTLY
+            </p>
+            <h2 className="brand-copy mt-3 text-2xl leading-[1.15] text-[#fbf4e8] sm:text-[2rem]">
+              We are currently in a soft launch preview.
+            </h2>
+            <p className="mt-3 text-sm leading-7 text-[#f8f1e3]/88">
+              The boutique is live for a trial run while we fine-tune the experience and curate the first collections.
+            </p>
+          </div>
+        </div>
       </section>
 
       <section id="categories" className="relative z-10 bg-[#fbf4e8] px-6 py-20 sm:px-10 lg:px-12">

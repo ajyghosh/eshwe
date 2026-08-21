@@ -1,0 +1,58 @@
+import {
+  GoogleAuthProvider,
+  onAuthStateChanged,
+  signInWithPopup,
+  signOut,
+  type User
+} from "firebase/auth";
+
+import { auth } from "@/lib/firebase";
+
+const OWNER_EMAIL = "ajyghosh@gmail.com";
+const googleProvider = new GoogleAuthProvider();
+
+googleProvider.setCustomParameters({
+  prompt: "select_account"
+});
+
+export function subscribeToAuth(callback: (user: User | null) => void) {
+  if (!auth) {
+    callback(null);
+    return () => undefined;
+  }
+
+  return onAuthStateChanged(auth, callback);
+}
+
+export async function signInAsOwner() {
+  if (!auth) {
+    throw new Error("Firebase Authentication is not configured. Add NEXT_PUBLIC_FIREBASE_* variables.");
+  }
+
+  const result = await signInWithPopup(auth, googleProvider);
+  return result.user;
+}
+
+export async function signOutOwner() {
+  if (!auth) {
+    return;
+  }
+
+  await signOut(auth);
+}
+
+export function normalizeEmail(email?: string | null) {
+  return email?.trim().toLowerCase() ?? "";
+}
+
+export function isPrimaryOwnerEmail(email?: string | null) {
+  return normalizeEmail(email) === OWNER_EMAIL;
+}
+
+export function isOwnerEmail(email?: string | null) {
+  return email?.trim().toLowerCase() === OWNER_EMAIL;
+}
+
+export function getOwnerEmail() {
+  return OWNER_EMAIL;
+}

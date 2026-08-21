@@ -1,0 +1,29 @@
+export type SareeStatus = "active" | "out_of_stock" | "draft";
+
+export type Saree = {
+  id?: string;
+  name: string;
+  slug: string;
+  sku: string;
+  category: string;
+  fabric: string;
+  color: string;
+  description: string;
+  price: number;
+  originalPrice?: number | null;
+  discountPercent?: number | null;
+  collectionLabel?: string | null;
+  status: SareeStatus;
+  featured: boolean;
+  primaryImageUrl: string;
+  primaryImagePath?: string | null;
+  galleryImageUrls: string[];
+  galleryImagePaths?: string[];
+  length?: string | null;
+  washCare?: string | null;
+  productNote?: string | null;
+  sareeCareTips?: string[];
+  dryingTips?: string[];
+  createdAt?: unknown;
+  updatedAt?: unknown;
+};

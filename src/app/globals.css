@@ -1,0 +1,107 @@
+@import "tailwindcss";
+
+:root {
+  --background: #fbf4e8;
+  --foreground: #1f1a17;
+  --card: rgba(255, 255, 255, 0.7);
+  --border: rgba(68, 52, 40, 0.14);
+  --muted: #6f6258;
+  --accent: #b06f3d;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+}
+
+.brand-copy {
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  font-weight: 400;
+}
+
+.brand-caption {
+  font-family: "Avenir Next", "Gill Sans", "Trebuchet MS", sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.18em;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+::selection {
+  background: rgba(176, 111, 61, 0.18);
+}
+
+.launch-fade-up {
+  animation: fade-up 900ms ease-out both;
+}
+
+.launch-fade-up-delay {
+  animation-delay: 140ms;
+}
+
+.launch-fade-up-late {
+  animation-delay: 280ms;
+}
+
+.launch-ornament {
+  animation: drift 12s ease-in-out infinite;
+}
+
+.launch-ornament-delay {
+  animation-delay: -6s;
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(22px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  50% {
+    transform: translate3d(0, 10px, 0);
+  }
+}

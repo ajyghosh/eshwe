@@ -1,0 +1,51 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isPrimaryOwner() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email == "ajyghosh@gmail.com";
+    }
+
+    function isListedOwner() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && exists(/databases/$(database)/documents/ownerAccounts/$(request.auth.token.email));
+    }
+
+    function isOwner() {
+      return isPrimaryOwner() || isListedOwner();
+    }
+
+    match /ownerAccounts/{ownerEmail} {
+      allow read: if isOwner();
+      allow write: if isPrimaryOwner();
+    }
+
+    match /siteContent/{documentId} {
+      allow read: if true;
+      allow write: if isOwner();
+    }
+
+    match /categoryCards/{categoryId} {
+      allow read: if true;
+      allow write: if isOwner();
+    }
+
+    match /productGroups/{groupId} {
+      allow read: if isOwner();
+      allow write: if isOwner();
+    }
+
+    match /productMasterOptions/{optionId} {
+      allow read: if isOwner();
+      allow write: if isOwner();
+    }
+
+    match /sarees/{sareeId} {
+      allow read: if true;
+      allow write: if isOwner();
+    }
+  }
+}

@@ -1,0 +1,36 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isPrimaryOwner() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email == "ajyghosh@gmail.com";
+    }
+
+    function isListedOwner() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && firestore.exists(/databases/(default)/documents/ownerAccounts/$(request.auth.token.email));
+    }
+
+    function isOwner() {
+      return isPrimaryOwner() || isListedOwner();
+    }
+
+    match /sarees/{allPaths=**} {
+      allow read: if true;
+      allow write: if isOwner();
+    }
+
+    match /site-content/{allPaths=**} {
+      allow read: if true;
+      allow write: if isOwner();
+    }
+
+    match /categories/{allPaths=**} {
+      allow read: if true;
+      allow write: if isOwner();
+    }
+  }
+}

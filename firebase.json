@@ -1,0 +1,35 @@
+{
+  "hosting": {
+    "public": "out",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "/product/**",
+        "destination": "/product/index.html"
+      },
+      {
+        "source": "/shop/new-arrivals/**",
+        "destination": "/shop/index.html"
+      },
+      {
+        "source": "/shop/featured/**",
+        "destination": "/shop/index.html"
+      },
+      {
+        "source": "/shop/category/**",
+        "destination": "/shop/index.html"
+      }
+    ]
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  }
+}

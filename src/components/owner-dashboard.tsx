@@ -34,6 +34,7 @@ import {
 } from "@/lib/sarees";
 import { subscribeToCustomerMessages } from "@/lib/customer-messages";
 import { deleteSareeImages, uploadSareeImage } from "@/lib/storage";
+import { subscribeToWaitlistEntries } from "@/lib/waitlist";
 import {
   addOwnerAccount,
   normalizeOwnerEmail,
@@ -98,6 +99,8 @@ export function OwnerDashboard() {
   const [readError, setReadError] = useState<string | null>(null);
   const [customerMessageCount, setCustomerMessageCount] = useState(0);
   const [customerMessagesLoading, setCustomerMessagesLoading] = useState(true);
+  const [waitlistCount, setWaitlistCount] = useState(0);
+  const [waitlistLoading, setWaitlistLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isOwnerSaving, setIsOwnerSaving] = useState(false);
   const [isOwnerRemovingEmail, setIsOwnerRemovingEmail] = useState<string | null>(null);
@@ -190,6 +193,27 @@ export function OwnerDashboard() {
       () => {
         setCustomerMessageCount(0);
         setCustomerMessagesLoading(false);
+      }
+    );
+  }, [ownerAuthorized, user]);
+
+  useEffect(() => {
+    if (!user || !ownerAuthorized) {
+      setWaitlistCount(0);
+      setWaitlistLoading(false);
+      return;
+    }
+
+    setWaitlistLoading(true);
+
+    return subscribeToWaitlistEntries(
+      (entries) => {
+        setWaitlistCount(entries.length);
+        setWaitlistLoading(false);
+      },
+      () => {
+        setWaitlistCount(0);
+        setWaitlistLoading(false);
       }
     );
   }, [ownerAuthorized, user]);
@@ -1034,7 +1058,7 @@ export function OwnerDashboard() {
           </div>
         ) : (
           <div className="mt-10 space-y-8">
-            <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+            <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
               <StatCard label="Total Products" value={String(stats.total)} />
               <StatCard label="Active" value={String(stats.active)} />
               <StatCard label="Featured" value={String(stats.featured)} />
@@ -1047,6 +1071,20 @@ export function OwnerDashboard() {
                 <div className="mt-3 flex items-end justify-between gap-3">
                   <p className="brand-copy text-4xl text-[#3f4738]">
                     {customerMessagesLoading ? "..." : String(customerMessageCount)}
+                  </p>
+                  <span className="brand-caption text-[0.62rem] font-semibold tracking-[0.08em] text-[#5e684f]">
+                    OPEN
+                  </span>
+                </div>
+              </Link>
+              <Link
+                href="/owner/waitlist/"
+                className="rounded-[1.5rem] border border-[#d8cbb7] bg-white/80 p-6 shadow-[0_16px_35px_rgba(94,104,79,0.06)] transition-colors duration-200 hover:border-[#bdae97] hover:bg-[#fdf8f0]"
+              >
+                <p className="text-sm text-[#667056]">Waitlist</p>
+                <div className="mt-3 flex items-end justify-between gap-3">
+                  <p className="brand-copy text-4xl text-[#3f4738]">
+                    {waitlistLoading ? "..." : String(waitlistCount)}
                   </p>
                   <span className="brand-caption text-[0.62rem] font-semibold tracking-[0.08em] text-[#5e684f]">
                     OPEN

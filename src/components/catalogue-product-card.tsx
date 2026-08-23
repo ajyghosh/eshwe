@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 
 import { useCart } from "@/components/cart-provider";
+import { NotifyWaitlistDialog } from "@/components/notify-waitlist-dialog";
 import { buildProductDetailHref } from "@/lib/storefront-routes";
 import type { Saree } from "@/types/saree";
 
@@ -14,6 +16,7 @@ export function CatalogueProductCard({
   buttonLabel?: string;
 }) {
   const { addItem, items, updateQuantity } = useCart();
+  const [waitlistDialogOpen, setWaitlistDialogOpen] = useState(false);
   const cartQuantity = items.find((item) => item.sku === product.sku)?.quantity ?? 0;
 
   function handleAddToCart() {
@@ -78,10 +81,10 @@ export function CatalogueProductCard({
           {product.status === "out_of_stock" ? (
             <button
               type="button"
-              disabled
+              onClick={() => setWaitlistDialogOpen(true)}
               className="brand-caption inline-flex h-[38px] w-[124px] shrink-0 items-center justify-center rounded-2xl bg-[#3f4738] px-3 text-[0.5rem] font-semibold tracking-[0.05em] text-[#fbf4e8] sm:text-[0.54rem]"
             >
-              JOIN WAITLIST
+              NOTIFY ME
             </button>
           ) : cartQuantity > 0 ? (
             <div className="grid h-[38px] w-[124px] shrink-0 grid-cols-[28px_1fr_28px] items-center rounded-2xl border border-[#d6ccb9] bg-[#5e684f] px-1 text-[#fbf4e8]">
@@ -111,6 +114,12 @@ export function CatalogueProductCard({
           </Link>
         </div>
       </div>
+
+      <NotifyWaitlistDialog
+        open={waitlistDialogOpen}
+        product={waitlistDialogOpen ? product : null}
+        onClose={() => setWaitlistDialogOpen(false)}
+      />
     </article>
   );
 }

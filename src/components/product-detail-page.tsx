@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { useCart } from "@/components/cart-provider";
 import { CatalogueProductCard, EmptyCatalogueState } from "@/components/catalogue-product-card";
+import { NotifyWaitlistDialog } from "@/components/notify-waitlist-dialog";
 import { ProductCardCarousel } from "@/components/product-card-carousel";
 import { SiteFooter } from "@/components/site-footer";
 import { StorefrontHeader } from "@/components/storefront-header";
@@ -35,6 +36,7 @@ export function ProductDetailPage() {
   const [currentUrl, setCurrentUrl] = useState("");
   const [copied, setCopied] = useState(false);
   const [openDetailSection, setOpenDetailSection] = useState<string | null>(null);
+  const [waitlistDialogOpen, setWaitlistDialogOpen] = useState(false);
 
   const slug = useMemo(
     () => resolveProductSlug(pathname, searchSlug),
@@ -335,6 +337,22 @@ export function ProductDetailPage() {
                     ) : null}
                   </div>
 
+                  {galleryImages.length > 1 ? (
+                    <div className="mt-6 flex items-center justify-center gap-4">
+                      {galleryImages.map((image, index) => (
+                        <button
+                          key={`${image}-${index}`}
+                          type="button"
+                          aria-label={`Go to image ${index + 1}`}
+                          onClick={() => setActiveImageIndex(index)}
+                          className={`h-3 w-3 rounded-full transition-colors duration-300 ${
+                            index === activeImageIndex ? "bg-[#5e684f]" : "bg-[#5e684f]/20"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  ) : null}
+
                 </section>
 
                 <section className="space-y-4 lg:flex lg:min-h-[760px] lg:flex-col">
@@ -373,10 +391,10 @@ export function ProductDetailPage() {
                       {product.status === "out_of_stock" ? (
                         <button
                           type="button"
-                          className="brand-caption inline-flex h-[38px] w-[112px] shrink-0 items-center justify-center cursor-not-allowed rounded-2xl bg-[#3f4738] px-3 text-[0.54rem] font-semibold tracking-[0.08em] text-[#fbf4e8]"
-                          disabled
+                          onClick={() => setWaitlistDialogOpen(true)}
+                          className="brand-caption inline-flex h-[38px] w-[112px] shrink-0 items-center justify-center rounded-2xl bg-[#3f4738] px-3 text-[0.54rem] font-semibold tracking-[0.08em] text-[#fbf4e8]"
                         >
-                          JOIN WAITLIST
+                          NOTIFY ME
                         </button>
                       ) : cartQuantity > 0 ? (
                         <div className="grid h-[38px] w-[112px] shrink-0 grid-cols-[24px_1fr_24px] items-center rounded-2xl border border-[#d6ccb9] bg-[#5e684f] px-1 text-[#fbf4e8]">
@@ -474,6 +492,12 @@ export function ProductDetailPage() {
 
                 </section>
               </div>
+
+              <NotifyWaitlistDialog
+                open={waitlistDialogOpen}
+                product={waitlistDialogOpen ? product : null}
+                onClose={() => setWaitlistDialogOpen(false)}
+              />
 
               {relatedProducts.length > 0 ? (
                 <section className="mt-16 rounded-[2rem] border border-[#e3d8c9] bg-[#f8f0e3] p-6 shadow-[0_24px_60px_rgba(94,104,79,0.08)] sm:p-8">
@@ -728,10 +752,42 @@ function buildImageIdentifier(url: string, path?: string | null) {
 
   try {
     const parsedUrl = new URL(url);
+    const firebaseObjectPath = extractStorageObjectPath(parsedUrl);
+
+    if (firebaseObjectPath) {
+      return firebaseObjectPath;
+    }
+
     return `${parsedUrl.origin}${parsedUrl.pathname}`;
   } catch {
-    return url.split("?")[0].split("#")[0].trim();
+    const normalizedUrl = url.split("?")[0].split("#")[0].trim();
+
+    if (normalizedUrl) {
+      return normalizedUrl;
+    }
+
+    return path?.trim() || "";
   }
+}
+
+function extractStorageObjectPath(parsedUrl: URL) {
+  if (parsedUrl.hostname === "firebasestorage.googleapis.com") {
+    const objectPathMatch = parsedUrl.pathname.match(/\/o\/(.+)$/);
+
+    if (objectPathMatch?.[1]) {
+      return decodeURIComponent(objectPathMatch[1]);
+    }
+  }
+
+  if (parsedUrl.hostname === "storage.googleapis.com") {
+    const segments = parsedUrl.pathname.split("/").filter(Boolean);
+
+    if (segments.length >= 2) {
+      return decodeURIComponent(segments.slice(1).join("/"));
+    }
+  }
+
+  return "";
 }
 
 function buildFacebookShareUrl(url: string) {

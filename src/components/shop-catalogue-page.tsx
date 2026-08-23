@@ -220,6 +220,30 @@ export function ShopCataloguePage() {
   );
   const hasFilteredProducts = filteredProducts.length > 0;
   const isEmptyFilteredState = !loading && !hasFilteredProducts;
+  const emptyStateTitle =
+    activeCategory !== allCategoriesLabel
+      ? `${activeCategory} is being refreshed`
+      : activeFabric !== allFabricsLabel
+        ? `${activeFabric} is coming back soon`
+        : activeAvailability === "OUT OF STOCK"
+          ? "These pieces are currently unavailable"
+          : activeBrowse === browseFeaturedLabel
+            ? "Featured pieces are being refreshed"
+            : activeBrowse === browseNewArrivalsLabel
+              ? "New arrivals are on the way"
+              : "The collection is being updated";
+  const emptyStateDescription =
+    activeCategory !== allCategoriesLabel
+      ? `More ${activeCategory.toLowerCase()} pieces will be added soon. Explore other curated sarees for now.`
+      : activeFabric !== allFabricsLabel
+        ? `We are curating more ${activeFabric.toLowerCase()} drapes at the moment. Browse other fabrics while they are added.`
+        : activeAvailability === "OUT OF STOCK"
+          ? "Everything in this selection is sold out for now, but fresh boutique picks will be added soon."
+          : activeBrowse === browseFeaturedLabel
+            ? "A new set of highlighted boutique drapes will appear here shortly."
+            : activeBrowse === browseNewArrivalsLabel
+              ? "Fresh sarees are being added now. Explore the wider collection in the meantime."
+              : "This selection is temporarily light, and more boutique sarees will appear here soon.";
 
   const alternateCategoryCards = useMemo(() => {
     const currentCuratedFilter = activeCuratedFilter.trim().toLowerCase();
@@ -387,7 +411,11 @@ export function ShopCataloguePage() {
           {loading ? (
             <ProductLoadingGrid count={8} />
           ) : filteredProducts.length === 0 ? (
-            <EmptyCatalogueState minHeightClass="min-h-[12rem] sm:min-h-[13rem]" />
+            <EmptyCatalogueState
+              title={emptyStateTitle}
+              description={emptyStateDescription}
+              minHeightClass="min-h-[12rem] sm:min-h-[13rem]"
+            />
           ) : (
             <>
               <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-4">

@@ -73,6 +73,47 @@ service cloud.firestore {
       allow read, update, delete: if isOwner();
     }
 
+    match /waitlistEntries/{entryId} {
+      allow create: if request.resource.data.keys().hasOnly([
+        "productId",
+        "productName",
+        "productSlug",
+        "productSku",
+        "productCategory",
+        "email",
+        "phone",
+        "sourcePath",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ])
+        && request.resource.data.productId is string
+        && request.resource.data.productId.size() > 0
+        && request.resource.data.productId.size() <= 80
+        && request.resource.data.productName is string
+        && request.resource.data.productName.size() > 0
+        && request.resource.data.productName.size() <= 200
+        && request.resource.data.productSlug is string
+        && request.resource.data.productSlug.size() > 0
+        && request.resource.data.productSlug.size() <= 200
+        && request.resource.data.productSku is string
+        && request.resource.data.productSku.size() > 0
+        && request.resource.data.productSku.size() <= 80
+        && request.resource.data.productCategory is string
+        && request.resource.data.productCategory.size() > 0
+        && request.resource.data.productCategory.size() <= 120
+        && request.resource.data.email is string
+        && request.resource.data.email.size() <= 120
+        && request.resource.data.phone is string
+        && request.resource.data.phone.size() <= 30
+        && (request.resource.data.email.size() > 4 || request.resource.data.phone.size() > 5)
+        && request.resource.data.sourcePath is string
+        && request.resource.data.sourcePath.size() > 0
+        && request.resource.data.sourcePath.size() <= 200
+        && request.resource.data.status == "new";
+      allow read, update, delete: if isOwner();
+    }
+
     match /sarees/{sareeId} {
       allow read: if true;
       allow write: if isOwner();

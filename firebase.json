@@ -1,4 +1,7 @@
 {
+  "functions": {
+    "source": "functions"
+  },
   "hosting": {
     "public": "out",
     "predeploy": [
@@ -12,6 +15,27 @@
       "**/node_modules/**"
     ],
     "rewrites": [
+      {
+        "source": "/api/razorpay/create-order",
+        "function": {
+          "functionId": "createRazorpayOrder",
+          "region": "asia-south1"
+        }
+      },
+      {
+        "source": "/api/razorpay/verify-payment",
+        "function": {
+          "functionId": "verifyRazorpayPayment",
+          "region": "asia-south1"
+        }
+      },
+      {
+        "source": "/api/razorpay/webhook",
+        "function": {
+          "functionId": "razorpayWebhook",
+          "region": "asia-south1"
+        }
+      },
       {
         "source": "/product/**",
         "destination": "/product/index.html"

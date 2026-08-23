@@ -62,6 +62,26 @@ export function StorefrontCatalogue() {
     () => visibleProducts.slice(0, visibleProductsCount),
     [visibleProducts, visibleProductsCount]
   );
+  const showcaseEmptyState =
+    activeShowcase === "featured"
+      ? {
+          title: "Featured pieces are being refreshed",
+          description: "A new set of highlighted boutique drapes will appear here shortly."
+        }
+      : {
+          title: "New arrivals are on the way",
+          description: "Fresh sarees are being added now. Explore the rest of the collection in the meantime."
+        };
+  const collectionEmptyState =
+    activeCategory === "ALL PRODUCTS"
+      ? {
+          title: "Our collection is being arranged",
+          description: "More boutique sarees will appear here shortly as the catalogue is updated."
+        }
+      : {
+          title: `${activeCategory} is being refreshed`,
+          description: `More ${activeCategory.toLowerCase()} pieces will be added soon. Explore our other curated sarees for now.`
+        };
 
   return (
     <>
@@ -96,7 +116,11 @@ export function StorefrontCatalogue() {
             {loading ? (
               <ProductLoadingGrid />
             ) : showcaseProducts.length === 0 ? (
-              <EmptyCatalogueState minHeightClass="min-h-[11rem] sm:min-h-[12rem]" />
+              <EmptyCatalogueState
+                title={showcaseEmptyState.title}
+                description={showcaseEmptyState.description}
+                minHeightClass="min-h-[11rem] sm:min-h-[12rem]"
+              />
             ) : (
               <>
                 {showcaseUsesCarousel ? (
@@ -156,7 +180,11 @@ export function StorefrontCatalogue() {
             {loading ? (
               <ProductLoadingGrid />
             ) : visibleProducts.length === 0 ? (
-              <EmptyCatalogueState minHeightClass="min-h-[11rem] sm:min-h-[12rem]" />
+              <EmptyCatalogueState
+                title={collectionEmptyState.title}
+                description={collectionEmptyState.description}
+                minHeightClass="min-h-[11rem] sm:min-h-[12rem]"
+              />
             ) : (
               <>
                 <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-4">

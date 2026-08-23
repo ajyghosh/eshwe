@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type Category = {
   title: string;
@@ -16,16 +16,65 @@ type CategoryCarouselProps = {
 
 export function CategoryCarousel({ categories }: CategoryCarouselProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [activeIndex, setActiveIndex] = useState(0);
+  const scrollResetTimeoutRef = useRef<number | null>(null);
+  const isResettingRef = useRef(false);
+  const categoryCount = categories.length;
+  const loopedCategories =
+    categoryCount > 1 ? [...categories, ...categories, ...categories] : categories;
+  const [currentIndex, setCurrentIndex] = useState(categoryCount > 1 ? categoryCount : 0);
+
+  const normalizeIndex = useCallback(
+    (index: number) => {
+      if (categoryCount === 0) {
+        return 0;
+      }
+
+      return ((index % categoryCount) + categoryCount) % categoryCount;
+    },
+    [categoryCount]
+  );
+
+  const scrollToRenderedIndex = useCallback(
+    (index: number, behavior: ScrollBehavior = "smooth") => {
+      const container = containerRef.current;
+
+      if (!container) {
+        return;
+      }
+
+      const cards = container.querySelectorAll<HTMLElement>("[data-category-card='true']");
+
+      if (cards.length === 0) {
+        return;
+      }
+
+      const targetIndex =
+        categoryCount > 1 && (index < 0 || index >= cards.length)
+          ? categoryCount + normalizeIndex(index)
+          : index;
+      const targetCard = cards[targetIndex];
+
+      if (!targetCard) {
+        return;
+      }
+
+      setCurrentIndex(targetIndex);
+      container.scrollTo({
+        left: targetCard.offsetLeft,
+        behavior
+      });
+    },
+    [categoryCount, normalizeIndex]
+  );
 
   useEffect(() => {
     const container = containerRef.current;
 
-    if (!container) {
+    if (!container || categoryCount === 0) {
       return;
     }
 
-    const updateActiveIndex = () => {
+    const syncCurrentIndex = () => {
       const cards = container.querySelectorAll<HTMLElement>("[data-category-card='true']");
 
       if (cards.length === 0) {
@@ -45,61 +94,87 @@ export function CategoryCarousel({ categories }: CategoryCarouselProps) {
         }
       });
 
-      setActiveIndex(closestIndex);
+      setCurrentIndex(closestIndex);
+
+      if (categoryCount > 1) {
+        if (scrollResetTimeoutRef.current !== null) {
+          window.clearTimeout(scrollResetTimeoutRef.current);
+        }
+
+        scrollResetTimeoutRef.current = window.setTimeout(() => {
+          if (isResettingRef.current) {
+            return;
+          }
+
+          const needsReset = closestIndex < categoryCount || closestIndex >= categoryCount * 2;
+
+          if (!needsReset) {
+            return;
+          }
+
+          const resetIndex = categoryCount + normalizeIndex(closestIndex);
+          const resetCard = cards[resetIndex];
+
+          if (!resetCard) {
+            return;
+          }
+
+          isResettingRef.current = true;
+          setCurrentIndex(resetIndex);
+          container.scrollTo({
+            left: resetCard.offsetLeft,
+            behavior: "auto"
+          });
+
+          window.setTimeout(() => {
+            isResettingRef.current = false;
+          }, 0);
+        }, 180);
+      }
     };
 
-    updateActiveIndex();
-    container.addEventListener("scroll", updateActiveIndex, { passive: true });
+    const initialIndex = categoryCount > 1 ? categoryCount : 0;
+    const cards = container.querySelectorAll<HTMLElement>("[data-category-card='true']");
+    const initialCard = cards[initialIndex];
+
+    if (initialCard) {
+      container.scrollTo({
+        left: initialCard.offsetLeft,
+        behavior: "auto"
+      });
+      setCurrentIndex(initialIndex);
+    }
+
+    syncCurrentIndex();
+    container.addEventListener("scroll", syncCurrentIndex, { passive: true });
 
     return () => {
-      container.removeEventListener("scroll", updateActiveIndex);
+      container.removeEventListener("scroll", syncCurrentIndex);
+
+      if (scrollResetTimeoutRef.current !== null) {
+        window.clearTimeout(scrollResetTimeoutRef.current);
+      }
     };
-  }, []);
+  }, [categoryCount, normalizeIndex]);
 
   useEffect(() => {
-    const intervalId = window.setInterval(() => {
-      const nextIndex = activeIndex === categories.length - 1 ? 0 : activeIndex + 1;
+    if (categoryCount <= 1) {
+      return;
+    }
 
-      scrollToCard(nextIndex);
+    const intervalId = window.setInterval(() => {
+      scrollToRenderedIndex(currentIndex + 1);
     }, 3200);
 
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [activeIndex, categories.length]);
-
-  const scrollToCard = (index: number) => {
-    const container = containerRef.current;
-
-    if (!container) {
-      return;
-    }
-
-    const cards = container.querySelectorAll<HTMLElement>("[data-category-card='true']");
-    const targetCard = cards[index];
-
-    if (!targetCard) {
-      return;
-    }
-
-    container.scrollTo({
-      left: targetCard.offsetLeft,
-      behavior: "smooth"
-    });
-  };
+  }, [categoryCount, currentIndex, scrollToRenderedIndex]);
 
   const scrollByStep = (direction: -1 | 1) => {
-    const nextIndex =
-      direction === 1
-        ? activeIndex === categories.length - 1
-          ? 0
-          : activeIndex + 1
-        : activeIndex === 0
-          ? categories.length - 1
-          : activeIndex - 1;
-
-    scrollToCard(nextIndex);
+    scrollToRenderedIndex(currentIndex + direction);
   };
+  const activeDotIndex = normalizeIndex(currentIndex);
 
   return (
     <div className="mt-18">
@@ -117,9 +192,9 @@ export function CategoryCarousel({ categories }: CategoryCarouselProps) {
           ref={containerRef}
           className="hide-scrollbar flex snap-x snap-mandatory gap-5 overflow-x-auto pb-4 sm:gap-6 lg:gap-8"
         >
-          {categories.map((category) => (
+          {loopedCategories.map((category, index) => (
             <Link
-              key={category.title}
+              key={`${category.title}-${index}`}
               href={category.shopHref ?? "/shop"}
               data-category-card="true"
               className="relative block h-[240px] w-[220px] shrink-0 snap-start overflow-hidden rounded-[1.75rem] bg-[#efe5d7] sm:h-[270px] sm:w-[250px] lg:h-[300px] lg:w-[calc((100%-6rem)/4)]"
@@ -150,19 +225,21 @@ export function CategoryCarousel({ categories }: CategoryCarouselProps) {
         </button>
       </div>
 
-      <div className="mt-6 flex items-center justify-center gap-4">
-        {categories.map((category, index) => (
-          <button
-            key={category.title}
-            type="button"
-            aria-label={`Go to ${category.title}`}
-            onClick={() => scrollToCard(index)}
-            className={`h-3 w-3 rounded-full transition-colors duration-300 ${
-              index === activeIndex ? "bg-black" : "bg-black/20"
-            }`}
-          />
-        ))}
-      </div>
+      {categoryCount > 1 ? (
+        <div className="mt-6 flex items-center justify-center gap-4">
+          {categories.map((category, index) => (
+            <button
+              key={category.title}
+              type="button"
+              aria-label={`Go to ${category.title}`}
+              onClick={() => scrollToRenderedIndex(categoryCount + index)}
+              className={`h-3 w-3 rounded-full transition-colors duration-300 ${
+                index === activeDotIndex ? "bg-black" : "bg-black/20"
+              }`}
+            />
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }

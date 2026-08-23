@@ -5,22 +5,26 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { useCart } from "@/components/cart-provider";
+import { useAuthSession } from "@/components/auth-provider";
 import { createCustomerMessage } from "@/lib/customer-messages";
 
 export function StorefrontHeader({ absolute = false }: { absolute?: boolean }) {
   const pathname = usePathname();
-  const { totalItems } = useCart();
+  const { user, loading, signIn, signOut } = useAuthSession();
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [contactMessage, setContactMessage] = useState("");
   const [contactSubmitting, setContactSubmitting] = useState(false);
   const [contactError, setContactError] = useState<string | null>(null);
   const [contactNotice, setContactNotice] = useState<string | null>(null);
+  const [authSubmitting, setAuthSubmitting] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
   const headerClassName = absolute
     ? "fixed inset-x-0 top-0 z-30 border-b border-white/45 bg-[rgba(251,247,239,0.68)] backdrop-blur-md"
     : "fixed inset-x-0 top-0 z-30 border-b border-white/45 bg-[rgba(251,247,239,0.78)] backdrop-blur-md";
+  const shouldHighlightSignIn = pathname.startsWith("/payment") && !user;
 
   useEffect(() => {
     if (!contactNotice) {
@@ -36,6 +40,11 @@ export function StorefrontHeader({ absolute = false }: { absolute?: boolean }) {
       window.clearTimeout(timeoutId);
     };
   }, [contactNotice]);
+
+  useEffect(() => {
+    setAccountMenuOpen(false);
+    setAuthError(null);
+  }, [pathname]);
 
   async function handleContactSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -63,6 +72,33 @@ export function StorefrontHeader({ absolute = false }: { absolute?: boolean }) {
       setContactError(error instanceof Error ? error.message : "Sending message failed.");
     } finally {
       setContactSubmitting(false);
+    }
+  }
+
+  async function handleHeaderSignIn() {
+    setAuthSubmitting(true);
+    setAuthError(null);
+
+    try {
+      await signIn();
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : "Sign in failed.");
+    } finally {
+      setAuthSubmitting(false);
+    }
+  }
+
+  async function handleHeaderSignOut() {
+    setAuthSubmitting(true);
+    setAuthError(null);
+
+    try {
+      await signOut();
+      setAccountMenuOpen(false);
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : "Sign out failed.");
+    } finally {
+      setAuthSubmitting(false);
     }
   }
 
@@ -101,17 +137,47 @@ export function StorefrontHeader({ absolute = false }: { absolute?: boolean }) {
               >
                 Contact Us
               </button>
-              <Link
-                href="/checkout"
-                className="inline-flex items-center gap-1 rounded-full border border-[#d6ccb9] bg-[#fbf7ef] px-2.5 py-1 text-[0.84rem] font-normal tracking-normal text-[#4f5942]"
-              >
-                <span>Bag</span>
-                <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-[#5e684f] px-1.5 py-0.5 text-[0.62rem] font-normal text-[#fbf4e8]">
-                  {totalItems}
-                </span>
-              </Link>
+              {user ? (
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setAccountMenuOpen((current) => !current)}
+                    className="inline-flex items-center gap-2 rounded-full border border-[#d6ccb9] bg-[#fbf7ef] px-3 py-1 text-[0.84rem] font-normal tracking-normal text-[#4f5942]"
+                  >
+                    <span>{getDisplayName(user.displayName, user.email)}</span>
+                  </button>
+
+                  {accountMenuOpen ? (
+                    <div className="absolute right-0 top-[calc(100%+0.5rem)] min-w-[180px] rounded-[1.2rem] border border-[#ddd1c0] bg-[#fbf7ef] p-2 shadow-[0_20px_45px_rgba(63,71,56,0.16)]">
+                      <p className="px-3 pb-2 pt-1 text-xs leading-5 text-[#7d876f]">{user.email}</p>
+                      <button
+                        type="button"
+                        onClick={() => void handleHeaderSignOut()}
+                        disabled={authSubmitting}
+                        className="w-full rounded-[0.95rem] px-3 py-2 text-left text-sm font-semibold text-[#4f5942] transition-colors duration-200 hover:bg-[#f1e8d8] disabled:opacity-60"
+                      >
+                        {authSubmitting ? "Signing Out" : "Sign Out"}
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => void handleHeaderSignIn()}
+                  disabled={loading || authSubmitting}
+                  className={`inline-flex items-center rounded-full px-3 py-1 text-[0.84rem] font-normal tracking-normal disabled:opacity-60 ${
+                    shouldHighlightSignIn
+                      ? "border border-[#5e684f] bg-[#5e684f] text-[#fbf4e8] shadow-[0_10px_24px_rgba(94,104,79,0.2)]"
+                      : "border border-[#d6ccb9] bg-[#fbf7ef] text-[#4f5942]"
+                  }`}
+                >
+                  {loading || authSubmitting ? "Opening Google" : "Sign In"}
+                </button>
+              )}
             </nav>
           </div>
+          {authError ? <p className="px-4 pb-2 text-sm text-[#9d4b45] sm:px-6 lg:px-7">{authError}</p> : null}
         </div>
       </header>
 
@@ -206,6 +272,21 @@ function HeaderLink({
       {label}
     </Link>
   );
+}
+
+function getDisplayName(displayName?: string | null, email?: string | null) {
+  const preferredName = displayName?.trim();
+
+  if (preferredName) {
+    const [firstName] = preferredName.split(/\s+/);
+    return firstName || preferredName;
+  }
+
+  if (email) {
+    return email.split("@")[0] || "Account";
+  }
+
+  return "Account";
 }
 
 const contactInputClassName =

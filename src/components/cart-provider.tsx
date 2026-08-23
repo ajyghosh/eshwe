@@ -35,40 +35,53 @@ const CartContext = createContext<CartContextValue | null>(null);
 export function CartProvider({ children }: { children: ReactNode }) {
   const { user, loading } = useAuthSession();
   const [items, setItems] = useState<CartItem[]>([]);
-  const [isReady, setIsReady] = useState(false);
+  const [hydratedStorageKey, setHydratedStorageKey] = useState<string | null>(null);
   const storageKey = user?.uid ? `${CART_STORAGE_KEY}:${user.uid}` : `${CART_STORAGE_KEY}:guest`;
+  const guestStorageKey = `${CART_STORAGE_KEY}:guest`;
 
   useEffect(() => {
     if (loading || typeof window === "undefined") {
       return;
     }
 
-    setIsReady(false);
+    setHydratedStorageKey(null);
 
     try {
-      const savedCart = window.localStorage.getItem(storageKey);
+      if (user?.uid) {
+        const accountCart = readStoredCart(storageKey);
+        const guestCart = readStoredCart(guestStorageKey);
+        const mergedCart = mergeCartItems(accountCart, guestCart);
 
-      if (savedCart) {
-        const parsedItems = JSON.parse(savedCart) as CartItem[];
-        setItems(Array.isArray(parsedItems) ? parsedItems.filter(isCartItem) : []);
+        window.localStorage.setItem(storageKey, JSON.stringify(mergedCart));
+
+        if (guestCart.length > 0) {
+          window.localStorage.removeItem(guestStorageKey);
+        }
+
+        setItems(mergedCart);
       } else {
-        setItems([]);
+        setItems(readStoredCart(storageKey));
       }
     } catch {
       window.localStorage.removeItem(storageKey);
+
+      if (storageKey !== guestStorageKey) {
+        window.localStorage.removeItem(guestStorageKey);
+      }
+
       setItems([]);
     } finally {
-      setIsReady(true);
+      setHydratedStorageKey(storageKey);
     }
-  }, [loading, storageKey]);
+  }, [guestStorageKey, loading, storageKey, user?.uid]);
 
   useEffect(() => {
-    if (!isReady || typeof window === "undefined") {
+    if (hydratedStorageKey !== storageKey || typeof window === "undefined") {
       return;
     }
 
     window.localStorage.setItem(storageKey, JSON.stringify(items));
-  }, [isReady, items, storageKey]);
+  }, [hydratedStorageKey, items, storageKey]);
 
   const value = useMemo<CartContextValue>(() => {
     const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -191,4 +204,43 @@ function isCartItem(value: unknown): value is CartItem {
     typeof item.color === "string" &&
     typeof item.quantity === "number"
   );
+}
+
+function readStoredCart(storageKey: string) {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  const savedCart = window.localStorage.getItem(storageKey);
+
+  if (!savedCart) {
+    return [];
+  }
+
+  const parsedItems = JSON.parse(savedCart) as CartItem[];
+  return Array.isArray(parsedItems) ? parsedItems.filter(isCartItem) : [];
+}
+
+function mergeCartItems(primaryItems: CartItem[], secondaryItems: CartItem[]) {
+  const mergedItems = new Map<string, CartItem>();
+
+  primaryItems.forEach((item) => {
+    mergedItems.set(item.sku, item);
+  });
+
+  secondaryItems.forEach((item) => {
+    const existingItem = mergedItems.get(item.sku);
+
+    if (!existingItem) {
+      mergedItems.set(item.sku, item);
+      return;
+    }
+
+    mergedItems.set(item.sku, {
+      ...existingItem,
+      quantity: clampQuantity(existingItem.quantity + item.quantity)
+    });
+  });
+
+  return Array.from(mergedItems.values());
 }

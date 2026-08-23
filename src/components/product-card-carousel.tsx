@@ -1,22 +1,70 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { CatalogueProductCard } from "@/components/catalogue-product-card";
 import type { Saree } from "@/types/saree";
 
 export function ProductCardCarousel({ products }: { products: Saree[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [activeIndex, setActiveIndex] = useState(0);
+  const scrollResetTimeoutRef = useRef<number | null>(null);
+  const isResettingRef = useRef(false);
+  const productCount = products.length;
+  const loopedProducts = productCount > 1 ? [...products, ...products, ...products] : products;
+  const [currentIndex, setCurrentIndex] = useState(productCount > 1 ? productCount : 0);
+
+  const normalizeIndex = useCallback(
+    (index: number) => {
+      if (productCount === 0) {
+        return 0;
+      }
+
+      return ((index % productCount) + productCount) % productCount;
+    },
+    [productCount]
+  );
+
+  const scrollToRenderedIndex = useCallback(
+    (index: number, behavior: ScrollBehavior = "smooth") => {
+      const container = containerRef.current;
+
+      if (!container) {
+        return;
+      }
+
+      const cards = container.querySelectorAll<HTMLElement>("[data-product-card='true']");
+
+      if (cards.length === 0) {
+        return;
+      }
+
+      const targetIndex =
+        productCount > 1 && (index < 0 || index >= cards.length)
+          ? productCount + normalizeIndex(index)
+          : index;
+      const targetCard = cards[targetIndex];
+
+      if (!targetCard) {
+        return;
+      }
+
+      setCurrentIndex(targetIndex);
+      container.scrollTo({
+        left: targetCard.offsetLeft,
+        behavior
+      });
+    },
+    [normalizeIndex, productCount]
+  );
 
   useEffect(() => {
     const container = containerRef.current;
 
-    if (!container) {
+    if (!container || productCount === 0) {
       return;
     }
 
-    const updateActiveIndex = () => {
+    const syncCurrentIndex = () => {
       const cards = container.querySelectorAll<HTMLElement>("[data-product-card='true']");
 
       if (cards.length === 0) {
@@ -36,65 +84,87 @@ export function ProductCardCarousel({ products }: { products: Saree[] }) {
         }
       });
 
-      setActiveIndex(closestIndex);
+      setCurrentIndex(closestIndex);
+
+      if (productCount > 1) {
+        if (scrollResetTimeoutRef.current !== null) {
+          window.clearTimeout(scrollResetTimeoutRef.current);
+        }
+
+        scrollResetTimeoutRef.current = window.setTimeout(() => {
+          if (isResettingRef.current) {
+            return;
+          }
+
+          const needsReset = closestIndex < productCount || closestIndex >= productCount * 2;
+
+          if (!needsReset) {
+            return;
+          }
+
+          const resetIndex = productCount + normalizeIndex(closestIndex);
+          const resetCard = cards[resetIndex];
+
+          if (!resetCard) {
+            return;
+          }
+
+          isResettingRef.current = true;
+          setCurrentIndex(resetIndex);
+          container.scrollTo({
+            left: resetCard.offsetLeft,
+            behavior: "auto"
+          });
+
+          window.setTimeout(() => {
+            isResettingRef.current = false;
+          }, 0);
+        }, 180);
+      }
     };
 
-    updateActiveIndex();
-    container.addEventListener("scroll", updateActiveIndex, { passive: true });
+    const initialIndex = productCount > 1 ? productCount : 0;
+    const cards = container.querySelectorAll<HTMLElement>("[data-product-card='true']");
+    const initialCard = cards[initialIndex];
+
+    if (initialCard) {
+      container.scrollTo({
+        left: initialCard.offsetLeft,
+        behavior: "auto"
+      });
+      setCurrentIndex(initialIndex);
+    }
+
+    syncCurrentIndex();
+    container.addEventListener("scroll", syncCurrentIndex, { passive: true });
 
     return () => {
-      container.removeEventListener("scroll", updateActiveIndex);
+      container.removeEventListener("scroll", syncCurrentIndex);
+
+      if (scrollResetTimeoutRef.current !== null) {
+        window.clearTimeout(scrollResetTimeoutRef.current);
+      }
     };
-  }, []);
+  }, [normalizeIndex, productCount]);
 
   useEffect(() => {
-    if (products.length <= 1) {
+    if (productCount <= 1) {
       return;
     }
 
     const intervalId = window.setInterval(() => {
-      const nextIndex = activeIndex === products.length - 1 ? 0 : activeIndex + 1;
-
-      scrollToCard(nextIndex);
+      scrollToRenderedIndex(currentIndex + 1);
     }, 3200);
 
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [activeIndex, products.length]);
-
-  const scrollToCard = (index: number) => {
-    const container = containerRef.current;
-
-    if (!container) {
-      return;
-    }
-
-    const cards = container.querySelectorAll<HTMLElement>("[data-product-card='true']");
-    const targetCard = cards[index];
-
-    if (!targetCard) {
-      return;
-    }
-
-    container.scrollTo({
-      left: targetCard.offsetLeft,
-      behavior: "smooth"
-    });
-  };
+  }, [currentIndex, productCount, scrollToRenderedIndex]);
 
   const scrollByStep = (direction: -1 | 1) => {
-    const nextIndex =
-      direction === 1
-        ? activeIndex === products.length - 1
-          ? 0
-          : activeIndex + 1
-        : activeIndex === 0
-          ? products.length - 1
-          : activeIndex - 1;
-
-    scrollToCard(nextIndex);
+    scrollToRenderedIndex(currentIndex + direction);
   };
+  const activeDotIndex = normalizeIndex(currentIndex);
 
   return (
     <div>
@@ -112,9 +182,9 @@ export function ProductCardCarousel({ products }: { products: Saree[] }) {
           ref={containerRef}
           className="hide-scrollbar flex snap-x snap-mandatory gap-6 overflow-x-auto pb-4 sm:gap-8"
         >
-          {products.map((product) => (
+          {loopedProducts.map((product, index) => (
             <div
-              key={product.id ?? product.sku}
+              key={`${product.id ?? product.sku}-${index}`}
               data-product-card="true"
               className="w-[220px] shrink-0 snap-start sm:w-[250px] lg:w-[calc((100%-6rem)/4)]"
             >
@@ -133,19 +203,21 @@ export function ProductCardCarousel({ products }: { products: Saree[] }) {
         </button>
       </div>
 
-      <div className="mt-6 flex items-center justify-center gap-4">
-        {products.map((product, index) => (
-          <button
-            key={product.id ?? product.sku}
-            type="button"
-            aria-label={`Go to ${product.name}`}
-            onClick={() => scrollToCard(index)}
-            className={`h-3 w-3 rounded-full transition-colors duration-300 ${
-              index === activeIndex ? "bg-[#5e684f]" : "bg-[#5e684f]/20"
-            }`}
-          />
-        ))}
-      </div>
+      {productCount > 1 ? (
+        <div className="mt-6 flex items-center justify-center gap-4">
+          {products.map((product, index) => (
+            <button
+              key={product.id ?? product.sku}
+              type="button"
+              aria-label={`Go to ${product.name}`}
+              onClick={() => scrollToRenderedIndex(productCount + index)}
+              className={`h-3 w-3 rounded-full transition-colors duration-300 ${
+                index === activeDotIndex ? "bg-[#5e684f]" : "bg-[#5e684f]/20"
+              }`}
+            />
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }

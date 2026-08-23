@@ -8,7 +8,7 @@ export function buildProductDetailPath(slug: string) {
 }
 
 export function buildProductDetailHref(slug: string) {
-  return `/product/?slug=${encodeURIComponent(slug)}`;
+  return buildProductDetailPath(slug);
 }
 
 export function resolveProductSlug(pathname: string, searchSlug?: string | null) {

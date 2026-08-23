@@ -1,8 +1,13 @@
 {
   "hosting": {
     "public": "out",
+    "predeploy": [
+      "npm run build:hosting"
+    ],
     "ignore": [
       "firebase.json",
+      "**/development/**",
+      "**/*.hot-update.json",
       "**/.*",
       "**/node_modules/**"
     ],

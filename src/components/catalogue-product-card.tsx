@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 
+import { useCart } from "@/components/cart-provider";
 import { buildProductDetailHref } from "@/lib/storefront-routes";
 import type { Saree } from "@/types/saree";
 
@@ -12,12 +13,46 @@ export function CatalogueProductCard({
   product: Saree;
   buttonLabel?: string;
 }) {
-  return (
-    <Link href={buildProductDetailHref(product.slug)} className="group block">
-      <article className="flex flex-col">
-        <ProductMedia product={product} />
+  const { addItem, items, updateQuantity } = useCart();
+  const cartQuantity = items.find((item) => item.sku === product.sku)?.quantity ?? 0;
 
-        <div className="pt-5">
+  function handleAddToCart() {
+    if (product.status !== "active") {
+      return;
+    }
+
+    addItem(product, 1);
+  }
+
+  function handleDecreaseCartQuantity() {
+    if (cartQuantity <= 0) {
+      return;
+    }
+
+    updateQuantity(product.sku, cartQuantity - 1);
+  }
+
+  function handleIncreaseCartQuantity() {
+    if (product.status !== "active") {
+      return;
+    }
+
+    if (cartQuantity === 0) {
+      addItem(product, 1);
+      return;
+    }
+
+    updateQuantity(product.sku, cartQuantity + 1);
+  }
+
+  return (
+    <article className="flex flex-col">
+      <Link href={buildProductDetailHref(product.slug)} className="group block">
+        <ProductMedia product={product} />
+      </Link>
+
+      <div className="pt-5">
+        <Link href={buildProductDetailHref(product.slug)} className="group block">
           <h3 className="brand-copy text-sm text-[#3f4738] transition-colors duration-300 group-hover:text-[#5e684f] sm:text-base">
             {product.name}
           </h3>
@@ -26,31 +61,85 @@ export function CatalogueProductCard({
             {"  -  "}
             {product.fabric}
           </p>
+        </Link>
 
-          <div className="mt-2 flex flex-wrap items-end gap-4">
-            <span className="text-base font-semibold text-[#1f1a17] sm:text-[1.15rem]">
-              {formatCurrency(product.price)}
-            </span>
-            {typeof product.originalPrice === "number" ? (
-              <span className="text-base text-[#8d8b87] line-through sm:text-[1.15rem]">
-                {formatCurrency(product.originalPrice)}
-              </span>
-            ) : null}
-          </div>
-
-          <span className="brand-caption mt-5 inline-flex w-fit rounded-2xl bg-[#5e684f] px-5 py-2.5 text-[0.52rem] font-semibold tracking-[0.05em] text-[#fbf4e8] sm:text-[0.58rem]">
-            {buttonLabel ?? (product.status === "out_of_stock" ? "JOIN WAITLIST" : "ADD TO CART")}
+        <div className="mt-2 flex flex-wrap items-end gap-4">
+          <span className="text-base font-semibold text-[#1f1a17] sm:text-[1.15rem]">
+            {formatCurrency(product.price)}
           </span>
+          {typeof product.originalPrice === "number" ? (
+            <span className="text-base text-[#8d8b87] line-through sm:text-[1.15rem]">
+              {formatCurrency(product.originalPrice)}
+            </span>
+          ) : null}
         </div>
-      </article>
-    </Link>
+
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          {product.status === "out_of_stock" ? (
+            <button
+              type="button"
+              disabled
+              className="brand-caption inline-flex h-[38px] w-[124px] shrink-0 items-center justify-center rounded-2xl bg-[#3f4738] px-3 text-[0.5rem] font-semibold tracking-[0.05em] text-[#fbf4e8] sm:text-[0.54rem]"
+            >
+              JOIN WAITLIST
+            </button>
+          ) : cartQuantity > 0 ? (
+            <div className="grid h-[38px] w-[124px] shrink-0 grid-cols-[28px_1fr_28px] items-center rounded-2xl border border-[#d6ccb9] bg-[#5e684f] px-1 text-[#fbf4e8]">
+              <InlineCartButton label="Decrease quantity" onClick={handleDecreaseCartQuantity}>
+                -
+              </InlineCartButton>
+              <span className="text-center text-[0.82rem] font-semibold leading-none">{cartQuantity}</span>
+              <InlineCartButton label="Increase quantity" onClick={handleIncreaseCartQuantity}>
+                +
+              </InlineCartButton>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={handleAddToCart}
+              className="brand-caption inline-flex h-[38px] w-[124px] shrink-0 items-center justify-center rounded-2xl bg-[#5e684f] px-3 text-[0.5rem] font-semibold tracking-[0.05em] text-[#fbf4e8] sm:text-[0.54rem]"
+            >
+              {buttonLabel ?? "ADD TO CART"}
+            </button>
+          )}
+
+          <Link
+            href={buildProductDetailHref(product.slug)}
+            className="brand-caption inline-flex rounded-2xl border border-[#d6ccb9] px-5 py-2.5 text-[0.52rem] font-semibold tracking-[0.05em] text-[#5e684f] sm:text-[0.58rem]"
+          >
+            VIEW DETAILS
+          </Link>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function InlineCartButton({
+  label,
+  children,
+  onClick
+}: {
+  label: string;
+  children: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      onClick={onClick}
+      className="flex h-[26px] w-[26px] items-center justify-center rounded-[0.8rem] bg-[#fbf4e8]/14 text-[0.95rem] leading-none text-[#fbf4e8] transition-colors duration-200 hover:bg-[#fbf4e8]/22"
+    >
+      {children}
+    </button>
   );
 }
 
 export function ProductMedia({ product }: { product: Saree }) {
   const backgroundImage = product.primaryImageUrl
     ? `linear-gradient(180deg, rgba(255,249,236,0.04), rgba(43,24,14,0.08)), url('${product.primaryImageUrl}')`
-    : "linear-gradient(180deg, #e8dfd4 0%, #b7b2ad 100%)";
+    : undefined;
 
   return (
     <div className="relative overflow-hidden rounded-[1.75rem] bg-[#efe5d7]">
@@ -97,15 +186,23 @@ export function ProductLoadingGrid({ count = 4 }: { count?: number }) {
 
 export function EmptyCatalogueState({
   title,
-  description
+  description,
+  minHeightClass = "min-h-[10rem]"
 }: {
-  title: string;
-  description: string;
+  title?: string;
+  description?: string;
+  minHeightClass?: string;
 }) {
   return (
-    <div className="rounded-[1.6rem] border border-dashed border-[#d8cbb7] bg-[#fbf4e8] p-8 text-center">
-      <h3 className="brand-copy text-2xl text-[#3f4738]">{title}</h3>
-      <p className="mt-3 text-sm leading-7 text-[#667056]">{description}</p>
+    <div
+      className={`rounded-[1.6rem] border border-dashed border-[#d8cbb7] bg-[#fbf4e8] p-8 text-center ${minHeightClass}`}
+    >
+      {title || description ? (
+        <>
+          {title ? <h3 className="brand-copy text-2xl text-[#3f4738]">{title}</h3> : null}
+          {description ? <p className="mt-3 text-sm leading-7 text-[#667056]">{description}</p> : null}
+        </>
+      ) : null}
     </div>
   );
 }

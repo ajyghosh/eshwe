@@ -8,7 +8,7 @@ export default function robots(): MetadataRoute.Robots {
       userAgent: "*",
       allow: "/"
     },
-    sitemap: "https://eshwesareestudio.web.app/sitemap.xml",
-    host: "https://eshwesareestudio.web.app"
+    sitemap: "https://eshwe.com/sitemap.xml",
+    host: "https://eshwe.com"
   };
 }

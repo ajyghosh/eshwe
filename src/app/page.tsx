@@ -1,7 +1,7 @@
-import Image from "next/image";
 import Link from "next/link";
 
 import { SiteFooter } from "@/components/site-footer";
+import { StorefrontHeader } from "@/components/storefront-header";
 import { StorefrontHomeContent } from "@/components/storefront-home-content";
 import { StorefrontCatalogue } from "@/components/storefront-catalogue";
 
@@ -53,34 +53,7 @@ export default function Home() {
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#fbf4e8] text-[#4f5942]">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.72),transparent_36%),radial-gradient(circle_at_bottom_right,rgba(120,130,92,0.1),transparent_26%)]" />
-
-      <header className="absolute inset-x-0 top-0 z-20">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-6 py-6 sm:px-10 lg:flex-row lg:items-center lg:justify-between lg:px-12">
-          <div className="launch-fade-up flex w-fit items-center rounded-full bg-[#f6ecdd] p-3">
-            <Image
-              src="/eshwelogo-transparent.png"
-              alt="eshwe logo"
-              width={128}
-              height={128}
-              priority
-              className="h-auto w-[92px] sm:w-[112px]"
-            />
-          </div>
-
-          <nav className="launch-fade-up launch-fade-up-delay flex flex-wrap items-center gap-x-7 gap-y-2 text-[0.92rem] font-semibold tracking-[0.1em] text-[#667056] sm:justify-end sm:text-[1.02rem]">
-            <Link href="/" className="transition-colors duration-300 hover:text-[#4f5942]">
-              Home
-            </Link>
-            <Link href="/shop" className="transition-colors duration-300 hover:text-[#4f5942]">
-              Shop
-            </Link>
-            <a href="#contact" className="transition-colors duration-300 hover:text-[#4f5942]">
-              Contact Us
-            </a>
-          </nav>
-        </div>
-      </header>
+      <StorefrontHeader absolute />
 
       <StorefrontHomeContent />
 
@@ -134,7 +107,7 @@ export default function Home() {
         </div>
       </section>
 
-      <SiteFooter homeHref="/#home" featuredHref="/#featured" contactId="contact" />
+      <SiteFooter homeHref="/" featuredHref="/shop/featured/" contactId="contact" />
     </main>
   );
 }

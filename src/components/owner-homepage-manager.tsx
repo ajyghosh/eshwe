@@ -7,11 +7,11 @@ import { deleteSareeImages, uploadSiteAsset } from "@/lib/storage";
 import type { HomePageContent } from "@/types/homepage";
 
 const defaultHomePageContent: HomePageContent = {
-  heroImageUrl: "/home.PNG",
+  heroImageUrl: "",
   heroImagePath: "",
-  heroImagePosition: "center 7%",
-  categoriesHeading: "Categories You Might Like",
-  categoriesSubtitle: "View all categories"
+  heroImagePosition: "center",
+  categoriesHeading: "",
+  categoriesSubtitle: ""
 };
 
 export function OwnerHomepageManager() {
@@ -49,9 +49,9 @@ export function OwnerHomepageManager() {
       await saveHomePageContent({
         heroImageUrl,
         heroImagePath,
-        heroImagePosition: form.heroImagePosition.trim() || "center 7%",
-        categoriesHeading: form.categoriesHeading.trim() || defaultHomePageContent.categoriesHeading,
-        categoriesSubtitle: form.categoriesSubtitle.trim() || defaultHomePageContent.categoriesSubtitle
+        heroImagePosition: form.heroImagePosition.trim() || "center",
+        categoriesHeading: form.categoriesHeading.trim(),
+        categoriesSubtitle: form.categoriesSubtitle.trim()
       });
 
       setHeroFile(null);
@@ -82,7 +82,7 @@ export function OwnerHomepageManager() {
                   setForm((current) => ({ ...current, heroImagePosition: event.target.value }))
                 }
                 className={inputClassName}
-                placeholder="center 7%"
+                placeholder="center"
               />
             </label>
 
@@ -94,7 +94,7 @@ export function OwnerHomepageManager() {
                   setForm((current) => ({ ...current, categoriesHeading: event.target.value }))
                 }
                 className={inputClassName}
-                placeholder="Categories You Might Like"
+                placeholder="Homepage categories heading"
               />
             </label>
 
@@ -106,7 +106,7 @@ export function OwnerHomepageManager() {
                   setForm((current) => ({ ...current, categoriesSubtitle: event.target.value }))
                 }
                 className={inputClassName}
-                placeholder="View all categories"
+                placeholder="Homepage categories subtitle"
               />
             </label>
           </div>
@@ -116,7 +116,9 @@ export function OwnerHomepageManager() {
             <div
               className="mt-4 aspect-[1.25] w-full rounded-[1rem] bg-cover bg-center"
               style={{
-                backgroundImage: `url('${form.heroImageUrl || defaultHomePageContent.heroImageUrl}')`,
+                backgroundImage: form.heroImageUrl
+                  ? `url('${form.heroImageUrl}')`
+                  : "linear-gradient(180deg, #efe5d7 0%, #d6c7b2 100%)",
                 backgroundPosition: form.heroImagePosition || defaultHomePageContent.heroImagePosition
               }}
             />

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { User } from "firebase/auth";
 
@@ -31,6 +32,7 @@ import {
   subscribeToSarees,
   updateSaree
 } from "@/lib/sarees";
+import { subscribeToCustomerMessages } from "@/lib/customer-messages";
 import { deleteSareeImages, uploadSareeImage } from "@/lib/storage";
 import {
   addOwnerAccount,
@@ -94,6 +96,8 @@ export function OwnerDashboard() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [ownerAccessError, setOwnerAccessError] = useState<string | null>(null);
   const [readError, setReadError] = useState<string | null>(null);
+  const [customerMessageCount, setCustomerMessageCount] = useState(0);
+  const [customerMessagesLoading, setCustomerMessagesLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isOwnerSaving, setIsOwnerSaving] = useState(false);
   const [isOwnerRemovingEmail, setIsOwnerRemovingEmail] = useState<string | null>(null);
@@ -168,6 +172,28 @@ export function OwnerDashboard() {
     isPrimaryOwnerEmail(user?.email) ||
     ownerAccounts.some((owner) => normalizeOwnerEmail(owner.email) === normalizedUserEmail);
   const canManageOwnerAccounts = isPrimaryOwnerEmail(user?.email);
+
+  useEffect(() => {
+    if (!user || !ownerAuthorized) {
+      setCustomerMessageCount(0);
+      setCustomerMessagesLoading(false);
+      return;
+    }
+
+    setCustomerMessagesLoading(true);
+
+    return subscribeToCustomerMessages(
+      (messages) => {
+        setCustomerMessageCount(messages.length);
+        setCustomerMessagesLoading(false);
+      },
+      () => {
+        setCustomerMessageCount(0);
+        setCustomerMessagesLoading(false);
+      }
+    );
+  }, [ownerAuthorized, user]);
+
   const categoryOptions = useMemo(
     () => buildDropdownOptions(productGroups.filter((group) => group.active).map((group) => group.name), form.category),
     [form.category, productGroups]
@@ -1008,11 +1034,25 @@ export function OwnerDashboard() {
           </div>
         ) : (
           <div className="mt-10 space-y-8">
-            <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
               <StatCard label="Total Products" value={String(stats.total)} />
               <StatCard label="Active" value={String(stats.active)} />
               <StatCard label="Featured" value={String(stats.featured)} />
               <StatCard label="Out Of Stock" value={String(stats.outOfStock)} />
+              <Link
+                href="/owner/messages/"
+                className="rounded-[1.5rem] border border-[#d8cbb7] bg-white/80 p-6 shadow-[0_16px_35px_rgba(94,104,79,0.06)] transition-colors duration-200 hover:border-[#bdae97] hover:bg-[#fdf8f0]"
+              >
+                <p className="text-sm text-[#667056]">Messages</p>
+                <div className="mt-3 flex items-end justify-between gap-3">
+                  <p className="brand-copy text-4xl text-[#3f4738]">
+                    {customerMessagesLoading ? "..." : String(customerMessageCount)}
+                  </p>
+                  <span className="brand-caption text-[0.62rem] font-semibold tracking-[0.08em] text-[#5e684f]">
+                    OPEN
+                  </span>
+                </div>
+              </Link>
             </section>
 
             <section className="rounded-[1.8rem] border border-[#e3d8c9] bg-white/70 p-7 sm:p-8">

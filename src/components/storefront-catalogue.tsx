@@ -19,7 +19,6 @@ export function StorefrontCatalogue() {
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState("ALL PRODUCTS");
   const [activeShowcase, setActiveShowcase] = useState<"new_arrivals" | "featured">("new_arrivals");
-  const [readError, setReadError] = useState<string | null>(null);
 
   useEffect(() => {
     return subscribeToSarees(
@@ -27,11 +26,7 @@ export function StorefrontCatalogue() {
         setProducts(nextProducts.filter((product) => product.status !== "draft"));
         setLoading(false);
       },
-      {},
-      (error) => {
-        setReadError(error.message);
-        setLoading(false);
-      }
+      {}
     );
   }, []);
 
@@ -98,20 +93,10 @@ export function StorefrontCatalogue() {
           </div>
 
           <div className="mt-10 rounded-[1.75rem] p-7 sm:p-10">
-            {readError ? (
-              <p className="mb-6 text-center text-sm text-[#9d4b45]">Firebase read failed: {readError}</p>
-            ) : null}
             {loading ? (
               <ProductLoadingGrid />
             ) : showcaseProducts.length === 0 ? (
-              <EmptyCatalogueState
-                title={activeShowcase === "featured" ? "No featured products yet" : "No new arrivals yet"}
-                description={
-                  activeShowcase === "featured"
-                    ? "Add a featured saree from /owner to make this section live."
-                    : "Add products from /owner to make this section live."
-                }
-              />
+              <EmptyCatalogueState minHeightClass="min-h-[11rem] sm:min-h-[12rem]" />
             ) : (
               <>
                 {showcaseUsesCarousel ? (
@@ -168,16 +153,10 @@ export function StorefrontCatalogue() {
           </div>
 
           <div className="relative mt-8 rounded-[2rem] border border-[#e3d8c9] bg-[#f8f0e3] p-5 shadow-[0_24px_60px_rgba(94,104,79,0.08)] sm:p-6 lg:p-7">
-            {readError ? (
-              <p className="mb-6 text-center text-sm text-[#9d4b45]">Firebase read failed: {readError}</p>
-            ) : null}
             {loading ? (
               <ProductLoadingGrid />
             ) : visibleProducts.length === 0 ? (
-              <EmptyCatalogueState
-                title="No products in this collection"
-                description="Switch categories or add products from /owner."
-              />
+              <EmptyCatalogueState minHeightClass="min-h-[11rem] sm:min-h-[12rem]" />
             ) : (
               <>
                 <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-4">

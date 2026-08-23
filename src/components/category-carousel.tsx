@@ -7,7 +7,6 @@ type Category = {
   title: string;
   imageUrl?: string;
   backgroundPosition: string;
-  fallbackBackground?: string;
   shopHref?: string;
 };
 
@@ -123,11 +122,11 @@ export function CategoryCarousel({ categories }: CategoryCarouselProps) {
               key={category.title}
               href={category.shopHref ?? "/shop"}
               data-category-card="true"
-              className="relative block h-[240px] w-[220px] shrink-0 snap-start overflow-hidden rounded-[1.75rem] sm:h-[270px] sm:w-[250px] lg:h-[300px] lg:w-[calc((100%-6rem)/4)]"
+              className="relative block h-[240px] w-[220px] shrink-0 snap-start overflow-hidden rounded-[1.75rem] bg-[#efe5d7] sm:h-[270px] sm:w-[250px] lg:h-[300px] lg:w-[calc((100%-6rem)/4)]"
               style={{
                 backgroundImage: category.imageUrl
                   ? `linear-gradient(180deg, rgba(0,0,0,0.04), rgba(0,0,0,0.28)), url('${category.imageUrl}')`
-                  : category.fallbackBackground ?? "linear-gradient(180deg, #ede7dc 0%, #b8b0a6 100%)",
+                  : undefined,
                 backgroundPosition: category.backgroundPosition,
                 backgroundSize: "cover"
               }}

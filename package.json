@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:hosting": "next build && node scripts/prepare-hosting-export.mjs",
     "start": "next start",
     "lint": "next lint"
   },

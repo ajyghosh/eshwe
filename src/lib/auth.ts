@@ -24,7 +24,7 @@ export function subscribeToAuth(callback: (user: User | null) => void) {
   return onAuthStateChanged(auth, callback);
 }
 
-export async function signInAsOwner() {
+export async function signInWithGoogle() {
   if (!auth) {
     throw new Error("Firebase Authentication is not configured. Add NEXT_PUBLIC_FIREBASE_* variables.");
   }
@@ -33,12 +33,20 @@ export async function signInAsOwner() {
   return result.user;
 }
 
-export async function signOutOwner() {
+export async function signOutCurrentUser() {
   if (!auth) {
     return;
   }
 
   await signOut(auth);
+}
+
+export async function signInAsOwner() {
+  return signInWithGoogle();
+}
+
+export async function signOutOwner() {
+  await signOutCurrentUser();
 }
 
 export function normalizeEmail(email?: string | null) {

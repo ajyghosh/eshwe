@@ -312,7 +312,7 @@ export function OwnerCategoryManager() {
             <p className="text-sm text-[#667056]">Loading category cards…</p>
           ) : cards.length === 0 ? (
             <div className="rounded-[1.4rem] border border-dashed border-[#d8cbb7] bg-[#f8f0e3] p-5 text-sm leading-7 text-[#667056]">
-              No category cards yet. Add at least one to replace the fallback homepage set.
+              No category cards yet. Add at least one to publish categories on the storefront.
             </div>
           ) : (
             cards.map((card) => (

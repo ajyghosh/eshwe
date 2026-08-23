@@ -7,8 +7,8 @@ type SiteFooterProps = {
 };
 
 export function SiteFooter({
-  homeHref = "/#home",
-  featuredHref = "/#featured",
+  homeHref = "/",
+  featuredHref = "/shop/featured/",
   contactId = "contact"
 }: SiteFooterProps) {
   return (

@@ -1,17 +1,17 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import {
   CatalogueProductCard,
+  EmptyCatalogueState,
   ProductLoadingGrid
 } from "@/components/catalogue-product-card";
 import { CategoryCarousel } from "@/components/category-carousel";
 import { SiteFooter } from "@/components/site-footer";
-import { fallbackCategoryCards, fallbackCategoryGradients } from "@/lib/category-presets";
+import { StorefrontHeader } from "@/components/storefront-header";
 import { subscribeToCategoryCards } from "@/lib/homepage";
 import { subscribeToSarees } from "@/lib/sarees";
 import {
@@ -45,7 +45,6 @@ export function ShopCataloguePage() {
   const [products, setProducts] = useState<Saree[]>([]);
   const [categoryCards, setCategoryCards] = useState<CategoryCard[]>([]);
   const [loading, setLoading] = useState(true);
-  const [readError, setReadError] = useState<string | null>(null);
   const [activeBrowse, setActiveBrowse] = useState(browseAllLabel);
   const [activeCuratedFilter, setActiveCuratedFilter] = useState("");
   const [activeCategory, setActiveCategory] = useState(allCategoriesLabel);
@@ -58,11 +57,7 @@ export function ShopCataloguePage() {
         setProducts(nextProducts.filter((product) => product.status !== "draft"));
         setLoading(false);
       },
-      {},
-      (error) => {
-        setReadError(error.message);
-        setLoading(false);
-      }
+      {}
     );
   }, []);
 
@@ -72,10 +67,10 @@ export function ShopCataloguePage() {
     });
   }, []);
 
-  const activeCategoryCards = useMemo(() => {
-    const activeCards = categoryCards.filter((card) => card.active);
-    return activeCards.length > 0 ? activeCards : fallbackCategoryCards;
-  }, [categoryCards]);
+  const activeCategoryCards = useMemo(
+    () => categoryCards.filter((card) => card.active),
+    [categoryCards]
+  );
 
   const browseOptions = useMemo<BrowseOption[]>(
     () => [
@@ -246,12 +241,11 @@ export function ShopCataloguePage() {
 
         return cardFilter !== currentBrowseLabel && cardTitle !== currentBrowseLabel;
       })
-      .map((card, index) => ({
+      .map((card) => ({
         title: card.title,
         imageUrl: card.imageUrl,
         shopHref: buildShopHref({ browse: "curated", filter: card.shopFilter || card.title }),
-        backgroundPosition: card.backgroundPosition || "center",
-        fallbackBackground: fallbackCategoryGradients[index % fallbackCategoryGradients.length]
+        backgroundPosition: card.backgroundPosition || "center"
       }));
   }, [activeBrowse, activeCategory, activeCategoryCards, activeCuratedFilter]);
 
@@ -326,37 +320,12 @@ export function ShopCataloguePage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#fbf4e8] text-[#4f5942]">
-      <header className="relative z-20 bg-[#f8f0e3]">
-        <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-6 py-3 sm:px-10 lg:flex-row lg:items-center lg:justify-between lg:px-12">
-          <Link href="/" className="flex w-fit items-center rounded-full bg-[#f6ecdd] p-3">
-            <Image
-              src="/eshwelogo-transparent.png"
-              alt="eshwe logo"
-              width={128}
-              height={128}
-              priority
-              className="h-auto w-[92px] sm:w-[112px]"
-            />
-          </Link>
-
-          <nav className="flex flex-wrap items-center gap-x-7 gap-y-2 text-[0.92rem] font-semibold tracking-[0.1em] text-[#667056] sm:justify-end sm:text-[1.02rem]">
-            <Link href="/" className="transition-colors duration-300 hover:text-[#4f5942]">
-              Home
-            </Link>
-            <Link href="/shop" className="text-[#4f5942]">
-              Shop
-            </Link>
-            <Link href="/#contact" className="transition-colors duration-300 hover:text-[#4f5942]">
-              Contact Us
-            </Link>
-          </nav>
-        </div>
-      </header>
+    <main className="relative min-h-screen bg-[#fbf4e8] text-[#4f5942]">
+      <StorefrontHeader />
 
       <section
         id="shop-grid"
-        className="relative overflow-hidden border-b border-[#e7dccc] bg-[#f8f0e3] px-6 py-10 sm:px-10 lg:px-12"
+        className="relative overflow-hidden border-b border-[#e7dccc] bg-[#fbf4e8] px-6 py-8 sm:px-10 lg:px-12"
       >
         <div className="mx-auto max-w-7xl">
           <div className="relative rounded-[2rem] border border-[#e3d8c9] bg-[#f8f0e3] p-6 shadow-[0_22px_60px_rgba(94,104,79,0.08)] lg:p-8">
@@ -403,45 +372,22 @@ export function ShopCataloguePage() {
           <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="brand-caption text-[0.62rem] font-semibold tracking-[0.18em] text-[#7d876f]">
-                {isEmptyFilteredState ? "COLLECTION UPDATE" : "CATALOGUE"}
+                CATALOGUE
               </p>
               <h2 className="brand-copy mt-3 text-2xl text-[#3f4738] sm:text-[2rem]">
-                {isEmptyFilteredState
-                  ? "This collection will be back soon"
-                  : "Sarees for every celebration and everyday elegance."}
+                Sarees for every celebration and everyday elegance.
               </h2>
             </div>
 
             <p className="text-sm text-[#667056]">
-              {isEmptyFilteredState
-                ? "Join the waitlist for updates"
-                : `${filteredProducts.length} piece${filteredProducts.length === 1 ? "" : "s"} found`}
+              {filteredProducts.length} piece{filteredProducts.length === 1 ? "" : "s"} found
             </p>
           </div>
-
-          {readError ? (
-            <p className="mb-6 text-center text-sm text-[#9d4b45]">Firebase read failed: {readError}</p>
-          ) : null}
 
           {loading ? (
             <ProductLoadingGrid count={8} />
           ) : filteredProducts.length === 0 ? (
-            <div className="rounded-[1.6rem] border border-dashed border-[#d8cbb7] bg-[#fbf4e8] p-8 text-center sm:p-10">
-              <div className="mx-auto max-w-2xl text-center">
-                <p className="mt-3 text-sm leading-7 text-[#667056]">
-                  More sarees are being added. In the meantime, join the waitlist and we will keep
-                  you posted when this collection returns.
-                </p>
-                <div className="mt-6 flex justify-center">
-                  <Link
-                    href="#contact"
-                    className="brand-caption inline-flex min-w-[220px] items-center justify-center rounded-full bg-[#667056] px-7 py-3 text-[0.68rem] font-semibold tracking-[0.18em] !text-white transition-colors duration-300 hover:bg-[#556049] hover:!text-white"
-                  >
-                    JOIN WAITLIST
-                  </Link>
-                </div>
-              </div>
-            </div>
+            <EmptyCatalogueState minHeightClass="min-h-[12rem] sm:min-h-[13rem]" />
           ) : (
             <>
               <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-4">
@@ -478,7 +424,7 @@ export function ShopCataloguePage() {
         </div>
       </section>
 
-      <SiteFooter homeHref="/" featuredHref={buildShopHref({ browse: "featured" })} contactId="contact" />
+      <SiteFooter homeHref="/" featuredHref="/shop/featured/" contactId="contact" />
     </main>
   );
 }

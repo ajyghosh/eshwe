@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 
+import { StorefrontShell } from "@/components/storefront-shell";
+
 import "./globals.css";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://eshwesareestudio.web.app"),
+  metadataBase: new URL("https://eshwe.com"),
   title: "eshwe",
   description:
     "eshwe Saree Studio is preparing a premium launch of curated sarees rooted in timeless craftsmanship and contemporary elegance.",
@@ -32,7 +34,7 @@ export const metadata: Metadata = {
     title: "eshwe",
     description:
       "Launching soon: a refined saree studio bringing heirloom craftsmanship and modern elegance together.",
-    url: "https://eshwesareestudio.web.app",
+    url: "https://eshwe.com",
     siteName: "eshwe",
     locale: "en_IN",
     type: "website"
@@ -52,7 +54,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <head>
+        <link rel="preconnect" href="https://firebasestorage.googleapis.com" crossOrigin="" />
+        <link rel="preconnect" href="https://storage.googleapis.com" crossOrigin="" />
+      </head>
+      <body>
+        <StorefrontShell>{children}</StorefrontShell>
+      </body>
     </html>
   );
 }

@@ -1,13 +1,14 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
+import { useCart } from "@/components/cart-provider";
 import { CatalogueProductCard, EmptyCatalogueState } from "@/components/catalogue-product-card";
 import { ProductCardCarousel } from "@/components/product-card-carousel";
 import { SiteFooter } from "@/components/site-footer";
+import { StorefrontHeader } from "@/components/storefront-header";
 import {
   defaultDryingTips,
   defaultProductLength,
@@ -27,12 +28,13 @@ export function ProductDetailPage() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const searchSlug = searchParams.get("slug");
+  const { addItem, items, updateQuantity } = useCart();
   const [products, setProducts] = useState<Saree[]>([]);
   const [loading, setLoading] = useState(true);
-  const [readError, setReadError] = useState<string | null>(null);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [currentUrl, setCurrentUrl] = useState("");
   const [copied, setCopied] = useState(false);
+  const [openDetailSection, setOpenDetailSection] = useState<string | null>(null);
 
   const slug = useMemo(
     () => resolveProductSlug(pathname, searchSlug),
@@ -45,11 +47,7 @@ export function ProductDetailPage() {
         setProducts(nextProducts.filter((product) => product.status !== "draft"));
         setLoading(false);
       },
-      {},
-      (error) => {
-        setReadError(error.message);
-        setLoading(false);
-      }
+      {}
     );
   }, []);
 
@@ -93,13 +91,42 @@ export function ProductDetailPage() {
       return [];
     }
 
-    return Array.from(
-      new Set([product.primaryImageUrl, ...product.galleryImageUrls].filter(Boolean))
-    );
+    const imageEntries = [
+      {
+        url: product.primaryImageUrl,
+        path: product.primaryImagePath ?? ""
+      },
+      ...product.galleryImageUrls.map((url, index) => ({
+        url,
+        path: product.galleryImagePaths?.[index] ?? ""
+      }))
+    ];
+
+    const uniqueImages = new Map<string, string>();
+
+    imageEntries.forEach(({ url, path }) => {
+      const cleanUrl = url.trim();
+
+      if (!cleanUrl) {
+        return;
+      }
+
+      const identifier = buildImageIdentifier(cleanUrl, path);
+
+      if (!uniqueImages.has(identifier)) {
+        uniqueImages.set(identifier, cleanUrl);
+      }
+    });
+
+    return Array.from(uniqueImages.values());
   }, [product]);
 
   useEffect(() => {
     setActiveImageIndex(0);
+  }, [product?.slug]);
+
+  useEffect(() => {
+    setOpenDetailSection(null);
   }, [product?.slug]);
 
   useEffect(() => {
@@ -145,9 +172,12 @@ export function ProductDetailPage() {
     : "Browse other available sarees from the current collection.";
 
   const activeImage = galleryImages[activeImageIndex] || product?.primaryImageUrl || "";
-  const productFacts = product ? buildProductFacts(product) : [];
+  const productDetailFacts = product ? buildProductDetailFacts(product) : [];
+  const designDetailFacts = product ? buildDesignDetailFacts(product) : [];
+  const materialCareFacts = product ? buildMaterialCareFacts(product) : [];
   const sareeCareTips = product?.sareeCareTips?.length ? product.sareeCareTips : defaultSareeCareTips;
   const dryingTips = product?.dryingTips?.length ? product.dryingTips : defaultDryingTips;
+  const cartQuantity = product ? items.find((item) => item.sku === product.sku)?.quantity ?? 0 : 0;
 
   function showPreviousImage() {
     if (galleryImages.length <= 1) {
@@ -174,41 +204,41 @@ export function ProductDetailPage() {
     setCopied(true);
   }
 
+  function handleAddToCart() {
+    if (!product || product.status !== "active") {
+      return;
+    }
+
+    addItem(product, 1);
+  }
+
+  function handleDecreaseCartQuantity() {
+    if (!product || cartQuantity <= 0) {
+      return;
+    }
+
+    updateQuantity(product.sku, cartQuantity - 1);
+  }
+
+  function handleIncreaseCartQuantity() {
+    if (!product || product.status !== "active") {
+      return;
+    }
+
+    if (cartQuantity === 0) {
+      addItem(product, 1);
+      return;
+    }
+
+    updateQuantity(product.sku, cartQuantity + 1);
+  }
+
   return (
     <main className="min-h-screen bg-[#fbf4e8] text-[#4f5942]">
-      <header className="relative z-20 bg-[#f8f0e3]">
-        <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-6 py-3 sm:px-10 lg:flex-row lg:items-center lg:justify-between lg:px-12">
-          <Link href="/" className="flex w-fit items-center rounded-full bg-[#f6ecdd] p-3">
-            <Image
-              src="/eshwelogo-transparent.png"
-              alt="eshwe logo"
-              width={128}
-              height={128}
-              priority
-              className="h-auto w-[92px] sm:w-[112px]"
-            />
-          </Link>
-
-          <nav className="flex flex-wrap items-center gap-x-7 gap-y-2 text-[0.92rem] font-semibold tracking-[0.1em] text-[#667056] sm:justify-end sm:text-[1.02rem]">
-            <Link href="/" className="transition-colors duration-300 hover:text-[#4f5942]">
-              Home
-            </Link>
-            <Link href="/shop" className="transition-colors duration-300 hover:text-[#4f5942]">
-              Shop
-            </Link>
-            <Link href="/#contact" className="transition-colors duration-300 hover:text-[#4f5942]">
-              Contact Us
-            </Link>
-          </nav>
-        </div>
-      </header>
+      <StorefrontHeader />
 
       <section className="px-6 py-10 sm:px-10 lg:px-12">
         <div className="mx-auto max-w-7xl">
-          {readError ? (
-            <p className="mb-6 text-center text-sm text-[#9d4b45]">Firebase read failed: {readError}</p>
-          ) : null}
-
           {loading ? (
             <ProductDetailSkeleton />
           ) : !product ? (
@@ -312,16 +342,16 @@ export function ProductDetailPage() {
                     <p className="brand-caption text-[0.62rem] font-semibold tracking-[0.18em] text-[#7d876f]">
                       {product.collectionLabel || product.category.toUpperCase()}
                     </p>
-                    <h1 className="brand-copy mt-3 text-4xl leading-[1.05] text-[#1f1a17] sm:text-[3.4rem]">
+                    <h1 className="brand-copy mt-3 text-[2rem] leading-[1.08] text-[#1f1a17] sm:text-[2.5rem]">
                       {product.name}
                     </h1>
 
-                    <div className="mt-4 flex flex-wrap items-end gap-4">
-                      <span className="text-[2rem] font-semibold text-[#1f1a17]">
+                    <div className="mt-4 flex items-center gap-3 whitespace-nowrap">
+                      <span className="text-[1.35rem] font-semibold text-[#1f1a17] sm:text-[1.5rem]">
                         {formatCurrency(product.price)}
                       </span>
                       {typeof product.originalPrice === "number" ? (
-                        <span className="text-[1.6rem] text-[#8d8b87] line-through">
+                        <span className="text-[1.35rem] text-[#8d8b87] line-through sm:text-[1.5rem]">
                           {formatCurrency(product.originalPrice)}
                         </span>
                       ) : null}
@@ -333,26 +363,72 @@ export function ProductDetailPage() {
                       <span>{product.color}</span>
                     </div>
 
+                    <div className="mt-4 flex flex-wrap items-center gap-3">
+                      <Link
+                        href={buildShopHref({ browse: "curated", filter: product.category })}
+                        className="brand-caption inline-flex h-[38px] w-[112px] shrink-0 items-center justify-center rounded-2xl border border-[#d6ccb9] px-3 text-[0.54rem] font-semibold tracking-[0.08em] text-[#5e684f]"
+                      >
+                        VIEW SIMILAR
+                      </Link>
+                      {product.status === "out_of_stock" ? (
+                        <button
+                          type="button"
+                          className="brand-caption inline-flex h-[38px] w-[112px] shrink-0 items-center justify-center cursor-not-allowed rounded-2xl bg-[#3f4738] px-3 text-[0.54rem] font-semibold tracking-[0.08em] text-[#fbf4e8]"
+                          disabled
+                        >
+                          JOIN WAITLIST
+                        </button>
+                      ) : cartQuantity > 0 ? (
+                        <div className="grid h-[38px] w-[112px] shrink-0 grid-cols-[24px_1fr_24px] items-center rounded-2xl border border-[#d6ccb9] bg-[#5e684f] px-1 text-[#fbf4e8]">
+                          <InlineCartButton label="Decrease quantity" onClick={handleDecreaseCartQuantity}>
+                            -
+                          </InlineCartButton>
+                          <span className="text-center text-[0.78rem] font-semibold leading-none">{cartQuantity}</span>
+                          <InlineCartButton label="Increase quantity" onClick={handleIncreaseCartQuantity}>
+                            +
+                          </InlineCartButton>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleAddToCart}
+                          className="brand-caption inline-flex h-[38px] w-[112px] shrink-0 items-center justify-center rounded-2xl bg-[#5e684f] px-3 text-[0.54rem] font-semibold tracking-[0.08em] text-[#fbf4e8]"
+                        >
+                          ADD TO CART
+                        </button>
+                      )}
+                    </div>
+
                     <p className="mt-4 max-w-2xl text-sm leading-6 text-[#667056] sm:text-[0.95rem]">
                       {product.description}
                     </p>
                   </div>
 
-                  {productFacts.length > 0 ? (
-                    <div className="overflow-hidden rounded-[1.7rem] border border-[#ddd1c0] bg-[#fbf7ef]">
-                      {productFacts.map((item, index) => (
-                        <div
-                          key={item.label}
-                          className={`grid gap-2 px-4 py-3 sm:grid-cols-[150px_1fr] sm:px-5 ${
-                            index === 0 ? "" : "border-t border-[#ddd1c0]"
-                          }`}
-                        >
-                          <p className="text-[0.95rem] text-[#6d7364] sm:text-right">{item.label}</p>
-                          <p className="text-[1.02rem] text-[#2b2a29]">{item.value}</p>
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
+                  <div className="space-y-3">
+                    <DetailAccordionSection
+                      id="product-details"
+                      title="Product Details"
+                      isOpen={openDetailSection === "product-details"}
+                      onToggle={setOpenDetailSection}
+                      entries={productDetailFacts}
+                    />
+                    <DetailAccordionSection
+                      id="design-details"
+                      title="Design Details"
+                      isOpen={openDetailSection === "design-details"}
+                      onToggle={setOpenDetailSection}
+                      entries={designDetailFacts}
+                    />
+                    <DetailAccordionSection
+                      id="material-care"
+                      title="Material & Care"
+                      isOpen={openDetailSection === "material-care"}
+                      onToggle={setOpenDetailSection}
+                      entries={materialCareFacts}
+                      careTips={sareeCareTips}
+                      dryingTips={dryingTips}
+                    />
+                  </div>
 
                   <div className="rounded-[1.15rem] border border-[#ddd1c0] bg-[#fbf7ef] px-4 py-3 sm:px-5">
                     <div className="flex flex-wrap items-center gap-2">
@@ -396,40 +472,8 @@ export function ProductDetailPage() {
                     ) : null}
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-3 lg:mt-auto lg:justify-end">
-                    <Link
-                      href={buildShopHref({ browse: "curated", filter: product.category })}
-                      className="brand-caption rounded-2xl border border-[#d6ccb9] px-6 py-3 text-[0.64rem] font-semibold tracking-[0.1em] text-[#5e684f]"
-                    >
-                      VIEW SIMILAR
-                    </Link>
-                    <Link
-                      href="/shop"
-                      className="brand-caption rounded-2xl border border-[#d6ccb9] px-6 py-3 text-[0.64rem] font-semibold tracking-[0.1em] text-[#5e684f]"
-                    >
-                      BACK TO SHOP
-                    </Link>
-                    <button
-                      type="button"
-                      className={`brand-caption rounded-2xl px-6 py-3 text-[0.64rem] font-semibold tracking-[0.1em] ${
-                        product.status === "out_of_stock"
-                          ? "cursor-not-allowed bg-[#3f4738] text-[#fbf4e8]"
-                          : "bg-[#5e684f] text-[#fbf4e8]"
-                      }`}
-                      disabled={product.status === "out_of_stock"}
-                    >
-                      {product.status === "out_of_stock" ? "JOIN WAITLIST" : "ADD TO CART"}
-                    </button>
-                  </div>
                 </section>
               </div>
-
-              {sareeCareTips.length > 0 || dryingTips.length > 0 ? (
-                <section className="mt-14 grid gap-6 lg:grid-cols-2">
-                  {sareeCareTips.length > 0 ? <CareCard title="Care & Handling" content={sareeCareTips} /> : null}
-                  {dryingTips.length > 0 ? <CareCard title="Drying & Finishing" content={dryingTips} /> : null}
-                </section>
-              ) : null}
 
               {relatedProducts.length > 0 ? (
                 <section className="mt-16 rounded-[2rem] border border-[#e3d8c9] bg-[#f8f0e3] p-6 shadow-[0_24px_60px_rgba(94,104,79,0.08)] sm:p-8">
@@ -461,8 +505,29 @@ export function ProductDetailPage() {
         </div>
       </section>
 
-      <SiteFooter homeHref="/" featuredHref={buildShopHref({ browse: "featured" })} contactId="contact" />
+      <SiteFooter homeHref="/" featuredHref="/shop/featured/" contactId="contact" />
     </main>
+  );
+}
+
+function InlineCartButton({
+  label,
+  children,
+  onClick
+}: {
+  label: string;
+  children: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      onClick={onClick}
+      className="flex h-[22px] w-[22px] items-center justify-center rounded-[0.7rem] bg-[#fbf4e8]/14 text-[0.9rem] leading-none text-[#fbf4e8] transition-colors duration-200 hover:bg-[#fbf4e8]/22"
+    >
+      {children}
+    </button>
   );
 }
 
@@ -490,57 +555,123 @@ function ProductDetailSkeleton() {
   );
 }
 
-function CareCard({
+function DetailAccordionSection({
+  id,
   title,
-  content
+  isOpen,
+  onToggle,
+  entries,
+  careTips,
+  dryingTips
 }: {
+  id: string;
   title: string;
-  content: string[];
+  isOpen: boolean;
+  onToggle: (id: string | null) => void;
+  entries: Array<{ label: string; value: string }>;
+  careTips?: string[];
+  dryingTips?: string[];
 }) {
+  const hasContent = entries.length > 0 || (careTips?.length ?? 0) > 0 || (dryingTips?.length ?? 0) > 0;
+
+  if (!hasContent) {
+    return null;
+  }
+
   return (
-    <article className="rounded-[1.85rem] border border-[#ddd1c0] bg-[#fbf7ef] p-5 shadow-[0_18px_40px_rgba(94,104,79,0.05)] sm:p-6">
-      <div className="flex items-center gap-4">
-        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[1rem] bg-[#f3eadb] text-[#5e684f]">
-          {title === "Drying & Finishing" ? <SunIcon /> : <CareSparkIcon />}
-        </span>
+    <article
+      className={`overflow-hidden rounded-[1.35rem] border transition-colors duration-300 ${
+        isOpen
+          ? "border-[#b7a48a] bg-[#fbf7ef]"
+          : "border-[#ddd1c0] bg-[rgba(251,247,239,0.65)]"
+      }`}
+    >
+      <button
+        type="button"
+        onClick={() => onToggle(isOpen ? null : id)}
+        className="flex w-full items-center justify-between gap-4 px-4 py-4 text-left sm:px-5"
+        aria-expanded={isOpen}
+      >
+        <h3 className="brand-copy text-[1rem] leading-tight text-[#2b2a29] sm:text-[1.06rem]">{title}</h3>
+        <AccordionPlusIcon open={isOpen} />
+      </button>
 
-        <div className="flex min-h-12 items-center">
-          <h3 className="brand-copy text-[1.35rem] leading-tight text-[#2b2a29]">{title}</h3>
+      {isOpen ? (
+        <div className="border-t border-[#e5d9ca] px-4 py-4 sm:px-5">
+          {entries.length > 0 ? (
+            <div className="grid gap-3">
+              {entries.map((item) => (
+                <div
+                  key={item.label}
+                  className="grid gap-1.5 rounded-[1rem] bg-white/45 px-4 py-3 sm:grid-cols-[120px_1fr]"
+                >
+                  <p className="text-[0.68rem] font-medium uppercase tracking-[0.08em] text-[#7a7f72]">
+                    {item.label}
+                  </p>
+                  <p className="text-[0.84rem] leading-5 text-[#2b2a29]">{item.value}</p>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          {careTips?.length ? (
+            <div className="mt-4">
+              <p className="brand-caption text-[0.54rem] font-semibold tracking-[0.16em] text-[#7d876f]">
+                CARE & HANDLING
+              </p>
+              <div className="mt-3 grid gap-2.5">
+                {careTips.map((item, index) => (
+                  <DetailTipRow key={`${title}-care-${index}`} index={index} content={item} />
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {dryingTips?.length ? (
+            <div className="mt-4">
+              <p className="brand-caption text-[0.54rem] font-semibold tracking-[0.16em] text-[#7d876f]">
+                DRYING & FINISHING
+              </p>
+              <div className="mt-3 grid gap-2.5">
+                {dryingTips.map((item, index) => (
+                  <DetailTipRow key={`${title}-drying-${index}`} index={index} content={item} />
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
-      </div>
-
-      <div className="mt-6 grid gap-3">
-        {content.map((item, index) => (
-          <div
-            key={item}
-            className="flex items-start gap-3 rounded-[1.1rem] border border-[#e7dccd] bg-white/45 px-4 py-3"
-          >
-            <span className="brand-caption mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#5e684f] text-[0.5rem] font-semibold tracking-[0.08em] text-[#fbf4e8]">
-              {String(index + 1).padStart(2, "0")}
-            </span>
-            <p className="text-sm leading-6 text-[#667056] sm:text-[0.96rem]">{item}</p>
-          </div>
-        ))}
-      </div>
+      ) : null}
     </article>
   );
 }
 
-function CareSparkIcon() {
+function DetailTipRow({
+  index,
+  content
+}: {
+  index: number;
+  content: string;
+}) {
   return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-      <path d="M12 3.5 13.8 8l4.7 1.8-4.7 1.7L12 16l-1.8-4.5-4.7-1.7L10.2 8 12 3.5Z" />
-      <path d="m18.5 14.5.8 2 .2.4.4.2 2 .8-2 .8-.4.2-.2.4-.8 2-.8-2-.2-.4-.4-.2-2-.8 2-.8.4-.2.2-.4.8-2Z" />
-    </svg>
+    <div className="flex items-start gap-3 rounded-[1rem] border border-[#e7dccd] bg-white/45 px-4 py-3">
+      <span className="brand-caption mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#5e684f] text-[0.5rem] font-semibold tracking-[0.08em] text-[#fbf4e8]">
+        {String(index + 1).padStart(2, "0")}
+      </span>
+      <p className="text-[0.82rem] leading-5 text-[#667056] sm:text-[0.84rem]">{content}</p>
+    </div>
   );
 }
 
-function SunIcon() {
+function AccordionPlusIcon({ open }: { open: boolean }) {
   return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-      <circle cx="12" cy="12" r="4" />
-      <path d="M12 2.5v2.3M12 19.2v2.3M4.8 4.8l1.6 1.6M17.6 17.6l1.6 1.6M2.5 12h2.3M19.2 12h2.3M4.8 19.2l1.6-1.6M17.6 6.4l1.6-1.6" />
-    </svg>
+    <span className="relative block h-7 w-7 shrink-0 text-[#6e7467]" aria-hidden="true">
+      <span className="absolute left-1/2 top-1/2 h-[1.5px] w-5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-current" />
+      <span
+        className={`absolute left-1/2 top-1/2 h-5 w-[1.5px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-current transition-transform duration-200 ${
+          open ? "scale-y-0" : "scale-y-100"
+        }`}
+      />
+    </span>
   );
 }
 
@@ -566,15 +697,41 @@ function ShareIconLink({
   );
 }
 
-function buildProductFacts(product: Saree) {
+function buildProductDetailFacts(product: Saree) {
+  return [
+    { label: "Category", value: product.category },
+    { label: "SKU", value: product.sku },
+    { label: "Length", value: product.length || defaultProductLength }
+  ];
+}
+
+function buildDesignDetailFacts(product: Saree) {
+  return [
+    { label: "Color", value: product.color },
+    { label: "Description", value: product.description }
+  ];
+}
+
+function buildMaterialCareFacts(product: Saree) {
   return [
     { label: "Material", value: product.fabric },
-    { label: "Category", value: product.category },
-    { label: "Color", value: product.color },
-    { label: "SKU", value: product.sku }
-  ]
-    .concat([{ label: "Length", value: product.length || defaultProductLength }])
-    .concat([{ label: "Wash", value: product.washCare || defaultWashCare }]);
+    { label: "Wash", value: product.washCare || defaultWashCare }
+  ];
+}
+
+function buildImageIdentifier(url: string, path?: string | null) {
+  const cleanPath = path?.trim();
+
+  if (cleanPath) {
+    return cleanPath;
+  }
+
+  try {
+    const parsedUrl = new URL(url);
+    return `${parsedUrl.origin}${parsedUrl.pathname}`;
+  } catch {
+    return url.split("?")[0].split("#")[0].trim();
+  }
 }
 
 function buildFacebookShareUrl(url: string) {

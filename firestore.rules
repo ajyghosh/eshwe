@@ -43,6 +43,36 @@ service cloud.firestore {
       allow write: if isOwner();
     }
 
+    match /customerProfiles/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    match /customerMessages/{messageId} {
+      allow create: if request.resource.data.keys().hasOnly([
+        "email",
+        "phone",
+        "message",
+        "sourcePath",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ])
+        && request.resource.data.email is string
+        && request.resource.data.email.size() > 4
+        && request.resource.data.email.size() <= 120
+        && request.resource.data.phone is string
+        && request.resource.data.phone.size() > 5
+        && request.resource.data.phone.size() <= 30
+        && request.resource.data.message is string
+        && request.resource.data.message.size() > 0
+        && request.resource.data.message.size() <= 2000
+        && request.resource.data.sourcePath is string
+        && request.resource.data.sourcePath.size() > 0
+        && request.resource.data.sourcePath.size() <= 200
+        && request.resource.data.status == "new";
+      allow read, update, delete: if isOwner();
+    }
+
     match /sarees/{sareeId} {
       allow read: if true;
       allow write: if isOwner();

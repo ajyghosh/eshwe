@@ -1,6 +1,13 @@
+"use client";
+
 import Link from "next/link";
 
-export default function NotFound() {
+type ErrorPageProps = {
+  error: Error & { digest?: string };
+  reset: () => void;
+};
+
+export default function ErrorPage({ reset }: ErrorPageProps) {
   return (
     <main
       style={{
@@ -19,7 +26,7 @@ export default function NotFound() {
       <div
         style={{
           width: "100%",
-          maxWidth: "760px",
+          maxWidth: "780px",
           border: "1px solid #dfd2c1",
           borderRadius: "30px",
           background: "rgba(255, 251, 243, 0.96)",
@@ -45,22 +52,22 @@ export default function NotFound() {
             color: "#7d876f"
           }}
         >
-          404
+          SOMETHING WENT WRONG
         </p>
-        <h1 style={{ margin: "16px 0 0", fontSize: "clamp(2.2rem, 4vw, 3.5rem)", lineHeight: 1.04 }}>
-          This page could not be found.
+        <h1 style={{ margin: "16px 0 0", fontSize: "clamp(2.2rem, 4vw, 3.4rem)", lineHeight: 1.04 }}>
+          This page had a problem.
         </h1>
         <p
           style={{
             margin: "18px auto 0",
-            maxWidth: "520px",
+            maxWidth: "540px",
             fontFamily: "system-ui, sans-serif",
             fontSize: "16px",
             lineHeight: 1.8,
             color: "#667056"
           }}
         >
-          The link may be outdated or the page may have moved. Continue shopping or return to the home page.
+          The issue is usually temporary. Try loading the page again, go back to shopping, or return to the home page.
         </p>
 
         <div
@@ -72,8 +79,9 @@ export default function NotFound() {
             gap: "12px"
           }}
         >
-          <Link
-            href="/"
+          <button
+            type="button"
+            onClick={() => reset()}
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -81,17 +89,18 @@ export default function NotFound() {
               minHeight: "48px",
               padding: "0 22px",
               borderRadius: "999px",
+              border: "none",
               background: "#5e684f",
               color: "#fbf4e8",
-              textDecoration: "none",
               fontSize: "12px",
               fontWeight: 700,
               letterSpacing: "0.12em",
-              textTransform: "uppercase"
+              textTransform: "uppercase",
+              cursor: "pointer"
             }}
           >
-            Go Home
-          </Link>
+            Try Again
+          </button>
           <Link
             href="/shop/"
             style={{
@@ -112,6 +121,27 @@ export default function NotFound() {
             }}
           >
             Browse Categories
+          </Link>
+          <Link
+            href="/"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              minHeight: "48px",
+              padding: "0 22px",
+              borderRadius: "999px",
+              background: "transparent",
+              color: "#5e684f",
+              border: "1px solid #d6ccb9",
+              textDecoration: "none",
+              fontSize: "12px",
+              fontWeight: 700,
+              letterSpacing: "0.12em",
+              textTransform: "uppercase"
+            }}
+          >
+            Go Home
           </Link>
         </div>
       </div>

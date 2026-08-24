@@ -68,7 +68,7 @@ const emptyAddressDialogForm: AddressDialogFormState = {
 };
 
 export function PaymentPage() {
-  const { items, subtotal, savings, shippingFee, packagingFee, total, clearCart } = useCart();
+  const { items, isReady, subtotal, savings, shippingFee, packagingFee, total, clearCart } = useCart();
   const { user } = useAuthSession();
   const router = useRouter();
   const [savedAddresses, setSavedAddresses] = useState<CustomerAddress[]>([]);
@@ -175,10 +175,14 @@ export function PaymentPage() {
   }, [profileMessage]);
 
   useEffect(() => {
+    if (!isReady) {
+      return;
+    }
+
     if (items.length === 0) {
       router.replace("/checkout");
     }
-  }, [items.length, router]);
+  }, [isReady, items.length, router]);
 
   function handleGuestFieldChange(field: keyof PaymentFormState, value: string) {
     setGuestForm((currentForm) => ({
@@ -455,15 +459,6 @@ export function PaymentPage() {
           ) : (
             <div className="grid gap-8 xl:grid-cols-[minmax(0,1.15fr)_390px]">
               <section className="space-y-6 rounded-[2rem] border border-[#e3d8c9] bg-[#f8f0e3] p-6 shadow-[0_22px_60px_rgba(94,104,79,0.08)] sm:p-8">
-                {!user ? (
-                  <div className="rounded-[1.5rem] border border-[#ddd1c0] bg-[#fbf7ef] p-5">
-                    <p className="text-xs font-semibold tracking-[0.14em] text-[#7d876f]">RETURNING USER</p>
-                    <p className="mt-2 text-sm leading-6 text-[#667056]">
-                      Sign in from the top bar to load saved addresses. If you want to continue without signing in, add your address below and proceed to payment.
-                    </p>
-                  </div>
-                ) : null}
-
                 {profileMessage ? <p className="text-sm text-[#5e684f]">{profileMessage}</p> : null}
                 {profileError ? <p className="text-sm text-[#9d4b45]">{profileError}</p> : null}
 
@@ -707,7 +702,7 @@ export function PaymentPage() {
         onSave={() => void handleSaveAddress()}
       />
 
-      <SiteFooter homeHref="/" featuredHref="/shop/featured/" contactId="contact" />
+      <SiteFooter homeHref="/" contactId="contact" />
     </main>
   );
 }

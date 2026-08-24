@@ -1091,6 +1091,18 @@ export function OwnerDashboard() {
                   </span>
                 </div>
               </Link>
+              <Link
+                href="/owner/orders/"
+                className="rounded-[1.5rem] border border-[#d8cbb7] bg-white/80 p-6 shadow-[0_16px_35px_rgba(94,104,79,0.06)] transition-colors duration-200 hover:border-[#bdae97] hover:bg-[#fdf8f0]"
+              >
+                <p className="text-sm text-[#667056]">Orders</p>
+                <div className="mt-3 flex items-end justify-between gap-3">
+                  <p className="brand-copy text-4xl text-[#3f4738]">Paid</p>
+                  <span className="brand-caption text-[0.62rem] font-semibold tracking-[0.08em] text-[#5e684f]">
+                    OPEN
+                  </span>
+                </div>
+              </Link>
             </section>
 
             <section className="rounded-[1.8rem] border border-[#e3d8c9] bg-white/70 p-7 sm:p-8">

@@ -10,7 +10,7 @@ export function FloatingBagButton() {
   const { totalItems } = useCart();
   const normalizedPathname = pathname.endsWith("/") && pathname !== "/" ? pathname.slice(0, -1) : pathname;
 
-  if (totalItems <= 0 || normalizedPathname === "/checkout") {
+  if (totalItems <= 0 || normalizedPathname === "/checkout" || normalizedPathname === "/payment") {
     return null;
   }
 

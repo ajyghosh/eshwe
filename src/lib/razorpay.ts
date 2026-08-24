@@ -56,6 +56,7 @@ type RazorpayConstructor = new (options: RazorpayCheckoutOptions) => RazorpayIns
 
 const RAZORPAY_SCRIPT_SRC = "https://checkout.razorpay.com/v1/checkout.js";
 const RAZORPAY_FUNCTIONS_ORIGIN = "https://asia-south1-eshwesareestudio.cloudfunctions.net";
+const RAZORPAY_API_BASE_PATH = "/api/razorpay";
 
 export type { RazorpayCheckoutOptions, RazorpayEventResponse, RazorpayHandlerResponse, RazorpayInstance };
 export { getRazorpayApiUrl };
@@ -103,6 +104,17 @@ async function waitForRazorpay() {
 }
 
 function getRazorpayApiUrl(path: "create-order" | "verify-payment" | "webhook") {
+  const endpointPath =
+    path === "create-order"
+      ? "create-order"
+      : path === "verify-payment"
+        ? "verify-payment"
+        : "webhook";
+
+  if (typeof window !== "undefined" && !isLocalDevelopmentHostname(window.location.hostname)) {
+    return `${RAZORPAY_API_BASE_PATH}/${endpointPath}`;
+  }
+
   if (path === "create-order") {
     return `${RAZORPAY_FUNCTIONS_ORIGIN}/createRazorpayOrder`;
   }
@@ -112,4 +124,8 @@ function getRazorpayApiUrl(path: "create-order" | "verify-payment" | "webhook") 
   }
 
   return `${RAZORPAY_FUNCTIONS_ORIGIN}/razorpayWebhook`;
+}
+
+function isLocalDevelopmentHostname(hostname: string) {
+  return hostname === "localhost" || hostname === "127.0.0.1";
 }

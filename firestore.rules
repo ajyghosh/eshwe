@@ -47,6 +47,16 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
+    match /checkoutOrders/{orderId} {
+      allow read: if isOwner()
+        || (
+          request.auth != null
+          && resource.data.userId is string
+          && resource.data.userId == request.auth.uid
+        );
+      allow write: if isOwner();
+    }
+
     match /customerMessages/{messageId} {
       allow create: if request.resource.data.keys().hasOnly([
         "email",

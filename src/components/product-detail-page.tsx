@@ -529,7 +529,7 @@ export function ProductDetailPage() {
         </div>
       </section>
 
-      <SiteFooter homeHref="/" featuredHref="/shop/featured/" contactId="contact" />
+      <SiteFooter homeHref="/" contactId="contact" />
     </main>
   );
 }

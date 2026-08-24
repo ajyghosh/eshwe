@@ -193,7 +193,7 @@ export function CheckoutPage() {
         </div>
       </section>
 
-      <SiteFooter homeHref="/" featuredHref="/shop/featured/" contactId="contact" />
+      <SiteFooter homeHref="/" contactId="contact" />
     </main>
   );
 }

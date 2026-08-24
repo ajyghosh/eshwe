@@ -18,6 +18,7 @@ const MAX_ITEM_QUANTITY = 10;
 
 type CartContextValue = {
   items: CartItem[];
+  isReady: boolean;
   subtotal: number;
   savings: number;
   shippingFee: number;
@@ -96,6 +97,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     return {
       items,
+      isReady: hydratedStorageKey === storageKey,
       subtotal,
       savings,
       shippingFee,
@@ -164,7 +166,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         setItems([]);
       }
     };
-  }, [items]);
+  }, [hydratedStorageKey, items, storageKey]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }

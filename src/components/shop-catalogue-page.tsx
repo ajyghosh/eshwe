@@ -452,7 +452,7 @@ export function ShopCataloguePage() {
         </div>
       </section>
 
-      <SiteFooter homeHref="/" featuredHref="/shop/featured/" contactId="contact" />
+      <SiteFooter homeHref="/" contactId="contact" />
     </main>
   );
 }

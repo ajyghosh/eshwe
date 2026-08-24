@@ -53,7 +53,7 @@ export default function Home() {
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#fbf4e8] text-[#4f5942]">
-      <StorefrontHeader absolute />
+      <StorefrontHeader />
 
       <StorefrontHomeContent />
 
@@ -107,7 +107,7 @@ export default function Home() {
         </div>
       </section>
 
-      <SiteFooter homeHref="/" featuredHref="/shop/featured/" contactId="contact" />
+      <SiteFooter homeHref="/" contactId="contact" />
     </main>
   );
 }

@@ -2,13 +2,11 @@ import Link from "next/link";
 
 type SiteFooterProps = {
   homeHref?: string;
-  featuredHref?: string;
   contactId?: string;
 };
 
 export function SiteFooter({
   homeHref = "/",
-  featuredHref = "/shop/featured/",
   contactId = "contact"
 }: SiteFooterProps) {
   return (
@@ -42,11 +40,11 @@ export function SiteFooter({
               <Link href="/shop" className="transition-colors duration-300 hover:text-[#f3dfaa]">
                 Categories
               </Link>
-              <Link href={featuredHref} className="transition-colors duration-300 hover:text-[#f3dfaa]">
-                Featured Products
-              </Link>
               <Link href="/shop" className="transition-colors duration-300 hover:text-[#f3dfaa]">
                 Collections
+              </Link>
+              <Link href="/contact/" className="transition-colors duration-300 hover:text-[#f3dfaa]">
+                Contact
               </Link>
             </nav>
           </div>

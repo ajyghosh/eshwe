@@ -305,7 +305,7 @@ export function AccountPage() {
                         <button
                           type="button"
                           onClick={handleOpenAddressDialog}
-                          className="brand-caption inline-flex border-b border-[#5e684f] pb-0.5 text-[0.62rem] font-semibold tracking-[0.08em] text-[#5e684f]"
+                          className="brand-caption inline-flex rounded-full border border-[#cbbda5] bg-[#fff8eb] px-3.5 py-1.5 text-[0.58rem] font-semibold tracking-[0.08em] text-[#5e684f]"
                         >
                           ADD NEW
                         </button>

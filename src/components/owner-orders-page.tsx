@@ -809,21 +809,14 @@ function buildOwnerAddressPrintHtml(order: CheckoutOrder, origin: string) {
         justify-content: space-between;
       }
       .topbar {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-      }
-      .logo-box {
-        border: 1px solid #e3d8c9;
-        border-radius: 14px;
-        padding: 8px;
-        background: #fbf4e8;
+        display: block;
       }
       .eyebrow {
         font-size: 10px;
-        letter-spacing: 0.16em;
-        color: #666666;
+        letter-spacing: 0.22em;
+        color: #6b745d;
         text-transform: uppercase;
+        font-weight: 700;
       }
       .name {
         margin-top: 0.16in;
@@ -880,10 +873,7 @@ function buildOwnerAddressPrintHtml(order: CheckoutOrder, origin: string) {
     <div class="label">
       <div>
         <div class="topbar">
-          <div class="logo-box">
-            <img src="${escapeHtml(origin)}/eshwelogo-transparent.png" alt="Eshwe" width="34" height="34" />
-          </div>
-          <div class="eyebrow">Shipping Label</div>
+          <div class="eyebrow">Deliver To</div>
         </div>
         <div class="name">${escapeHtml(order.customer?.fullName || "Customer")}</div>
         ${labelLines.map((line) => `<div class="line">${escapeHtml(line)}</div>`).join("")}

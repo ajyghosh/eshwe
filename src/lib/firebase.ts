@@ -22,6 +22,7 @@ const app = hasFirebaseConfig()
     : initializeApp(firebaseConfig)
   : null;
 
+export { app };
 export const firebaseReady = Boolean(app);
 export const db = app ? getFirestore(app) : null;
 export const storage = app ? getStorage(app) : null;

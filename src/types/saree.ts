@@ -13,6 +13,7 @@ export type Saree = {
   originalPrice?: number | null;
   discountPercent?: number | null;
   collectionLabel?: string | null;
+  availableStock: number;
   status: SareeStatus;
   featured: boolean;
   primaryImageUrl: string;

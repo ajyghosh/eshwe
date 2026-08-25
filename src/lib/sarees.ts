@@ -14,6 +14,7 @@ import {
 import { updateDoc, where } from "firebase/firestore";
 
 import { db } from "@/lib/firebase";
+import { getEffectiveAvailabilityStatus, normalizeAvailableStock } from "@/lib/inventory";
 import type { Saree, SareeStatus } from "@/types/saree";
 
 const COLLECTION_NAME = "sarees";
@@ -21,7 +22,7 @@ const COLLECTION_NAME = "sarees";
 type SareeQueryOptions = {
   category?: string;
   featured?: boolean;
-  status?: SareeStatus;
+  status?: SareeStatus | SareeStatus[];
 };
 
 export async function getSarees(options: SareeQueryOptions = {}): Promise<Saree[]> {
@@ -32,10 +33,7 @@ export async function getSarees(options: SareeQueryOptions = {}): Promise<Saree[
   const sareesQuery = query(collection(db, COLLECTION_NAME), ...buildConstraints(options));
   const snapshot = await getDocs(sareesQuery);
 
-  return snapshot.docs.map((doc) => ({
-    id: doc.id,
-    ...doc.data()
-  })) as Saree[];
+  return snapshot.docs.map((doc) => hydrateSaree(doc.id, doc.data()));
 }
 
 export function subscribeToSarees(
@@ -60,10 +58,7 @@ export function subscribeToSarees(
     sareesQuery,
     (snapshot) => {
       onData(
-        snapshot.docs.map((productDoc) => ({
-          id: productDoc.id,
-          ...productDoc.data()
-        })) as Saree[]
+        snapshot.docs.map((productDoc) => hydrateSaree(productDoc.id, productDoc.data()))
       );
     },
     (error) => {
@@ -71,6 +66,18 @@ export function subscribeToSarees(
       onError?.(error);
     }
   );
+}
+
+function hydrateSaree(id: string, data: Record<string, unknown>) {
+  const availableStock = normalizeAvailableStock(data.availableStock);
+  const status = getEffectiveAvailabilityStatus((data.status as SareeStatus) || "active", availableStock);
+
+  return {
+    id,
+    ...data,
+    availableStock,
+    status
+  } as Saree;
 }
 
 export async function createSaree(
@@ -126,7 +133,7 @@ function buildConstraints(options: SareeQueryOptions) {
   }
 
   if (options.status) {
-    constraints.push(queryConstraint("status", options.status));
+    constraints.push(statusQueryConstraint(options.status));
   }
 
   return constraints;
@@ -134,4 +141,12 @@ function buildConstraints(options: SareeQueryOptions) {
 
 function queryConstraint(field: string, value: boolean | string) {
   return where(field, "==", value);
+}
+
+function statusQueryConstraint(value: SareeStatus | SareeStatus[]) {
+  if (Array.isArray(value)) {
+    return value.length === 1 ? where("status", "==", value[0]) : where("status", "in", value);
+  }
+
+  return where("status", "==", value);
 }

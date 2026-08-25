@@ -22,7 +22,13 @@ type CreateAccountFormState = {
   pincode: string;
 };
 
-export function StorefrontHeader({ absolute = false }: { absolute?: boolean }) {
+export function StorefrontHeader({
+  absolute = false,
+  contentVisible = true
+}: {
+  absolute?: boolean;
+  contentVisible?: boolean;
+}) {
   const pathname = usePathname();
   const { user, loading, signIn, signOut } = useAuthSession();
   const { totalItems } = useCart();
@@ -50,8 +56,12 @@ export function StorefrontHeader({ absolute = false }: { absolute?: boolean }) {
     pincode: ""
   });
   const headerClassName = absolute
-    ? "fixed inset-x-0 top-0 z-30 border-b border-white/45 bg-[rgba(251,247,239,0.68)] backdrop-blur-md"
-    : "fixed inset-x-0 top-0 z-30 border-b border-white/45 bg-[rgba(251,247,239,0.78)] backdrop-blur-md";
+    ? `fixed inset-x-0 top-0 z-30 transition-[background-color,border-color,backdrop-filter] duration-700 ease-out ${
+        contentVisible
+          ? "border-b border-white/45 bg-[rgba(251,244,232,0.82)] backdrop-blur-md"
+          : "border-b border-transparent bg-[rgba(251,244,232,0.08)]"
+      }`
+    : "fixed inset-x-0 top-0 z-30 border-b border-white/45 bg-[#fbf4e8]";
 
   useEffect(() => {
     if (!contactNotice) {
@@ -262,7 +272,11 @@ export function StorefrontHeader({ absolute = false }: { absolute?: boolean }) {
       {absolute ? null : <div aria-hidden="true" className="h-[92px] sm:h-[68px]" />}
 
       <header className={headerClassName}>
-        <div className="mx-auto w-full max-w-7xl">
+        <div
+          className={`mx-auto w-full max-w-7xl transition-opacity duration-700 ease-out ${
+            contentVisible ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
+          }`}
+        >
           <div className="flex w-full flex-col gap-2 px-4 py-2 sm:px-6 lg:px-7">
             <div className="flex items-center justify-between gap-4">
               <div className="flex min-w-0 items-center gap-5">

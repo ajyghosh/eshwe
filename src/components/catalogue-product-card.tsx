@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { useCart } from "@/components/cart-provider";
 import { NotifyWaitlistDialog } from "@/components/notify-waitlist-dialog";
+import { getPurchasableQuantityLimit, isProductPurchasable } from "@/lib/inventory";
 import { buildProductDetailHref } from "@/lib/storefront-routes";
 import type { Saree } from "@/types/saree";
 
@@ -18,9 +19,10 @@ export function CatalogueProductCard({
   const { addItem, items, updateQuantity } = useCart();
   const [waitlistDialogOpen, setWaitlistDialogOpen] = useState(false);
   const cartQuantity = items.find((item) => item.sku === product.sku)?.quantity ?? 0;
+  const canIncreaseCartQuantity = cartQuantity < getPurchasableQuantityLimit(product.availableStock);
 
   function handleAddToCart() {
-    if (product.status !== "active") {
+    if (!isProductPurchasable(product)) {
       return;
     }
 
@@ -36,7 +38,7 @@ export function CatalogueProductCard({
   }
 
   function handleIncreaseCartQuantity() {
-    if (product.status !== "active") {
+    if (!isProductPurchasable(product) || !canIncreaseCartQuantity) {
       return;
     }
 
@@ -92,7 +94,11 @@ export function CatalogueProductCard({
                 -
               </InlineCartButton>
               <span className="text-center text-[0.82rem] font-semibold leading-none">{cartQuantity}</span>
-              <InlineCartButton label="Increase quantity" onClick={handleIncreaseCartQuantity}>
+              <InlineCartButton
+                label="Increase quantity"
+                onClick={handleIncreaseCartQuantity}
+                disabled={!canIncreaseCartQuantity}
+              >
                 +
               </InlineCartButton>
             </div>
@@ -127,18 +133,21 @@ export function CatalogueProductCard({
 function InlineCartButton({
   label,
   children,
-  onClick
+  onClick,
+  disabled = false
 }: {
   label: string;
   children: string;
   onClick: () => void;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       aria-label={label}
       onClick={onClick}
-      className="flex h-[26px] w-[26px] items-center justify-center rounded-[0.8rem] bg-[#fbf4e8]/14 text-[0.95rem] leading-none text-[#fbf4e8] transition-colors duration-200 hover:bg-[#fbf4e8]/22"
+      disabled={disabled}
+      className="flex h-[26px] w-[26px] items-center justify-center rounded-[0.8rem] bg-[#fbf4e8]/14 text-[0.95rem] leading-none text-[#fbf4e8] transition-colors duration-200 hover:bg-[#fbf4e8]/22 disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-[#fbf4e8]/14"
     >
       {children}
     </button>

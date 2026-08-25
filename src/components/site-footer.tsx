@@ -46,6 +46,9 @@ export function SiteFooter({
               <Link href="/contact/" className="transition-colors duration-300 hover:text-[#f3dfaa]">
                 Contact
               </Link>
+              <Link href="/return-policy" className="transition-colors duration-300 hover:text-[#f3dfaa]">
+                Return Policy
+              </Link>
             </nav>
           </div>
 

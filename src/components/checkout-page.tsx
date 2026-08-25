@@ -6,11 +6,15 @@ import { formatCurrency } from "@/components/catalogue-product-card";
 import { useCart } from "@/components/cart-provider";
 import { SiteFooter } from "@/components/site-footer";
 import { StorefrontHeader } from "@/components/storefront-header";
+import { getPurchasableQuantityLimit, isCartItemUnavailable } from "@/lib/inventory";
 import { buildProductDetailHref } from "@/lib/storefront-routes";
+import type { CartItem } from "@/types/cart";
 
 export function CheckoutPage() {
   const { items, subtotal, savings, shippingFee, packagingFee, total, updateQuantity, removeItem, clearCart } =
     useCart();
+  const hasUnavailableItems = items.some((item) => isCartItemUnavailable(item));
+  const canContinueToPayment = items.length > 0 && !hasUnavailableItems;
 
   return (
     <main className="min-h-screen bg-[#fbf4e8] text-[#4f5942]">
@@ -64,80 +68,20 @@ export function CheckoutPage() {
               ) : (
                 <div className="mt-6 space-y-4">
                   {items.map((item) => (
-                    <article
+                    <CheckoutItemCard
                       key={item.sku}
-                      className="grid gap-4 rounded-[1.5rem] border border-[#ddd1c0] bg-[#fbf7ef] p-4 sm:grid-cols-[110px_minmax(0,1fr)]"
-                    >
-                      <div
-                        className="aspect-[0.84] rounded-[1.15rem] bg-[#efe5d7]"
-                        style={{
-                          backgroundImage: item.primaryImageUrl
-                            ? `linear-gradient(180deg, rgba(255,249,236,0.04), rgba(43,24,14,0.08)), url('${item.primaryImageUrl}')`
-                            : "linear-gradient(180deg, #e8dfd4 0%, #b7b2ad 100%)",
-                          backgroundPosition: "center",
-                          backgroundSize: "cover"
-                        }}
-                      />
-
-                      <div className="flex flex-col gap-4">
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                          <div>
-                            <p className="brand-copy text-xl text-[#2b2a29]">{item.name}</p>
-                            <p className="mt-1 text-sm text-[#667056]">
-                              {item.sku} · {item.fabric} · {item.color}
-                            </p>
-                          </div>
-
-                          <div className="text-left sm:text-right">
-                            <p className="text-lg font-semibold text-[#2b2a29]">
-                              {formatCurrency(item.price * item.quantity)}
-                            </p>
-                            {typeof item.originalPrice === "number" && item.originalPrice > item.price ? (
-                              <p className="text-sm text-[#8d8b87] line-through">
-                                {formatCurrency(item.originalPrice * item.quantity)}
-                              </p>
-                            ) : null}
-                          </div>
-                        </div>
-
-                        <div className="flex flex-wrap items-center justify-between gap-4">
-                          <div className="inline-flex items-center rounded-full border border-[#d6ccb9] bg-white/70 p-1">
-                            <QuantityButton
-                              label="Decrease quantity"
-                              onClick={() => updateQuantity(item.sku, item.quantity - 1)}
-                            >
-                              −
-                            </QuantityButton>
-                            <span className="min-w-12 text-center text-sm font-semibold text-[#2b2a29]">
-                              {item.quantity}
-                            </span>
-                            <QuantityButton
-                              label="Increase quantity"
-                              onClick={() => updateQuantity(item.sku, item.quantity + 1)}
-                            >
-                              +
-                            </QuantityButton>
-                          </div>
-
-                          <div className="flex items-center gap-4">
-                            <Link
-                              href={buildProductDetailHref(item.slug)}
-                              className="text-sm font-medium text-[#5e684f] underline decoration-1 underline-offset-4"
-                            >
-                              View product
-                            </Link>
-                            <button
-                              type="button"
-                              onClick={() => removeItem(item.sku)}
-                              className="text-sm font-medium text-[#9d4b45]"
-                            >
-                              Remove
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </article>
+                      item={item}
+                      onDecrease={() => updateQuantity(item.sku, item.quantity - 1)}
+                      onIncrease={() => updateQuantity(item.sku, item.quantity + 1)}
+                      onRemove={() => removeItem(item.sku)}
+                    />
                   ))}
+
+                  {hasUnavailableItems ? (
+                    <div className="rounded-[1.3rem] border border-[#e2c8bc] bg-[#fff2ed] px-4 py-3 text-sm leading-6 text-[#9d4b45]">
+                      One or more sarees in your bag are no longer available. Remove them to continue to payment.
+                    </div>
+                  ) : null}
                 </div>
               )}
             </section>
@@ -172,20 +116,22 @@ export function CheckoutPage() {
                 </div>
 
                 <Link
-                  href={items.length > 0 ? "/payment" : "/checkout"}
-                  aria-disabled={items.length === 0}
+                  href={canContinueToPayment ? "/payment" : "/checkout"}
+                  aria-disabled={!canContinueToPayment}
                   className={`brand-caption mt-6 inline-flex w-full items-center justify-center rounded-[1.1rem] px-5 py-4 text-[0.68rem] font-semibold tracking-[0.14em] !text-[#fbf4e8] ${
-                    items.length === 0
-                      ? "cursor-not-allowed bg-[#c8c2b6]"
-                      : "bg-[#5e684f]"
+                    canContinueToPayment ? "bg-[#5e684f]" : "cursor-not-allowed bg-[#c8c2b6]"
                   }`}
                   onClick={(event) => {
-                    if (items.length === 0) {
+                    if (!canContinueToPayment) {
                       event.preventDefault();
                     }
                   }}
                 >
-                  {items.length === 0 ? "ADD ITEMS TO CONTINUE" : "ADD ADDRESS AND CONTINUE"}
+                  {items.length === 0
+                    ? "ADD ITEMS TO CONTINUE"
+                    : hasUnavailableItems
+                      ? "REMOVE UNAVAILABLE ITEMS"
+                      : "ADD ADDRESS AND CONTINUE"}
                 </Link>
               </section>
             </aside>
@@ -198,21 +144,104 @@ export function CheckoutPage() {
   );
 }
 
+function CheckoutItemCard({
+  item,
+  onDecrease,
+  onIncrease,
+  onRemove
+}: {
+  item: CartItem;
+  onDecrease: () => void;
+  onIncrease: () => void;
+  onRemove: () => void;
+}) {
+  const isUnavailable = isCartItemUnavailable(item);
+  const canIncreaseQuantity = !isUnavailable && item.quantity < getPurchasableQuantityLimit(item.availableStock);
+
+  return (
+    <article className="grid gap-4 rounded-[1.5rem] border border-[#ddd1c0] bg-[#fbf7ef] p-4 sm:grid-cols-[110px_minmax(0,1fr)]">
+      <div
+        className="aspect-[0.84] rounded-[1.15rem] bg-[#efe5d7]"
+        style={{
+          backgroundImage: item.primaryImageUrl
+            ? `linear-gradient(180deg, rgba(255,249,236,0.04), rgba(43,24,14,0.08)), url('${item.primaryImageUrl}')`
+            : "linear-gradient(180deg, #e8dfd4 0%, #b7b2ad 100%)",
+          backgroundPosition: "center",
+          backgroundSize: "cover"
+        }}
+      />
+
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="brand-copy text-xl text-[#2b2a29]">{item.name}</p>
+            <p className="mt-1 text-sm text-[#667056]">
+              {item.sku} · {item.fabric} · {item.color}
+            </p>
+          </div>
+
+          <div className="text-left sm:text-right">
+            <p className="text-lg font-semibold text-[#2b2a29]">{formatCurrency(item.price * item.quantity)}</p>
+            {typeof item.originalPrice === "number" && item.originalPrice > item.price ? (
+              <p className="text-sm text-[#8d8b87] line-through">
+                {formatCurrency(item.originalPrice * item.quantity)}
+              </p>
+            ) : null}
+          </div>
+        </div>
+
+        {isUnavailable ? (
+          <p className="text-sm font-medium text-[#9d4b45]">
+            This saree is no longer available. Remove it to continue.
+          </p>
+        ) : null}
+
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="inline-flex items-center rounded-full border border-[#d6ccb9] bg-white/70 p-1">
+            <QuantityButton label="Decrease quantity" onClick={onDecrease}>
+              −
+            </QuantityButton>
+            <span className="min-w-12 text-center text-sm font-semibold text-[#2b2a29]">{item.quantity}</span>
+            <QuantityButton label="Increase quantity" onClick={onIncrease} disabled={!canIncreaseQuantity}>
+              +
+            </QuantityButton>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <Link
+              href={buildProductDetailHref(item.slug)}
+              className="text-sm font-medium text-[#5e684f] underline decoration-1 underline-offset-4"
+            >
+              View product
+            </Link>
+            <button type="button" onClick={onRemove} className="text-sm font-medium text-[#9d4b45]">
+              Remove
+            </button>
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
 function QuantityButton({
   label,
   children,
-  onClick
+  onClick,
+  disabled = false
 }: {
   label: string;
   children: string;
   onClick: () => void;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       aria-label={label}
       onClick={onClick}
-      className="flex h-9 w-9 items-center justify-center rounded-full bg-[#f3eadb] text-xl text-[#4f5942]"
+      disabled={disabled}
+      className="flex h-9 w-9 items-center justify-center rounded-full bg-[#f3eadb] text-xl text-[#4f5942] disabled:cursor-not-allowed disabled:opacity-45"
     >
       {children}
     </button>

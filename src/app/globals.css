@@ -74,6 +74,10 @@ h6 {
   animation-delay: -6s;
 }
 
+.hero-loader-ring {
+  animation: hero-loader-spin 1100ms linear infinite;
+}
+
 .hide-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -103,5 +107,31 @@ h6 {
 
   50% {
     transform: translate3d(0, 10px, 0);
+  }
+}
+
+@keyframes hero-loader-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes confirmation-confetti {
+  0% {
+    transform: translate3d(0, -12vh, 0) rotate(0deg);
+    opacity: 0;
+  }
+
+  10% {
+    opacity: 0.95;
+  }
+
+  100% {
+    transform: translate3d(-3vw, 108vh, 0) rotate(540deg);
+    opacity: 0;
   }
 }

@@ -7,6 +7,7 @@ export type CartItem = {
   primaryImageUrl: string;
   fabric: string;
   color: string;
+  availableStock: number;
   status: "active" | "out_of_stock" | "draft";
   quantity: number;
 };

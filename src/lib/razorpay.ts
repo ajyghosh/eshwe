@@ -34,7 +34,7 @@ type RazorpayCheckoutOptions = {
   modal?: {
     ondismiss?: () => void;
   };
-  name: string;
+  name?: string;
   notes?: Record<string, string>;
   order_id: string;
   prefill?: {

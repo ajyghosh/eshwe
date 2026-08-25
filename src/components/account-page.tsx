@@ -157,6 +157,12 @@ export function AccountPage() {
     printWindow.document.open();
     printWindow.document.write(buildOrderSlipHtml(order, window.location.origin));
     printWindow.document.close();
+
+    try {
+      printWindow.history.replaceState({}, "", `/account/orders/${encodeURIComponent(order.id)}`);
+    } catch {
+      // Ignore history updates if the browser blocks them for the preview window.
+    }
   }
 
   function handleAddressDialogFieldChange(field: keyof AddressDialogFormState, value: string) {
@@ -696,6 +702,8 @@ function formatOrderStatus(order: CheckoutOrder) {
 }
 
 function buildOrderSlipHtml(order: CheckoutOrder, origin: string) {
+  const shortOrderId = buildShortOrderId(order.id);
+  const placedAt = formatTimestamp(order.createdAt);
   const items = (order.cartItems || [])
     .map(
       (item) => `
@@ -732,7 +740,7 @@ function buildOrderSlipHtml(order: CheckoutOrder, origin: string) {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>${escapeHtml(order.id)}</title>
+    <title>eshwe-order-slip-${escapeHtml(shortOrderId)}.pdf</title>
     <style>
       :root {
         color-scheme: light;
@@ -759,16 +767,28 @@ function buildOrderSlipHtml(order: CheckoutOrder, origin: string) {
       }
       .header {
         display: flex;
-        align-items: center;
-        gap: 16px;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 20px;
         padding-bottom: 20px;
         border-bottom: 1px solid #e5d9c9;
+      }
+      .header-left {
+        display: flex;
+        align-items: center;
+        gap: 16px;
       }
       .logo-wrap {
         border: 1px solid #d7cab6;
         background: #fbf4e8;
         border-radius: 18px;
         padding: 10px;
+      }
+      .qr-wrap {
+        border: 1px solid #d7cab6;
+        background: #fffdf9;
+        border-radius: 16px;
+        padding: 8px;
       }
       .caption {
         font: 600 11px/1.2 Arial, sans-serif;
@@ -787,6 +807,11 @@ function buildOrderSlipHtml(order: CheckoutOrder, origin: string) {
         font: 14px/1.6 Arial, sans-serif;
         color: #667056;
       }
+      .qr-image {
+        width: 72px;
+        height: 72px;
+        display: block;
+      }
       .grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -798,6 +823,9 @@ function buildOrderSlipHtml(order: CheckoutOrder, origin: string) {
         background: #fbf7ef;
         border-radius: 22px;
         padding: 16px;
+      }
+      .wide {
+        grid-column: 1 / -1;
       }
       .card-title {
         font: 600 11px/1.2 Arial, sans-serif;
@@ -819,6 +847,15 @@ function buildOrderSlipHtml(order: CheckoutOrder, origin: string) {
         border-radius: 22px;
         padding: 16px;
       }
+      .footer {
+        margin-top: 18px;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 12px;
+        font: 12px/1.5 Arial, sans-serif;
+        color: #667056;
+      }
       .items-head {
         display: flex;
         justify-content: space-between;
@@ -835,6 +872,23 @@ function buildOrderSlipHtml(order: CheckoutOrder, origin: string) {
         border-collapse: collapse;
         margin-top: 8px;
         font: 14px/1.6 Arial, sans-serif;
+      }
+      .summary-row td {
+        padding-top: 10px;
+        padding-bottom: 10px;
+        border-bottom: 0;
+        color: #4f5942;
+      }
+      .summary-divider td {
+        border-top: 1px solid #e7dccb;
+        padding-top: 16px;
+      }
+      .summary-value {
+        text-align: right;
+      }
+      .summary-total td {
+        font-weight: 700;
+        color: #2b2a29;
       }
       @media print {
         body {
@@ -855,15 +909,18 @@ function buildOrderSlipHtml(order: CheckoutOrder, origin: string) {
     <div class="page">
       <div class="slip">
         <div class="header">
-          <div class="logo-wrap">
-            <img src="${escapeHtml(origin)}/eshwelogo-transparent.png" alt="Eshwe" width="58" height="58" />
+          <div class="header-left">
+            <div class="logo-wrap">
+              <img src="${escapeHtml(origin)}/eshwelogo-transparent.png" alt="Eshwe" width="58" height="58" />
+            </div>
+            <div>
+              <div class="caption">ESHWE SAREE STUDIO</div>
+              <h1>Order Slip</h1>
+              <div class="sub">${escapeHtml(order.customer?.fullName || "Customer")}</div>
+            </div>
           </div>
-          <div>
-            <div class="caption">ESHWE SAREE STUDIO</div>
-            <h1>Order Slip</h1>
-            <div class="sub">${escapeHtml(order.customer?.fullName || "Customer")} · ${escapeHtml(
-    formatTimestamp(order.createdAt)
-  )}</div>
+          <div class="qr-wrap">
+            <img src="${escapeHtml(origin)}/eshweqr.png" alt="Eshwe QR" class="qr-image" />
           </div>
         </div>
 
@@ -879,16 +936,6 @@ function buildOrderSlipHtml(order: CheckoutOrder, origin: string) {
           </div>
 
           <div class="card">
-            <div class="card-title">TOTAL</div>
-            <div class="meta">
-              <div><strong>Subtotal:</strong> ${escapeHtml(formatCurrency(order.amountBreakdown?.subtotal))}</div>
-              <div><strong>Shipping:</strong> ${escapeHtml(formatCurrency(order.amountBreakdown?.shippingFee))}</div>
-              <div><strong>Packaging:</strong> ${escapeHtml(formatCurrency(order.amountBreakdown?.packagingFee))}</div>
-              <div><strong>Total:</strong> ${escapeHtml(formatCurrency(order.amountBreakdown?.total))}</div>
-            </div>
-          </div>
-
-          <div class="card">
             <div class="card-title">STATUS</div>
             <div class="meta">
               <div><strong>Order Status:</strong> ${escapeHtml(formatOrderStatus(order))}</div>
@@ -900,7 +947,7 @@ function buildOrderSlipHtml(order: CheckoutOrder, origin: string) {
             </div>
           </div>
 
-          <div class="card">
+          <div class="card wide">
             <div class="card-title">DELIVERY ADDRESS</div>
             <div class="meta">${addressLines}</div>
           </div>
@@ -915,7 +962,29 @@ function buildOrderSlipHtml(order: CheckoutOrder, origin: string) {
             <tbody>
               ${items}
             </tbody>
+            <tfoot>
+              <tr class="summary-row summary-divider">
+                <td colspan="2">Subtotal</td>
+                <td class="summary-value">${escapeHtml(formatCurrency(order.amountBreakdown?.subtotal))}</td>
+              </tr>
+              <tr class="summary-row">
+                <td colspan="2">Shipping</td>
+                <td class="summary-value">${escapeHtml(formatCurrency(order.amountBreakdown?.shippingFee))}</td>
+              </tr>
+              <tr class="summary-row">
+                <td colspan="2">Packaging</td>
+                <td class="summary-value">${escapeHtml(formatCurrency(order.amountBreakdown?.packagingFee))}</td>
+              </tr>
+              <tr class="summary-row summary-total">
+                <td colspan="2">Total</td>
+                <td class="summary-value">${escapeHtml(formatCurrency(order.amountBreakdown?.total))}</td>
+              </tr>
+            </tfoot>
           </table>
+        </div>
+        <div class="footer">
+          <div>eshwe.com</div>
+          <div>${escapeHtml(placedAt)}</div>
         </div>
       </div>
     </div>
@@ -937,6 +1006,10 @@ function formatPaymentMethod(value?: string | null) {
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+}
+
+function buildShortOrderId(orderId: string) {
+  return orderId.slice(-8).toUpperCase();
 }
 
 function escapeHtml(value: string) {

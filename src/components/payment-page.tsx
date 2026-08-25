@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useAuthSession } from "@/components/auth-provider";
 import { formatCurrency } from "@/components/catalogue-product-card";
@@ -10,6 +10,9 @@ import { useCart } from "@/components/cart-provider";
 import { SiteFooter } from "@/components/site-footer";
 import { StorefrontHeader } from "@/components/storefront-header";
 import { getCustomerProfile, saveCustomerProfile } from "@/lib/customer-profiles";
+import { isCartItemUnavailable } from "@/lib/inventory";
+import { saveLatestOrderConfirmation, type OrderConfirmationData } from "@/lib/order-confirmation";
+import { buildProtectedJsonHeaders } from "@/lib/protected-request";
 import {
   getRazorpayApiUrl,
   loadRazorpayCheckoutScript,
@@ -39,9 +42,13 @@ type CreateOrderResponse = {
   internalOrderId: string;
   keyId: string;
   lineItems: Array<{
+    color?: string;
     name: string;
-    quantity: string | number;
+    primaryImageUrl?: string;
+    quantity: number;
     sku: string;
+    unitOriginalPrice?: number | null;
+    unitPrice?: number | null;
   }>;
   razorpayOrderId: string;
 };
@@ -84,6 +91,7 @@ export function PaymentPage() {
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
   const [paymentSubmitting, setPaymentSubmitting] = useState(false);
+  const orderConfirmationRedirectRef = useRef(false);
 
   const selectedAddress = savedAddresses.find((address) => address.id === selectedAddressId) ?? null;
   const guestCanProceed =
@@ -97,7 +105,8 @@ export function PaymentPage() {
         guestForm.state.trim() &&
         guestForm.pincode.trim()
     );
-  const canProceedToPayment = items.length > 0 && (user ? Boolean(selectedAddress) : guestCanProceed);
+  const hasUnavailableItems = items.some((item) => isCartItemUnavailable(item));
+  const canProceedToPayment = items.length > 0 && !hasUnavailableItems && (user ? Boolean(selectedAddress) : guestCanProceed);
 
   useEffect(() => {
     setGuestForm((currentForm) => ({
@@ -179,7 +188,7 @@ export function PaymentPage() {
       return;
     }
 
-    if (items.length === 0) {
+    if (items.length === 0 && !orderConfirmationRedirectRef.current) {
       router.replace("/checkout");
     }
   }, [isReady, items.length, router]);
@@ -271,6 +280,11 @@ export function PaymentPage() {
   }
 
   async function handleProceedToPayment() {
+    if (hasUnavailableItems) {
+      setProfileError("One or more sarees in your bag are no longer available. Remove them from the cart before paying.");
+      return;
+    }
+
     const deliveryAddress = user ? selectedAddress : buildGuestDeliveryAddress(guestForm);
 
     if (!deliveryAddress) {
@@ -291,7 +305,7 @@ export function PaymentPage() {
     }
 
     setPaymentSubmitting(true);
-    setPaymentMessage("Preparing secure Razorpay checkout...");
+    setPaymentMessage("Redirecting to secure payment");
     setProfileError(null);
 
     try {
@@ -307,9 +321,7 @@ export function PaymentPage() {
         key: order.keyId,
         amount: order.amount,
         currency: order.currency,
-        name: "Eshwe Saree Studio",
         description: `Secure checkout for ${order.lineItems.length} item${order.lineItems.length === 1 ? "" : "s"}`,
-        image: "/favicon-32x32.png",
         order_id: order.razorpayOrderId,
         prefill: {
           name: deliveryAddress.fullName,
@@ -319,9 +331,6 @@ export function PaymentPage() {
         notes: {
           internalOrderId: order.internalOrderId,
           customerPhone: deliveryAddress.phone
-        },
-        theme: {
-          color: "#5e684f"
         },
         modal: {
           ondismiss: () => {
@@ -340,8 +349,12 @@ export function PaymentPage() {
 
           try {
             await verifyPayment(order.internalOrderId, paymentResponse);
+            const confirmation = buildOrderConfirmation(order, deliveryAddress, paymentResponse);
+
+            orderConfirmationRedirectRef.current = true;
+            saveLatestOrderConfirmation(confirmation);
             clearCart();
-            setPaymentMessage("Payment successful. Your order has been confirmed.");
+            router.replace("/order-confirmation");
           } catch (error) {
             setPaymentMessage(error instanceof Error ? error.message : "Payment verification failed.");
           } finally {
@@ -369,13 +382,12 @@ export function PaymentPage() {
 
   async function createOrder(deliveryAddress: PaymentFormState): Promise<CreateOrderResponse> {
     let response: Response;
+    const headers = await buildProtectedJsonHeaders();
 
     try {
       response = await fetch(getRazorpayApiUrl("create-order"), {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers,
         body: JSON.stringify({
           items: items.map((item) => ({
             sku: item.sku,
@@ -383,12 +395,15 @@ export function PaymentPage() {
           })),
           customer: deliveryAddress,
           notes: orderNotes.trim(),
-          sourcePath: window.location.pathname,
-          userId: user?.uid ?? null
+          sourcePath: window.location.pathname
         })
       });
-    } catch {
-      throw new Error("Unable to reach the payment server. Check your connection and try again.");
+    } catch (error) {
+      throw new Error(
+        error instanceof Error
+          ? error.message
+          : "Unable to reach the payment server. Check your connection and try again."
+      );
     }
 
     const result = (await response.json().catch(() => ({}))) as Partial<CreateOrderResponse> & {
@@ -415,11 +430,10 @@ export function PaymentPage() {
   }
 
   async function verifyPayment(internalOrderId: string, paymentResponse: RazorpayHandlerResponse) {
+    const headers = await buildProtectedJsonHeaders();
     const response = await fetch(getRazorpayApiUrl("verify-payment"), {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers,
       body: JSON.stringify({
         internalOrderId,
         ...paymentResponse
@@ -434,6 +448,47 @@ export function PaymentPage() {
     if (!response.ok || !result.success) {
       throw new Error(result.error || "Payment verification failed.");
     }
+  }
+
+  function buildOrderConfirmation(
+    order: CreateOrderResponse,
+    deliveryAddress: PaymentFormState,
+    paymentResponse: RazorpayHandlerResponse
+  ): OrderConfirmationData {
+    return {
+      createdAtIso: new Date().toISOString(),
+      customer: {
+        address: deliveryAddress.address,
+        city: deliveryAddress.city,
+        email: deliveryAddress.email,
+        fullName: deliveryAddress.fullName,
+        phone: deliveryAddress.phone,
+        pincode: deliveryAddress.pincode,
+        state: deliveryAddress.state
+      },
+      internalOrderId: order.internalOrderId,
+      items: order.lineItems.map((item) => ({
+        color: item.color,
+        name: item.name,
+        primaryImageUrl: item.primaryImageUrl,
+        quantity: item.quantity,
+        sku: item.sku,
+        unitOriginalPrice: item.unitOriginalPrice,
+        unitPrice: item.unitPrice
+      })),
+      notes: orderNotes.trim(),
+      paymentStatus: "captured",
+      razorpayOrderId: paymentResponse.razorpay_order_id,
+      razorpayPaymentId: paymentResponse.razorpay_payment_id,
+      summary: {
+        currency: order.currency,
+        packagingFee,
+        savings,
+        shippingFee,
+        subtotal,
+        total
+      }
+    };
   }
 
   return (
@@ -454,13 +509,26 @@ export function PaymentPage() {
 
           {items.length === 0 ? (
             <section className="rounded-[2rem] border border-[#e3d8c9] bg-[#f8f0e3] p-8 text-center shadow-[0_22px_60px_rgba(94,104,79,0.08)]">
-              <p className="brand-copy text-2xl text-[#2b2a29]">Returning to your bag...</p>
+              <p className="brand-copy text-2xl text-[#2b2a29]">Getting your checkout ready...</p>
             </section>
           ) : (
             <div className="grid gap-8 xl:grid-cols-[minmax(0,1.15fr)_390px]">
               <section className="space-y-6 rounded-[2rem] border border-[#e3d8c9] bg-[#f8f0e3] p-6 shadow-[0_22px_60px_rgba(94,104,79,0.08)] sm:p-8">
                 {profileMessage ? <p className="text-sm text-[#5e684f]">{profileMessage}</p> : null}
                 {profileError ? <p className="text-sm text-[#9d4b45]">{profileError}</p> : null}
+                {hasUnavailableItems ? (
+                  <p className="text-sm text-[#9d4b45]">
+                    One or more sarees in your bag are no longer available. Return to checkout and remove them before paying.
+                  </p>
+                ) : null}
+                {hasUnavailableItems ? (
+                  <Link
+                    href="/checkout"
+                    className="inline-flex w-fit text-sm font-medium text-[#5e684f] underline decoration-1 underline-offset-4"
+                  >
+                    Go back to checkout
+                  </Link>
+                ) : null}
 
                 {user ? (
                   <>
@@ -637,6 +705,9 @@ export function PaymentPage() {
                           <p className="mt-1">
                             {item.quantity} item{item.quantity === 1 ? "" : "s"}
                           </p>
+                          {isCartItemUnavailable(item) ? (
+                            <p className="mt-1 text-[#9d4b45]">No longer available</p>
+                          ) : null}
                         </div>
                         <span className="font-medium text-[#2b2a29]">{formatCurrency(item.price * item.quantity)}</span>
                       </div>
@@ -674,13 +745,25 @@ export function PaymentPage() {
                     disabled={!canProceedToPayment || paymentSubmitting || profileSaving || profileLoading}
                     className="brand-caption mt-6 inline-flex w-full items-center justify-center rounded-[1.1rem] bg-[#5e684f] px-5 py-4 text-[0.68rem] font-semibold tracking-[0.14em] text-[#fbf4e8] disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {paymentSubmitting || profileSaving ? "PROCESSING" : "PROCEED TO PAYMENT"}
+                    {paymentSubmitting
+                      ? paymentMessage === "Redirecting to secure payment"
+                        ? "REDIRECTING TO PAYMENT"
+                        : "PROCESSING"
+                      : profileSaving
+                        ? "PROCESSING"
+                        : hasUnavailableItems
+                          ? "UNAVAILABLE ITEMS IN BAG"
+                          : "PROCEED TO PAYMENT"}
                   </button>
 
                   {paymentMessage ? (
-                    <p className="mt-4 rounded-[1rem] border border-[#d8cbb7] bg-[#fbf7ef] px-4 py-3 text-sm leading-6 text-[#667056]">
-                      {paymentMessage}
-                    </p>
+                    <div className="mt-4 flex items-center gap-3 rounded-[1rem] border border-[#d8cbb7] bg-[#fbf7ef] px-4 py-3 text-sm leading-6 text-[#667056]">
+                      <span
+                        aria-hidden="true"
+                        className="h-4 w-4 animate-spin rounded-full border-2 border-[#d6ccb9] border-t-[#5e684f]"
+                      />
+                      <p>{paymentMessage}</p>
+                    </div>
                   ) : null}
                 </section>
               </aside>

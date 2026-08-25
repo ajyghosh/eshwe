@@ -16,8 +16,10 @@ const db = admin.firestore();
 const REGION = "asia-south1";
 const CURRENCY = "INR";
 const MAX_ITEM_QUANTITY = 10;
+const DEFAULT_AVAILABLE_STOCK = MAX_ITEM_QUANTITY;
 const ORDER_COLLECTION = "checkoutOrders";
 const PRODUCT_COLLECTION = "sarees";
+const APP_CHECK_ENFORCEMENT = (process.env.APP_CHECK_ENFORCEMENT || "off").trim().toLowerCase();
 const ALLOWED_ORIGINS = new Set([
   "http://localhost:3000",
   "http://127.0.0.1:3000",
@@ -46,12 +48,13 @@ exports.createRazorpayOrder = onRequest(
     }
 
     try {
+      const verifiedAppCheck = await verifyAppCheck(request);
+      const verifiedUser = await verifyOptionalAuthUser(request);
       const payload = parseBody(request.body);
       const requestedItems = normalizeRequestedItems(payload.items);
       const customer = normalizeCustomer(payload.customer);
       const sourcePath = normalizeSourcePath(payload.sourcePath);
       const orderNotes = normalizeOptionalText(payload.notes, 500);
-      const userId = normalizeOptionalText(payload.userId, 128);
       const pricedOrder = await priceCart(requestedItems);
       const orderRef = db.collection(ORDER_COLLECTION).doc();
       const receipt = buildReceipt(orderRef.id);
@@ -71,6 +74,7 @@ exports.createRazorpayOrder = onRequest(
       await orderRef.set({
         amountPaise: pricedOrder.totalPaise,
         amountBreakdown: pricedOrder.summary,
+        inventoryCommitted: false,
         cartItems: pricedOrder.items,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         currency: CURRENCY,
@@ -81,7 +85,8 @@ exports.createRazorpayOrder = onRequest(
         receipt,
         sourcePath,
         status: "created",
-        userId: userId || null,
+        userId: verifiedUser?.uid || null,
+        appCheckAppId: verifiedAppCheck?.appId || null,
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
       });
 
@@ -95,7 +100,7 @@ exports.createRazorpayOrder = onRequest(
       });
     } catch (error) {
       logger.error("createRazorpayOrder failed", error);
-      response.status(400).json({ error: getErrorMessage(error, "Unable to create payment order.") });
+      response.status(getErrorStatus(error, 400)).json({ error: getErrorMessage(error, "Unable to create payment order.") });
     }
   }
 );
@@ -116,6 +121,7 @@ exports.verifyRazorpayPayment = onRequest(
     }
 
     try {
+      await verifyAppCheck(request);
       const payload = parseBody(request.body);
       const internalOrderId = requireString(payload.internalOrderId, "Order reference is missing.");
       const razorpayOrderId = requireString(payload.razorpay_order_id, "Razorpay order id is missing.");
@@ -162,18 +168,33 @@ exports.verifyRazorpayPayment = onRequest(
       }
 
       const normalizedPaymentStatus = normalizePaymentStatus(payment.status);
+      const paymentEntity = sanitizePaymentEntity(payment);
 
-      await orderRef.update({
-        paymentCaptured: Boolean(payment.captured),
-        paymentEntity: sanitizePaymentEntity(payment),
-        paymentMethod: payment.method || null,
-        paymentStatus: normalizedPaymentStatus,
-        razorpayPaymentId,
-        razorpaySignature,
-        status: normalizedPaymentStatus === "captured" ? "paid" : "authorized",
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        verifiedAt: admin.firestore.FieldValue.serverTimestamp()
-      });
+      if (normalizedPaymentStatus === "captured") {
+        await commitPaidOrderInventory(orderRef, {
+          paymentCaptured: Boolean(payment.captured),
+          paymentEntity,
+          paymentMethod: payment.method || null,
+          paymentStatus: normalizedPaymentStatus,
+          razorpayPaymentId,
+          razorpaySignature,
+          status: "paid",
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          verifiedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+      } else {
+        await orderRef.update({
+          paymentCaptured: Boolean(payment.captured),
+          paymentEntity,
+          paymentMethod: payment.method || null,
+          paymentStatus: normalizedPaymentStatus,
+          razorpayPaymentId,
+          razorpaySignature,
+          status: normalizedPaymentStatus === "captured" ? "paid" : "authorized",
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          verifiedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+      }
 
       response.status(200).json({
         paymentStatus: normalizedPaymentStatus,
@@ -181,7 +202,7 @@ exports.verifyRazorpayPayment = onRequest(
       });
     } catch (error) {
       logger.error("verifyRazorpayPayment failed", error);
-      response.status(400).json({ error: getErrorMessage(error, "Unable to verify payment.") });
+      response.status(getErrorStatus(error, 400)).json({ error: getErrorMessage(error, "Unable to verify payment.") });
     }
   }
 );
@@ -238,6 +259,14 @@ function createRazorpayClient() {
   });
 }
 
+class HttpError extends Error {
+  constructor(status, message) {
+    super(message);
+    this.name = "HttpError";
+    this.status = status;
+  }
+}
+
 function parseBody(body) {
   if (!body) {
     return {};
@@ -252,6 +281,50 @@ function parseBody(body) {
   }
 
   return body;
+}
+
+async function verifyAppCheck(request) {
+  const appCheckToken = request.get("X-Firebase-AppCheck");
+
+  if (!appCheckToken) {
+    if (isAppCheckEnforced()) {
+      throw new HttpError(401, "Security check is required before checkout.");
+    }
+
+    return null;
+  }
+
+  try {
+    return await admin.appCheck().verifyToken(appCheckToken);
+  } catch (error) {
+    logger.warn("Invalid App Check token", {
+      message: getErrorMessage(error, "Invalid App Check token.")
+    });
+    throw new HttpError(401, "Security check failed. Refresh the page and try again.");
+  }
+}
+
+async function verifyOptionalAuthUser(request) {
+  const authHeader = request.get("Authorization");
+
+  if (!authHeader) {
+    return null;
+  }
+
+  const match = authHeader.match(/^Bearer\s+(.+)$/i);
+
+  if (!match) {
+    throw new HttpError(401, "Authentication header is invalid.");
+  }
+
+  try {
+    return await admin.auth().verifyIdToken(match[1]);
+  } catch (error) {
+    logger.warn("Invalid auth token", {
+      message: getErrorMessage(error, "Invalid auth token.")
+    });
+    throw new HttpError(401, "Session verification failed. Sign in again and retry.");
+  }
 }
 
 function setJsonHeaders(response) {
@@ -386,6 +459,16 @@ async function priceCart(requestedItems) {
       throw new Error(`${product.name || requestedItem.sku} is not available right now.`);
     }
 
+    const availableStock = normalizeAvailableStock(product.availableStock);
+
+    if (availableStock <= 0) {
+      throw new Error(`${product.name || requestedItem.sku} is not available right now.`);
+    }
+
+    if (requestedItem.quantity > availableStock) {
+      throw new Error(`${product.name || requestedItem.sku} is no longer available in the requested quantity.`);
+    }
+
     const unitPrice = sanitizeCurrencyAmount(product.price, `Price for ${requestedItem.sku} is invalid.`);
     const unitOriginalPrice =
       typeof product.originalPrice === "number" ? sanitizeCurrencyAmount(product.originalPrice) : null;
@@ -397,6 +480,7 @@ async function priceCart(requestedItems) {
       color: product.color || "",
       name: product.name || requestedItem.sku,
       primaryImageUrl: product.primaryImageUrl || "",
+      availableStock,
       productId: productDoc.id,
       quantity: requestedItem.quantity,
       sku: requestedItem.sku,
@@ -426,6 +510,14 @@ async function priceCart(requestedItems) {
     },
     totalPaise: Math.round(total * 100)
   };
+}
+
+function normalizeAvailableStock(value) {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return DEFAULT_AVAILABLE_STOCK;
+  }
+
+  return Math.max(0, Math.floor(value));
 }
 
 function sanitizeCurrencyAmount(value, errorMessage = "Amount is invalid.") {
@@ -488,8 +580,14 @@ async function handleWebhookEvent(payload) {
   };
 
   if (eventName === "payment.captured" || eventName === "order.paid") {
-    updates.paymentStatus = "captured";
-    updates.status = "paid";
+    await commitPaidOrderInventory(orderRef, {
+      ...updates,
+      paymentCaptured: true,
+      paymentMethod: paymentEntity?.method || null,
+      paymentStatus: "captured",
+      status: "paid"
+    });
+    return;
   } else if (eventName === "payment.authorized") {
     updates.paymentStatus = "authorized";
     updates.status = "authorized";
@@ -503,6 +601,69 @@ async function handleWebhookEvent(payload) {
   }
 
   await orderRef.update(updates);
+}
+
+async function commitPaidOrderInventory(orderRef, orderUpdates) {
+  await db.runTransaction(async (transaction) => {
+    const orderSnapshot = await transaction.get(orderRef);
+
+    if (!orderSnapshot.exists) {
+      throw new Error("Order could not be found.");
+    }
+
+    const orderData = orderSnapshot.data() || {};
+    const cartItems = Array.isArray(orderData.cartItems) ? orderData.cartItems : [];
+    const inventoryAlreadyCommitted = orderData.inventoryCommitted === true;
+
+    if (!inventoryAlreadyCommitted) {
+      for (const item of cartItems) {
+        const productRef = await getProductReferenceForOrderItem(transaction, item);
+        const productSnapshot = await transaction.get(productRef);
+
+        if (!productSnapshot.exists) {
+          throw new Error(`${item.name || item.sku || "A product"} is no longer available.`);
+        }
+
+        const product = productSnapshot.data() || {};
+        const availableStock = normalizeAvailableStock(product.availableStock);
+
+        if (product.status !== "active" || availableStock < item.quantity) {
+          throw new Error(`${product.name || item.name || item.sku || "A product"} is no longer available.`);
+        }
+
+        const nextAvailableStock = availableStock - item.quantity;
+        transaction.update(productRef, {
+          availableStock: nextAvailableStock,
+          status: nextAvailableStock > 0 ? "active" : "out_of_stock",
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+      }
+    }
+
+    transaction.update(orderRef, inventoryAlreadyCommitted
+      ? orderUpdates
+      : {
+          ...orderUpdates,
+          inventoryCommitted: true,
+          inventoryCommittedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+  });
+}
+
+async function getProductReferenceForOrderItem(transaction, item) {
+  if (item?.productId) {
+    return db.collection(PRODUCT_COLLECTION).doc(String(item.productId));
+  }
+
+  const snapshot = await transaction.get(
+    db.collection(PRODUCT_COLLECTION).where("sku", "==", String(item?.sku || "")).limit(1)
+  );
+
+  if (snapshot.empty) {
+    throw new Error(`${item?.name || item?.sku || "A product"} is no longer available.`);
+  }
+
+  return snapshot.docs[0].ref;
 }
 
 async function findOrderReference(internalOrderId, razorpayOrderId) {
@@ -536,6 +697,10 @@ function truncateValue(value, maxLength) {
   return typeof value === "string" ? value.slice(0, maxLength) : "";
 }
 
+function isAppCheckEnforced() {
+  return APP_CHECK_ENFORCEMENT === "enforce" || APP_CHECK_ENFORCEMENT === "strict";
+}
+
 function safeEqual(left, right) {
   const leftBuffer = Buffer.from(String(left), "utf8");
   const rightBuffer = Buffer.from(String(right), "utf8");
@@ -550,6 +715,14 @@ function safeEqual(left, right) {
 function getErrorMessage(error, fallback) {
   if (error instanceof Error && error.message) {
     return error.message;
+  }
+
+  return fallback;
+}
+
+function getErrorStatus(error, fallback) {
+  if (error instanceof HttpError && Number.isInteger(error.status)) {
+    return error.status;
   }
 
   return fallback;

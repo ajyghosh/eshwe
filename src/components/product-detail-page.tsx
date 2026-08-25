@@ -10,6 +10,7 @@ import { NotifyWaitlistDialog } from "@/components/notify-waitlist-dialog";
 import { ProductCardCarousel } from "@/components/product-card-carousel";
 import { SiteFooter } from "@/components/site-footer";
 import { StorefrontHeader } from "@/components/storefront-header";
+import { getPurchasableQuantityLimit, isProductPurchasable } from "@/lib/inventory";
 import {
   defaultDryingTips,
   defaultProductLength,
@@ -49,7 +50,7 @@ export function ProductDetailPage() {
         setProducts(nextProducts.filter((product) => product.status !== "draft"));
         setLoading(false);
       },
-      {}
+      { status: ["active", "out_of_stock"] }
     );
   }, []);
 
@@ -105,6 +106,7 @@ export function ProductDetailPage() {
     ];
 
     const uniqueImages = new Map<string, string>();
+    const seenIdentifiers = new Set<string>();
 
     imageEntries.forEach(({ url, path }) => {
       const cleanUrl = url.trim();
@@ -113,11 +115,14 @@ export function ProductDetailPage() {
         return;
       }
 
-      const identifier = buildImageIdentifier(cleanUrl, path);
+      const identifiers = buildImageIdentifiers(cleanUrl, path);
 
-      if (!uniqueImages.has(identifier)) {
-        uniqueImages.set(identifier, cleanUrl);
+      if (identifiers.some((identifier) => seenIdentifiers.has(identifier))) {
+        return;
       }
+
+      identifiers.forEach((identifier) => seenIdentifiers.add(identifier));
+      uniqueImages.set(cleanUrl, cleanUrl);
     });
 
     return Array.from(uniqueImages.values());
@@ -180,6 +185,7 @@ export function ProductDetailPage() {
   const sareeCareTips = product?.sareeCareTips?.length ? product.sareeCareTips : defaultSareeCareTips;
   const dryingTips = product?.dryingTips?.length ? product.dryingTips : defaultDryingTips;
   const cartQuantity = product ? items.find((item) => item.sku === product.sku)?.quantity ?? 0 : 0;
+  const canIncreaseCartQuantity = product ? cartQuantity < getPurchasableQuantityLimit(product.availableStock) : false;
 
   function showPreviousImage() {
     if (galleryImages.length <= 1) {
@@ -207,7 +213,7 @@ export function ProductDetailPage() {
   }
 
   function handleAddToCart() {
-    if (!product || product.status !== "active") {
+    if (!product || !isProductPurchasable(product)) {
       return;
     }
 
@@ -223,7 +229,7 @@ export function ProductDetailPage() {
   }
 
   function handleIncreaseCartQuantity() {
-    if (!product || product.status !== "active") {
+    if (!product || !isProductPurchasable(product) || !canIncreaseCartQuantity) {
       return;
     }
 
@@ -402,7 +408,11 @@ export function ProductDetailPage() {
                             -
                           </InlineCartButton>
                           <span className="text-center text-[0.78rem] font-semibold leading-none">{cartQuantity}</span>
-                          <InlineCartButton label="Increase quantity" onClick={handleIncreaseCartQuantity}>
+                          <InlineCartButton
+                            label="Increase quantity"
+                            onClick={handleIncreaseCartQuantity}
+                            disabled={!canIncreaseCartQuantity}
+                          >
                             +
                           </InlineCartButton>
                         </div>
@@ -537,18 +547,21 @@ export function ProductDetailPage() {
 function InlineCartButton({
   label,
   children,
-  onClick
+  onClick,
+  disabled = false
 }: {
   label: string;
   children: string;
   onClick: () => void;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       aria-label={label}
       onClick={onClick}
-      className="flex h-[22px] w-[22px] items-center justify-center rounded-[0.7rem] bg-[#fbf4e8]/14 text-[0.9rem] leading-none text-[#fbf4e8] transition-colors duration-200 hover:bg-[#fbf4e8]/22"
+      disabled={disabled}
+      className="flex h-[22px] w-[22px] items-center justify-center rounded-[0.7rem] bg-[#fbf4e8]/14 text-[0.9rem] leading-none text-[#fbf4e8] transition-colors duration-200 hover:bg-[#fbf4e8]/22 disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-[#fbf4e8]/14"
     >
       {children}
     </button>
@@ -743,11 +756,12 @@ function buildMaterialCareFacts(product: Saree) {
   ];
 }
 
-function buildImageIdentifier(url: string, path?: string | null) {
+function buildImageIdentifiers(url: string, path?: string | null) {
+  const identifiers = new Set<string>();
   const cleanPath = path?.trim();
 
   if (cleanPath) {
-    return cleanPath;
+    identifiers.add(cleanPath);
   }
 
   try {
@@ -755,19 +769,19 @@ function buildImageIdentifier(url: string, path?: string | null) {
     const firebaseObjectPath = extractStorageObjectPath(parsedUrl);
 
     if (firebaseObjectPath) {
-      return firebaseObjectPath;
+      identifiers.add(firebaseObjectPath);
     }
 
-    return `${parsedUrl.origin}${parsedUrl.pathname}`;
+    identifiers.add(`${parsedUrl.origin}${parsedUrl.pathname}`);
   } catch {
     const normalizedUrl = url.split("?")[0].split("#")[0].trim();
 
     if (normalizedUrl) {
-      return normalizedUrl;
+      identifiers.add(normalizedUrl);
     }
-
-    return path?.trim() || "";
   }
+
+  return Array.from(identifiers);
 }
 
 function extractStorageObjectPath(parsedUrl: URL) {

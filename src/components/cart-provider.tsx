@@ -10,11 +10,19 @@ import {
 } from "react";
 
 import { useAuthSession } from "@/components/auth-provider";
+import {
+  clampCartQuantityToStock,
+  getEffectiveAvailabilityStatus,
+  getPurchasableQuantityLimit,
+  isProductPurchasable,
+  MAX_CART_ITEM_QUANTITY,
+  normalizeAvailableStock
+} from "@/lib/inventory";
+import { subscribeToSarees } from "@/lib/sarees";
 import type { Saree } from "@/types/saree";
 import type { CartItem } from "@/types/cart";
 
 const CART_STORAGE_KEY = "eshwe-cart-v1";
-const MAX_ITEM_QUANTITY = 10;
 
 type CartContextValue = {
   items: CartItem[];
@@ -84,6 +92,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
     window.localStorage.setItem(storageKey, JSON.stringify(items));
   }, [hydratedStorageKey, items, storageKey]);
 
+  useEffect(() => {
+    if (loading) {
+      return;
+    }
+
+    return subscribeToSarees(
+      (sarees) => {
+        setItems((currentItems) => syncCartItemsWithCatalogue(currentItems, sarees));
+      },
+      { status: ["active", "out_of_stock"] }
+    );
+  }, [loading]);
+
   const value = useMemo<CartContextValue>(() => {
     const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const savings = items.reduce((sum, item) => {
@@ -105,12 +126,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
       total,
       totalItems,
       addItem(product, quantity = 1) {
-        if (product.status !== "active") {
+        if (!isProductPurchasable(product)) {
           return;
         }
 
         setItems((currentItems) => {
           const safeQuantity = normalizeQuantity(quantity);
+          const availableStock = normalizeAvailableStock(product.availableStock);
           const existingItem = currentItems.find((item) => item.sku === product.sku);
 
           if (existingItem) {
@@ -118,7 +140,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
               item.sku === product.sku
                 ? {
                     ...item,
-                    quantity: clampQuantity(item.quantity + safeQuantity)
+                    availableStock,
+                    quantity: clampCartQuantityToStock(item.quantity + safeQuantity, availableStock)
                   }
                 : item
             );
@@ -135,8 +158,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
               primaryImageUrl: product.primaryImageUrl,
               fabric: product.fabric,
               color: product.color,
-              status: product.status,
-              quantity: clampQuantity(safeQuantity)
+              availableStock,
+              status: getEffectiveAvailabilityStatus(product.status, availableStock),
+              quantity: clampCartQuantityToStock(safeQuantity, availableStock)
             }
           ];
         });
@@ -153,7 +177,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
             item.sku === sku
               ? {
                   ...item,
-                  quantity: clampQuantity(safeQuantity)
+                  quantity: clampCartQuantityToStock(safeQuantity, item.availableStock)
                 }
               : item
           );
@@ -186,7 +210,7 @@ function normalizeQuantity(value: number) {
 }
 
 function clampQuantity(value: number) {
-  return Math.min(MAX_ITEM_QUANTITY, Math.max(1, Math.floor(value)));
+  return Math.min(MAX_CART_ITEM_QUANTITY, Math.max(1, Math.floor(value)));
 }
 
 function isCartItem(value: unknown): value is CartItem {
@@ -219,8 +243,18 @@ function readStoredCart(storageKey: string) {
     return [];
   }
 
-  const parsedItems = JSON.parse(savedCart) as CartItem[];
-  return Array.isArray(parsedItems) ? parsedItems.filter(isCartItem) : [];
+  const parsedItems = JSON.parse(savedCart) as Array<CartItem | (Omit<CartItem, "availableStock"> & { availableStock?: number })>;
+
+  if (!Array.isArray(parsedItems)) {
+    return [];
+  }
+
+  return parsedItems
+    .filter(isCartItem)
+    .map((item) => ({
+      ...item,
+      availableStock: normalizeAvailableStock(item.availableStock)
+    }));
 }
 
 function mergeCartItems(primaryItems: CartItem[], secondaryItems: CartItem[]) {
@@ -240,9 +274,65 @@ function mergeCartItems(primaryItems: CartItem[], secondaryItems: CartItem[]) {
 
     mergedItems.set(item.sku, {
       ...existingItem,
-      quantity: clampQuantity(existingItem.quantity + item.quantity)
+      availableStock: Math.min(existingItem.availableStock, item.availableStock),
+      quantity: clampCartQuantityToStock(existingItem.quantity + item.quantity, Math.min(existingItem.availableStock, item.availableStock))
     });
   });
 
   return Array.from(mergedItems.values());
+}
+
+function syncCartItemsWithCatalogue(items: CartItem[], sarees: Saree[]) {
+  if (items.length === 0 || sarees.length === 0) {
+    return items;
+  }
+
+  const sareesBySku = new Map(sarees.map((saree) => [saree.sku, saree]));
+  let hasChanges = false;
+
+  const nextItems = items.map((item) => {
+    const latestSaree = sareesBySku.get(item.sku);
+
+    if (!latestSaree) {
+      return item;
+    }
+
+    const availableStock = normalizeAvailableStock(latestSaree.availableStock);
+    const nextStatus = getEffectiveAvailabilityStatus(latestSaree.status, availableStock);
+    const nextQuantity =
+      availableStock > 0 ? clampCartQuantityToStock(item.quantity, availableStock) : item.quantity;
+    const nextItem: CartItem = {
+      ...item,
+      slug: latestSaree.slug,
+      name: latestSaree.name,
+      price: latestSaree.price,
+      originalPrice: latestSaree.originalPrice,
+      primaryImageUrl: latestSaree.primaryImageUrl,
+      fabric: latestSaree.fabric,
+      color: latestSaree.color,
+      availableStock,
+      status: nextStatus,
+      quantity: nextQuantity
+    };
+
+    if (
+      nextItem.slug !== item.slug ||
+      nextItem.name !== item.name ||
+      nextItem.price !== item.price ||
+      nextItem.originalPrice !== item.originalPrice ||
+      nextItem.primaryImageUrl !== item.primaryImageUrl ||
+      nextItem.fabric !== item.fabric ||
+      nextItem.color !== item.color ||
+      nextItem.availableStock !== item.availableStock ||
+      nextItem.quantity !== item.quantity ||
+      nextItem.status !== item.status
+    ) {
+      hasChanges = true;
+      return nextItem;
+    }
+
+    return item;
+  });
+
+  return hasChanges ? nextItems : items;
 }

@@ -125,7 +125,7 @@ service cloud.firestore {
     }
 
     match /sarees/{sareeId} {
-      allow read: if true;
+      allow read: if isOwner() || resource.data.status != "draft";
       allow write: if isOwner();
     }
   }

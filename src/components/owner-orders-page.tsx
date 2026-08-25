@@ -20,6 +20,51 @@ import {
 import { subscribeToSuccessfulOrders, updateOrderDispatchStatus } from "@/lib/orders";
 import type { CheckoutOrder } from "@/types/order";
 
+function waitForPrintWindowAssets(printWindow: Window, timeoutMs = 1600) {
+  const images = Array.from(printWindow.document.images);
+
+  if (images.length === 0) {
+    return Promise.resolve();
+  }
+
+  return new Promise<void>((resolve) => {
+    let settled = false;
+
+    const finish = () => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      resolve();
+    };
+
+    const pendingImages = images.filter((image) => !image.complete);
+
+    if (pendingImages.length === 0) {
+      finish();
+      return;
+    }
+
+    let remaining = pendingImages.length;
+
+    const markDone = () => {
+      remaining -= 1;
+
+      if (remaining <= 0) {
+        finish();
+      }
+    };
+
+    pendingImages.forEach((image) => {
+      image.addEventListener("load", markDone, { once: true });
+      image.addEventListener("error", markDone, { once: true });
+    });
+
+    window.setTimeout(finish, timeoutMs);
+  });
+}
+
 export function OwnerOrdersPage() {
   const [authLoading, setAuthLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
@@ -162,10 +207,10 @@ export function OwnerOrdersPage() {
       // Ignore history updates if the browser blocks them for the print window.
     }
 
-    window.setTimeout(() => {
+    void waitForPrintWindowAssets(printWindow).finally(() => {
       printWindow.focus();
       printWindow.print();
-    }, 180);
+    });
   }
 
   async function handleMarkComplete(orderId: string) {
@@ -473,7 +518,7 @@ function buildOwnerSlipPrintHtml(order: CheckoutOrder, origin: string) {
   const shortId = shortOrderId(order.id);
   const itemCount = order.cartItems?.length || 0;
   const orderNote = order.notes?.trim() || "No customer note added for this order.";
-  const printedAt = formatNowForPrint();
+  const placedAt = formatTimestamp(order.createdAt);
 
   const itemRows = (order.cartItems || [])
     .map(
@@ -491,13 +536,31 @@ function buildOwnerSlipPrintHtml(order: CheckoutOrder, origin: string) {
       `
     )
     .join("");
+  const summaryRows = `
+    <div class="summary-row summary-divider">
+      <span>Subtotal</span>
+      <strong>${escapeHtml(formatCurrency(order.amountBreakdown?.subtotal))}</strong>
+    </div>
+    <div class="summary-row">
+      <span>Shipping</span>
+      <strong>${escapeHtml(formatCurrency(order.amountBreakdown?.shippingFee))}</strong>
+    </div>
+    <div class="summary-row">
+      <span>Packaging</span>
+      <strong>${escapeHtml(formatCurrency(order.amountBreakdown?.packagingFee))}</strong>
+    </div>
+    <div class="summary-row summary-total">
+      <span>Total</span>
+      <strong>${escapeHtml(formatCurrency(order.amountBreakdown?.total))}</strong>
+    </div>
+  `;
 
   return `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>${escapeHtml(order.id)}</title>
+    <title>eshwe-dispatch-slip-${escapeHtml(shortId)}.pdf</title>
     <style>
       @page {
         margin: 16mm;
@@ -651,11 +714,18 @@ function buildOwnerSlipPrintHtml(order: CheckoutOrder, origin: string) {
       .item-price {
         margin-top: 4px;
       }
+      .items-summary {
+        margin-top: 10px;
+        padding-top: 14px;
+      }
       .summary-row {
         display: flex;
         justify-content: space-between;
         gap: 12px;
         padding: 5px 0;
+      }
+      .summary-divider {
+        padding-top: 2px;
       }
       .summary-total {
         margin-top: 10px;
@@ -663,6 +733,9 @@ function buildOwnerSlipPrintHtml(order: CheckoutOrder, origin: string) {
         border-top: 1px solid #eadfce;
         font-weight: 700;
         color: #2b2a29;
+      }
+      .note-block {
+        padding: 4px 2px 0;
       }
       .footer {
         margin-top: 18px;
@@ -699,7 +772,7 @@ function buildOwnerSlipPrintHtml(order: CheckoutOrder, origin: string) {
           </div>
           <div class="header-right">
             <div class="status">Paid Order</div>
-            <div class="order-ref">Order ${escapeHtml(shortId)}</div>
+            <div class="order-ref">${escapeHtml(shortId)}</div>
           </div>
         </div>
 
@@ -736,40 +809,19 @@ function buildOwnerSlipPrintHtml(order: CheckoutOrder, origin: string) {
             </div>
             <div class="panel-body">
               ${itemRows || `<div class="muted">No items available for this order.</div>`}
+              ${itemRows ? `<div class="items-summary">${summaryRows}</div>` : ""}
             </div>
           </section>
 
-          <section class="panel">
+          <section class="note-block">
             <div class="panel-title">Order Note</div>
             <div class="panel-body">${escapeHtml(orderNote)}</div>
-          </section>
-
-          <section class="panel">
-            <div class="panel-title">Total Summary</div>
-            <div class="panel-body">
-              <div class="summary-row">
-                <span>Subtotal</span>
-                <strong>${escapeHtml(formatCurrency(order.amountBreakdown?.subtotal))}</strong>
-              </div>
-              <div class="summary-row">
-                <span>Shipping</span>
-                <strong>${escapeHtml(formatCurrency(order.amountBreakdown?.shippingFee))}</strong>
-              </div>
-              <div class="summary-row">
-                <span>Packaging</span>
-                <strong>${escapeHtml(formatCurrency(order.amountBreakdown?.packagingFee))}</strong>
-              </div>
-              <div class="summary-row summary-total">
-                <span>Total</span>
-                <strong>${escapeHtml(formatCurrency(order.amountBreakdown?.total))}</strong>
-              </div>
-            </div>
           </section>
         </div>
 
         <div class="footer">
-          <div>${escapeHtml(origin)}</div>
-          <div>${escapeHtml(printedAt)}</div>
+          <div>eshwe.com</div>
+          <div>${escapeHtml(placedAt)}</div>
         </div>
       </div>
     </div>
@@ -779,13 +831,14 @@ function buildOwnerSlipPrintHtml(order: CheckoutOrder, origin: string) {
 
 function buildOwnerAddressPrintHtml(order: CheckoutOrder, origin: string) {
   const labelLines = buildShippingLabelLines(order);
+  const shortId = shortOrderId(order.id);
 
   return `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>${escapeHtml(order.id)}-address</title>
+    <title>eshwe-address-label-${escapeHtml(shortId)}.pdf</title>
     <style>
       @page {
         size: 4in 6in;
@@ -848,7 +901,7 @@ function buildOwnerAddressPrintHtml(order: CheckoutOrder, origin: string) {
         display: flex;
         justify-content: space-between;
         gap: 12px;
-        align-items: flex-end;
+        align-items: center;
       }
       .footer-label {
         font-size: 10px;
@@ -860,6 +913,15 @@ function buildOwnerAddressPrintHtml(order: CheckoutOrder, origin: string) {
         margin-top: 4px;
         font-size: 13px;
         font-weight: 700;
+      }
+      .footer-qr {
+        width: 0.82in;
+        height: 0.82in;
+        border: 1px solid #d8d8d8;
+        border-radius: 8px;
+        background: #ffffff;
+        padding: 4px;
+        object-fit: contain;
       }
       @media print {
         html, body {
@@ -886,12 +948,13 @@ function buildOwnerAddressPrintHtml(order: CheckoutOrder, origin: string) {
       </div>
       <div class="footer">
         <div>
-          <div class="footer-label">Brand</div>
-          <div class="footer-value">ESHWE</div>
+          <img src="${escapeHtml(origin)}/eshweqr.png" alt="Eshwe QR" class="footer-qr" />
         </div>
-        <div>
-          <div class="footer-label">Order ID</div>
-          <div class="footer-value">${escapeHtml(shortOrderId(order.id))}</div>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div>
+            <div class="footer-label">Order ID</div>
+            <div class="footer-value">${escapeHtml(shortOrderId(order.id))}</div>
+          </div>
         </div>
       </div>
     </div>
@@ -909,13 +972,6 @@ function formatPrintStatus(order: CheckoutOrder) {
   }
 
   return "Pending";
-}
-
-function formatNowForPrint() {
-  return new Intl.DateTimeFormat("en-IN", {
-    dateStyle: "short",
-    timeStyle: "short"
-  }).format(new Date());
 }
 
 function escapeHtml(value: string) {

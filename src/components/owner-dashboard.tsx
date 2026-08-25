@@ -43,6 +43,7 @@ import {
   type OwnerAccount
 } from "@/lib/owner-access";
 import { firebaseReady } from "@/lib/firebase";
+import { DEFAULT_AVAILABLE_STOCK, getEffectiveAvailabilityStatus, normalizeAvailableStock } from "@/lib/inventory";
 import type { ProductMasterOption } from "@/types/product-master-option";
 import type { ProductGroup } from "@/types/product-group";
 import type { Saree, SareeStatus } from "@/types/saree";
@@ -64,6 +65,7 @@ type ProductFormState = {
   originalPrice: string;
   discountPercent: string;
   collectionLabel: string;
+  availableStock: string;
   status: SareeStatus;
   featured: boolean;
   primaryImageUrl: string;
@@ -301,7 +303,8 @@ export function OwnerDashboard() {
           ? String(product.discountPercent)
           : "",
       collectionLabel: product.collectionLabel ?? "",
-      status: product.status,
+      availableStock: String(normalizeAvailableStock(product.availableStock)),
+      status: getEffectiveAvailabilityStatus(product.status, normalizeAvailableStock(product.availableStock)),
       featured: product.featured,
       primaryImageUrl: product.primaryImageUrl,
       primaryImagePath: product.primaryImagePath ?? "",
@@ -408,6 +411,7 @@ export function OwnerDashboard() {
 
       const price = Number(form.price);
       const originalPrice = form.originalPrice ? Number(form.originalPrice) : null;
+      const availableStock = parseAvailableStock(form.availableStock);
       const computedDiscountValue = calculateDiscountPercent(form.price, form.originalPrice);
       const computedDiscount = computedDiscountValue ? Number(computedDiscountValue) : null;
 
@@ -432,7 +436,8 @@ export function OwnerDashboard() {
         originalPrice,
         discountPercent: computedDiscount,
         collectionLabel: form.collectionLabel.trim() || null,
-        status: form.status,
+        availableStock,
+        status: resolveStatusForSave(form.status, availableStock),
         featured: form.featured,
         primaryImageUrl,
         primaryImagePath,
@@ -817,6 +822,16 @@ export function OwnerDashboard() {
                   </option>
                 ))}
               </select>
+            </Field>
+            <Field label="Available stock">
+              <input
+                value={form.availableStock}
+                onChange={(event) => setForm((current) => ({ ...current, availableStock: event.target.value }))}
+                className={inputClassName}
+                inputMode="numeric"
+                placeholder={String(DEFAULT_AVAILABLE_STOCK)}
+                required
+              />
             </Field>
             <Field label="Status">
               <select
@@ -1320,6 +1335,9 @@ export function OwnerDashboard() {
                                   <p className="mt-1 text-sm text-[#667056]">
                                     {product.sku} · {product.fabric}
                                   </p>
+                                  <p className="mt-1 text-sm text-[#667056]">
+                                    Stock {normalizeAvailableStock(product.availableStock)}
+                                  </p>
                                   <p className="mt-2 text-base font-semibold text-[#1f1a17]">
                                     {formatCurrency(product.price)}
                                     {typeof product.originalPrice === "number" ? (
@@ -1401,17 +1419,32 @@ function createEmptyForm(): ProductFormState {
     originalPrice: "",
     discountPercent: "",
     collectionLabel: "",
+    availableStock: String(DEFAULT_AVAILABLE_STOCK),
     status: "active",
-  featured: false,
-  primaryImageUrl: "",
-  primaryImagePath: "",
-  galleryImages: [],
-  length: defaultProductLength,
-  washCare: defaultWashCare,
-  productNote: defaultProductNote,
-  sareeCareTips: defaultSareeCareTips.join("\n"),
-  dryingTips: defaultDryingTips.join("\n")
+    featured: false,
+    primaryImageUrl: "",
+    primaryImagePath: "",
+    galleryImages: [],
+    length: defaultProductLength,
+    washCare: defaultWashCare,
+    productNote: defaultProductNote,
+    sareeCareTips: defaultSareeCareTips.join("\n"),
+    dryingTips: defaultDryingTips.join("\n")
   };
+}
+
+function parseAvailableStock(value: string) {
+  const availableStock = Number(value);
+
+  if (!Number.isInteger(availableStock) || availableStock < 0) {
+    throw new Error("Available stock must be a whole number of 0 or more.");
+  }
+
+  return availableStock;
+}
+
+function resolveStatusForSave(status: SareeStatus, availableStock: number): SareeStatus {
+  return getEffectiveAvailabilityStatus(status, availableStock);
 }
 
 function calculateDiscountPercent(priceValue: string, originalPriceValue: string) {

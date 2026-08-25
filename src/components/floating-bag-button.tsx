@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 
 import { useCart } from "@/components/cart-provider";
 
@@ -9,8 +10,35 @@ export function FloatingBagButton() {
   const pathname = usePathname();
   const { totalItems } = useCart();
   const normalizedPathname = pathname.endsWith("/") && pathname !== "/" ? pathname.slice(0, -1) : pathname;
+  const [visibleAfterHero, setVisibleAfterHero] = useState(normalizedPathname !== "/");
 
-  if (totalItems <= 0 || normalizedPathname === "/checkout" || normalizedPathname === "/payment") {
+  useEffect(() => {
+    if (normalizedPathname !== "/") {
+      setVisibleAfterHero(true);
+      return;
+    }
+
+    setVisibleAfterHero(false);
+
+    const handleHeroReady = () => {
+      setVisibleAfterHero(true);
+    };
+
+    window.addEventListener("eshwe:home-hero-ready", handleHeroReady);
+
+    return () => {
+      window.removeEventListener("eshwe:home-hero-ready", handleHeroReady);
+    };
+  }, [normalizedPathname]);
+
+  if (
+    totalItems <= 0 ||
+    !visibleAfterHero ||
+    normalizedPathname === "/checkout" ||
+    normalizedPathname === "/payment" ||
+    normalizedPathname === "/owner" ||
+    normalizedPathname.startsWith("/owner/")
+  ) {
     return null;
   }
 
@@ -18,12 +46,12 @@ export function FloatingBagButton() {
     <Link
       href="/checkout"
       aria-label={`View bag with ${totalItems} item${totalItems === 1 ? "" : "s"}`}
-      className="fixed bottom-5 right-4 z-40 inline-flex h-14 w-14 items-center justify-center rounded-full border-2 border-[#5e684f] bg-[#fbf4e8] text-[#4f5942] shadow-[0_18px_45px_rgba(63,71,56,0.26)] transition-transform duration-200 hover:-translate-y-0.5 sm:bottom-6 sm:right-6 sm:h-16 sm:w-16"
+      className="fixed bottom-5 right-4 z-40 inline-flex h-12 w-12 items-center justify-center text-[#68735b] transition-transform duration-200 hover:-translate-y-0.5 sm:bottom-6 sm:right-6"
     >
-      <CartIcon />
-      <span className="absolute -right-1 -top-1 inline-flex min-w-6 items-center justify-center rounded-full bg-[#5e684f] px-1.5 py-1 text-[0.68rem] font-semibold leading-none text-[#fbf4e8] sm:min-w-7 sm:text-[0.72rem]">
+      <span className="absolute -top-1 left-1/2 inline-flex h-7 min-w-7 -translate-x-[12%] items-center justify-center rounded-full bg-[#68735b] px-2 text-sm font-semibold leading-none text-[#fbf4e8] shadow-[0_10px_20px_rgba(63,71,56,0.18)]">
         {totalItems}
       </span>
+      <CartIcon />
     </Link>
   );
 }
@@ -33,10 +61,10 @@ function CartIcon() {
     <svg
       aria-hidden="true"
       viewBox="0 0 24 24"
-      className="h-6 w-6 sm:h-7 sm:w-7"
+      className="h-7 w-7"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.8"
+      strokeWidth="1.9"
       strokeLinecap="round"
       strokeLinejoin="round"
     >

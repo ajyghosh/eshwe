@@ -1,29 +1,32 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { CategoryCarousel } from "@/components/category-carousel";
 import { subscribeToCategoryCards, subscribeToHomePageContent } from "@/lib/homepage";
 import { buildShopHref } from "@/lib/storefront-routes";
-import type { CategoryCard, HomePageContent } from "@/types/homepage";
+import {
+  DEFAULT_HOME_PAGE_CONTENT,
+  normalizeHomeLaunchCardMaxWidth,
+  type CategoryCard,
+  type HomePageContent
+} from "@/types/homepage";
 
-const emptyHomePageContent: HomePageContent = {
-  heroImageUrl: "",
-  heroImagePath: "",
-  heroImagePosition: "center",
-  categoriesHeading: "",
-  categoriesSubtitle: ""
-};
-
-export function StorefrontHomeContent() {
-  const [homePageContent, setHomePageContent] = useState<HomePageContent>(emptyHomePageContent);
+export function StorefrontHomeContent({ homeReady }: { homeReady: boolean }) {
+  const [homePageContent, setHomePageContent] = useState<HomePageContent>(DEFAULT_HOME_PAGE_CONTENT);
   const [categoryCards, setCategoryCards] = useState<CategoryCard[]>([]);
+  const [heroImageLoaded, setHeroImageLoaded] = useState(false);
   const heroImageUrl = homePageContent.heroImageUrl.trim();
+  const launchImageUrl = homePageContent.launchImageUrl.trim();
+  const launchHasImage = Boolean(launchImageUrl);
+  const launchCardMaxWidth = normalizeHomeLaunchCardMaxWidth(homePageContent.launchCardMaxWidth);
+  const launchImageLayout = homePageContent.launchImageLayout;
 
   useEffect(() => {
     return subscribeToHomePageContent((content) => {
-      setHomePageContent(content ?? emptyHomePageContent);
+      setHomePageContent(content ? { ...DEFAULT_HOME_PAGE_CONTENT, ...content } : DEFAULT_HOME_PAGE_CONTENT);
     });
   }, []);
 
@@ -32,6 +35,28 @@ export function StorefrontHomeContent() {
       setCategoryCards(cards);
     });
   }, []);
+
+  useEffect(() => {
+    setHeroImageLoaded(false);
+  }, [heroImageUrl]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (!heroImageLoaded) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      window.dispatchEvent(new Event("eshwe:home-hero-ready"));
+    }, 220);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [heroImageLoaded]);
 
   const activeCategoryCards = categoryCards.filter((card) => card.active);
   const carouselCategories = activeCategoryCards.map((card) => ({
@@ -54,31 +79,112 @@ export function StorefrontHomeContent() {
           <img
             src={heroImageUrl}
             alt="eshwe boutique hero"
-            className="absolute inset-0 h-full w-full object-cover"
+            className={`absolute inset-0 h-full w-full object-cover transition-[opacity,transform,filter] duration-[1200ms] ease-out ${
+              heroImageLoaded ? "scale-100 opacity-100 blur-0" : "scale-[1.035] opacity-0 blur-[10px]"
+            }`}
             style={{ objectPosition: homePageContent.heroImagePosition || "center" }}
             fetchPriority="high"
             loading="eager"
+            onLoad={() => setHeroImageLoaded(true)}
           />
         ) : null}
+        <div
+          className={`pointer-events-none absolute inset-0 transition-opacity duration-[900ms] ${
+            heroImageLoaded ? "opacity-0" : "opacity-100"
+          }`}
+          aria-hidden="true"
+        >
+          <div className="absolute inset-0 bg-[rgba(251,244,232,0.22)]" />
+          <div className="absolute inset-0 flex items-center justify-center px-6">
+            <div className="relative flex h-28 w-28 items-center justify-center sm:h-36 sm:w-36">
+              <div className="hero-loader-ring absolute inset-0 rounded-full border-[2.5px] border-[#d9c6a4] border-t-[#5e684f]" />
+              <div className="relative flex h-[5.4rem] w-[5.4rem] items-center justify-center rounded-full bg-[rgba(255,250,241,0.86)] shadow-[0_24px_60px_rgba(94,104,79,0.12)] backdrop-blur-md sm:h-[6.8rem] sm:w-[6.8rem]">
+                <Image
+                  src="/eshwelogo-transparent.png"
+                  alt="Eshwe"
+                  width={96}
+                  height={96}
+                  className="h-14 w-14 object-contain sm:h-[4.2rem] sm:w-[4.2rem]"
+                  priority
+                />
+              </div>
+            </div>
+          </div>
+        </div>
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,250,241,0.05),rgba(251,244,232,0.14))]" />
-        <div className="launch-fade-up launch-fade-up-late relative z-10 flex min-h-screen items-end px-6 pb-14 sm:px-10 sm:pb-18 lg:px-12 lg:pb-20">
-          <div className="max-w-md rounded-[1.6rem] border border-[#f3dfaa]/40 bg-[rgba(67,79,57,0.56)] px-5 py-4 text-[#fbf4e8] shadow-[0_18px_40px_rgba(43,42,41,0.16)] backdrop-blur-[3px] sm:px-6 sm:py-5">
-            <p className="brand-caption text-[0.58rem] font-semibold tracking-[0.22em] text-[#f3dfaa]">
-              OPENING SHORTLY
-            </p>
-            <h2 className="brand-copy mt-3 text-2xl leading-[1.15] text-[#fbf4e8] sm:text-[2rem]">
-              We are currently in a soft launch preview.
-            </h2>
-            <p className="mt-3 text-sm leading-7 text-[#f8f1e3]/88">
-              The boutique is live for a trial run while we fine-tune the experience and curate the
-              first collections.
-            </p>
+        <div
+          className={`relative z-10 flex min-h-screen items-end px-6 pb-14 transition-[opacity,transform] duration-700 ease-out sm:px-10 sm:pb-18 lg:px-12 lg:pb-20 ${
+            homeReady
+              ? "launch-fade-up launch-fade-up-late translate-y-0 opacity-100"
+              : "pointer-events-none translate-y-6 opacity-0"
+          }`}
+        >
+          <div
+            className="w-full rounded-[1.6rem] border border-[#f3dfaa]/40 bg-[rgba(67,79,57,0.56)] px-5 py-4 text-[#fbf4e8] shadow-[0_18px_40px_rgba(43,42,41,0.16)] backdrop-blur-[3px] sm:px-6 sm:py-5"
+            style={{ maxWidth: `${launchCardMaxWidth}px` }}
+          >
+            <div
+              className={`flex gap-4 ${
+                launchHasImage && launchImageLayout !== "top"
+                  ? "flex-col sm:flex-row sm:items-stretch"
+                  : "flex-col"
+              }`}
+            >
+              {launchHasImage ? (
+                <div
+                  className={`overflow-hidden rounded-[1.2rem] border border-white/12 bg-[rgba(255,248,238,0.14)] ${
+                    launchImageLayout === "top"
+                      ? "aspect-[1.75] w-full"
+                      : "aspect-[1.02] w-full sm:w-[38%] sm:min-w-[168px]"
+                  } ${launchImageLayout === "left" ? "sm:order-1" : ""} ${
+                    launchImageLayout === "right" ? "sm:order-2" : ""
+                  }`}
+                  style={{
+                    backgroundImage: `url('${launchImageUrl}')`,
+                    backgroundPosition: "center",
+                    backgroundRepeat: "no-repeat",
+                    backgroundSize: "cover"
+                  }}
+                  aria-label={homePageContent.launchImageAlt || "Homepage announcement image"}
+                  role="img"
+                />
+              ) : null}
+
+              <div
+                className={`min-w-0 ${
+                  launchHasImage && launchImageLayout === "right" ? "sm:order-1" : ""
+                } ${launchHasImage && launchImageLayout === "left" ? "sm:order-2" : ""}`}
+              >
+                {homePageContent.launchEyebrow ? (
+                  <p className="brand-caption text-[0.58rem] font-semibold tracking-[0.22em] text-[#f3dfaa]">
+                    {homePageContent.launchEyebrow}
+                  </p>
+                ) : null}
+
+                {homePageContent.launchHeading ? (
+                  <h2 className="brand-copy mt-3 text-2xl leading-[1.15] text-[#fbf4e8] sm:text-[2rem]">
+                    {homePageContent.launchHeading}
+                  </h2>
+                ) : null}
+
+                {homePageContent.launchBody ? (
+                  <p className="mt-3 whitespace-pre-line text-sm leading-7 text-[#f8f1e3]/88">
+                    {homePageContent.launchBody}
+                  </p>
+                ) : null}
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
       {activeCategoryCards.length > 0 ? (
-        <section id="categories" className="relative z-10 bg-[#fbf4e8] px-6 py-20 sm:px-10 lg:px-12">
+        <section
+          id="categories"
+          className={`relative z-10 bg-[#fbf4e8] px-6 py-20 transition-[opacity,transform] duration-700 ease-out sm:px-10 lg:px-12 ${
+            homeReady ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-6 opacity-0"
+          }`}
+        >
           <div className="mx-auto max-w-7xl">
             {homePageContent.categoriesHeading || homePageContent.categoriesSubtitle ? (
               <div className="text-center">

@@ -57,7 +57,7 @@ export function ShopCataloguePage() {
         setProducts(nextProducts.filter((product) => product.status !== "draft"));
         setLoading(false);
       },
-      {}
+      { status: ["active", "out_of_stock"] }
     );
   }, []);
 

@@ -4,12 +4,12 @@ import { SiteFooter } from "@/components/site-footer";
 import { StorefrontHeader } from "@/components/storefront-header";
 
 export const metadata: Metadata = {
-  title: "Return Policy",
+  title: "Shipping and Returns Policy",
   description:
-    "Read the eshwe return, exchange, and refund policy, including parcel opening video and seal verification requirements."
+    "Read the eshwe shipping and returns policy covering delivery timelines, eligible return claims, unboxing evidence, and refund handling."
 };
 
-const LAST_UPDATED = "August 25, 2026";
+const LAST_UPDATED = "August 2026";
 
 export default function ReturnPolicyPage() {
   return (
@@ -20,10 +20,10 @@ export default function ReturnPolicyPage() {
         <div className="mx-auto max-w-4xl">
           <article className="rounded-[2rem] border border-[#e3d8c9] bg-[#fffaf2] p-8 shadow-[0_24px_60px_rgba(94,104,79,0.08)] sm:p-10">
             <p className="brand-caption text-[0.62rem] font-semibold tracking-[0.18em] text-[#7d876f]">
-              RETURN POLICY
+              SHIPPING AND RETURNS POLICY
             </p>
             <h1 className="brand-copy mt-4 text-3xl leading-[1.08] text-[#2b2a29] sm:text-[3.1rem]">
-              Returns, exchanges, and refund terms
+              Shipping, delivery, returns, and refund terms
             </h1>
 
             <div className="mt-6 flex flex-wrap items-center gap-3 text-sm text-[#667056]">
@@ -36,96 +36,234 @@ export default function ReturnPolicyPage() {
             <div className="mt-8 space-y-8 text-sm leading-7 text-[#667056] sm:text-[0.98rem]">
               <section className="space-y-4">
                 <p>
-                  This policy explains how eshwe handles returns, exchanges, refunds, and delivery-related disputes.
-                  Please read it carefully before placing an order.
+                  We want every Eshwe order to reach you safely and in the condition in which it was
+                  prepared.
+                </p>
+                <p>Please read this policy carefully before completing your purchase.</p>
+                <p>
+                  After successful payment and order confirmation, your order will be prepared for
+                  shipment.
                 </p>
                 <p>
-                  Our products are packed carefully and sent with identification details for verification. Because of
-                  the nature of sarees and boutique stock handling, all claims are reviewed strictly.
-                </p>
-              </section>
-
-              <section className="space-y-4">
-                <h2 className="brand-copy text-2xl text-[#2b2a29]">1. No return and no refund policy</h2>
-                <p>
-                  We do not accept returns for change of mind, personal preference, styling preference, occasion
-                  changes, late requirement changes, or similar reasons after delivery.
+                  Processing and delivery times may vary depending on order volume, destination,
+                  courier availability, public holidays, and other operational circumstances.
                 </p>
                 <p>
-                  We do not provide refunds once an order has been delivered. If any case is reviewed and approved by
-                  us, it will be considered only under exchange support and not as a cash refund.
+                  Once shipped, tracking information will be provided where tracking is available.
                 </p>
               </section>
 
               <section className="space-y-4">
-                <h2 className="brand-copy text-2xl text-[#2b2a29]">2. Parcel opening video is mandatory</h2>
+                <h2 className="brand-copy text-2xl text-[#2b2a29]">1. Delivery information</h2>
+                <p>Customers must provide an accurate and complete:</p>
+                <ul className="list-disc space-y-2 pl-5">
+                  <li>Recipient name.</li>
+                  <li>Delivery address.</li>
+                  <li>PIN code.</li>
+                  <li>Mobile number.</li>
+                  <li>Other information reasonably required by the courier.</li>
+                </ul>
                 <p>
-                  A continuous parcel opening video is required for any exchange request, damage claim, missing item
-                  claim, incorrect product claim, or delivery dispute.
-                </p>
-                <p>
-                  The video must clearly show the sealed parcel before opening, the full opening process without cuts
-                  or edits, and the product as received inside the package.
-                </p>
-                <p>
-                  If the opening video is not available, we may not be able to verify the claim, and the request may
-                  be declined.
-                </p>
-              </section>
-
-              <section className="space-y-4">
-                <h2 className="brand-copy text-2xl text-[#2b2a29]">3. Seal and tag verification</h2>
-                <p>
-                  Every product is sent with a unique seal, tag, or identification marker. Any exchange request will
-                  be checked against these original details.
-                </p>
-                <p>
-                  The product must remain unused, unwashed, unaltered, and in the same condition in which it was
-                  delivered. Requests may be rejected if the seal is broken, the tag is removed, the item is worn, or
-                  the product condition has changed after delivery.
+                  Eshwe is not responsible for delays or failed deliveries resulting from materially
+                  incorrect or incomplete information provided by the customer.
                 </p>
               </section>
 
               <section className="space-y-4">
-                <h2 className="brand-copy text-2xl text-[#2b2a29]">4. Damaged or incorrect product claims</h2>
+                <h2 className="brand-copy text-2xl text-[#2b2a29]">2. Shipping timelines and charges</h2>
                 <p>
-                  If you believe the delivered product is damaged, defective, incomplete, or not the same as your
-                  order, please contact us promptly with your order ID and the parcel opening video.
+                  Any delivery date or timeframe displayed on the website is an estimated delivery
+                  period and should not be treated as a guaranteed delivery date.
                 </p>
                 <p>
-                  We may also ask for clear photographs of the product, packaging, label, and shipping details to
-                  complete the review. Approval is not automatic and depends on verification.
-                </p>
-              </section>
-
-              <section className="space-y-4">
-                <h2 className="brand-copy text-2xl text-[#2b2a29]">5. Exchange review process</h2>
-                <p>
-                  If a request is eligible for review, our team will check the order details, the parcel opening video,
-                  and the condition of the item. We may contact you for additional information before making a
-                  decision.
+                  Courier delays, severe weather, transportation disruption, public holidays,
+                  regional restrictions, natural events, or other circumstances outside our
+                  reasonable control may affect delivery.
                 </p>
                 <p>
-                  An exchange is considered only after successful verification. If the claim cannot be verified, the
-                  request may be declined.
+                  Applicable shipping charges, if any, will be displayed during checkout before
+                  payment.
+                </p>
+                <p>
+                  Where the website states that shipping is free for an eligible order, no separate
+                  standard shipping charge will be added for that order.
                 </p>
               </section>
 
               <section className="space-y-4">
-                <h2 className="brand-copy text-2xl text-[#2b2a29]">6. How to contact us</h2>
+                <h2 className="brand-copy text-2xl text-[#2b2a29]">3. Returns not accepted</h2>
+                <p>Eshwe currently does not offer product exchanges.</p>
+                <p>We also do not accept returns because:</p>
+                <ul className="list-disc space-y-2 pl-5">
+                  <li>You changed your mind.</li>
+                  <li>You no longer require the product.</li>
+                  <li>You selected the wrong product.</li>
+                  <li>You do not like the colour, fabric, style, or appearance after delivery.</li>
+                  <li>
+                    The product appears slightly different because of photography or
+                    screen/display settings.
+                  </li>
+                </ul>
+                <p>Please review the product information carefully before ordering.</p>
+              </section>
+
+              <section className="space-y-4">
+                <h2 className="brand-copy text-2xl text-[#2b2a29]">4. Eligible return claims</h2>
+                <p>A return request may be considered where:</p>
                 <p>
-                  For any delivery or product issue, please contact us with your order ID, product name, delivery
-                  details, and parcel opening video so that the case can be reviewed properly.
+                  The product was received materially damaged or defective, or the product delivered
+                  is different from the product in the confirmed order.
+                </p>
+                <p>All claims are subject to verification by Eshwe.</p>
+                <p>
+                  Any eligible damage, defect, or incorrect-product claim must be reported to Eshwe
+                  within 48 hours of the recorded delivery time.
+                </p>
+                <p>Please inspect your order promptly after receiving it.</p>
+                <p>
+                  Claims received after the 48-hour period may not be eligible for return or refund,
+                  subject to applicable consumer law.
+                </p>
+              </section>
+
+              <section className="space-y-4">
+                <h2 className="brand-copy text-2xl text-[#2b2a29]">5. Unboxing video and photographs</h2>
+                <p>
+                  Customers are requested to record a clear, continuous and unedited video while
+                  opening the parcel for the first time.
+                </p>
+                <p>The video should show:</p>
+                <ol className="list-decimal space-y-2 pl-5">
+                  <li>The complete unopened package.</li>
+                  <li>The shipping label.</li>
+                  <li>The condition of the outer packaging.</li>
+                  <li>The package being opened continuously.</li>
+                  <li>The product being removed.</li>
+                  <li>The complete product.</li>
+                  <li>The claimed damage, defect, or incorrect item.</li>
+                </ol>
+                <p>The recording should begin before the parcel is opened.</p>
+                <p>
+                  A recording made only after the parcel has already been opened may not establish
+                  the condition in which the product was delivered.
+                </p>
+                <p>Please also provide clear photographs showing the reported issue.</p>
+              </section>
+
+              <section className="space-y-4">
+                <h2 className="brand-copy text-2xl text-[#2b2a29]">6. Natural product variation</h2>
+                <p>
+                  Sarees can naturally contain minor variations arising from weaving, dyeing,
+                  printing, stitching, finishing, or the characteristics of the fabric.
                 </p>
                 <p>
-                  We recommend raising any concern as soon as possible after delivery so the order condition can be
-                  assessed without delay.
+                  Depending on the product, small weave variations, slubs, minor thread
+                  irregularities, natural texture variations, or slight variations in colour may
+                  occur.
+                </p>
+                <p>
+                  Similarly, colours displayed online may vary somewhat from the physical product
+                  because of photography, lighting, screen brightness, device settings, and display
+                  calibration.
+                </p>
+                <p>
+                  Such reasonable variations are not automatically considered product damage or
+                  manufacturing defects.
+                </p>
+              </section>
+
+              <section className="space-y-4">
+                <h2 className="brand-copy text-2xl text-[#2b2a29]">7. Approved return conditions</h2>
+                <p>
+                  If a return is approved, the product must be returned in substantially the same
+                  condition in which it was received.
+                </p>
+                <p>The product must not be:</p>
+                <ul className="list-disc space-y-2 pl-5">
+                  <li>Worn or used.</li>
+                  <li>Washed.</li>
+                  <li>Altered.</li>
+                  <li>Stained.</li>
+                  <li>Perfumed.</li>
+                  <li>Intentionally damaged.</li>
+                  <li>Modified in any manner.</li>
+                </ul>
+                <p>
+                  Original tags, packaging, accessories, and complimentary items supplied with the
+                  order should be included where applicable.
+                </p>
+              </section>
+
+              <section className="space-y-4">
+                <h2 className="brand-copy text-2xl text-[#2b2a29]">8. Review and approval process</h2>
+                <p>
+                  Submitting photographs or an unboxing video does not automatically mean that a
+                  return has been approved.
+                </p>
+                <p>
+                  Eshwe will review the evidence and order information before determining whether
+                  the claim satisfies this policy.
+                </p>
+                <p>
+                  If additional information is reasonably necessary, we may ask the customer to
+                  provide it.
+                </p>
+                <p>Do not send a product back before receiving return instructions from Eshwe.</p>
+              </section>
+
+              <section className="space-y-4">
+                <h2 className="brand-copy text-2xl text-[#2b2a29]">9. Refund handling</h2>
+                <p>Once an approved return is received, the product will be inspected.</p>
+                <p>
+                  If the return satisfies the approved claim and applicable return conditions, the
+                  refund will be initiated to the original payment method used for the order.
+                </p>
+                <p>
+                  Eshwe does not control the time taken by Razorpay, banks, card issuers, UPI
+                  providers, or other financial institutions to credit an initiated refund.
+                </p>
+              </section>
+
+              <section className="space-y-4">
+                <h2 className="brand-copy text-2xl text-[#2b2a29]">10. Parcel damage or wrong item</h2>
+                <p>
+                  If the outer parcel appears visibly opened, severely damaged, resealed, or
+                  tampered with at delivery, please photograph or record its condition before
+                  opening it.
+                </p>
+                <p>
+                  Where reasonably possible, bring visible package damage or tampering to the
+                  delivery person&apos;s attention.
+                </p>
+                <p>You should still record the complete unboxing if you accept the parcel.</p>
+                <p>
+                  If you receive a product different from your confirmed order, contact Eshwe within
+                  48 hours of delivery.
+                </p>
+                <p>
+                  Keep the item unused and retain its original packaging and tags. Please provide
+                  the continuous unboxing video, photographs, and your order information so that we
+                  can investigate the issue.
+                </p>
+              </section>
+
+              <section className="space-y-4">
+                <h2 className="brand-copy text-2xl text-[#2b2a29]">11. How to contact us</h2>
+                <p>
+                  For a shipping issue or eligible return request, contact Eshwe through the
+                  contact information provided on our website.
+                </p>
+                <p>For faster review, please provide:</p>
+                <p>
+                  Order number + registered mobile/email + description of the issue + clear
+                  photographs + continuous unboxing video.
                 </p>
               </section>
 
               <section className="border-t border-[#e3d8c9] pt-6 text-xs leading-6 text-[#7a7f72] sm:text-sm">
                 <p>
-                  By placing an order with eshwe, you acknowledge that you have read and accepted this return policy.
+                  By placing an order with eshwe, you acknowledge that you have read and accepted
+                  this shipping and returns policy.
                 </p>
               </section>
             </div>

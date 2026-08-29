@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode
 } from "react";
@@ -47,29 +48,47 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [hydratedStorageKey, setHydratedStorageKey] = useState<string | null>(null);
   const storageKey = user?.uid ? `${CART_STORAGE_KEY}:${user.uid}` : `${CART_STORAGE_KEY}:guest`;
   const guestStorageKey = `${CART_STORAGE_KEY}:guest`;
+  const itemsRef = useRef(items);
+  const previousStorageKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
 
   useEffect(() => {
     if (loading || typeof window === "undefined") {
       return;
     }
 
+    const previousStorageKey = previousStorageKeyRef.current;
     setHydratedStorageKey(null);
 
     try {
       if (user?.uid) {
         const accountCart = readStoredCart(storageKey);
         const guestCart = readStoredCart(guestStorageKey);
-        const mergedCart = mergeCartItems(accountCart, guestCart);
+        const nextGuestCart =
+          previousStorageKey === guestStorageKey
+            ? mergeCartItems(itemsRef.current, guestCart)
+            : guestCart;
+        const mergedCart = mergeCartItems(accountCart, nextGuestCart);
 
         window.localStorage.setItem(storageKey, JSON.stringify(mergedCart));
 
-        if (guestCart.length > 0) {
+        if (nextGuestCart.length > 0) {
           window.localStorage.removeItem(guestStorageKey);
         }
 
         setItems(mergedCart);
       } else {
-        setItems(readStoredCart(storageKey));
+        const guestCart = readStoredCart(guestStorageKey);
+        const nextGuestCart =
+          previousStorageKey && previousStorageKey !== guestStorageKey
+            ? mergeCartItems(itemsRef.current, guestCart)
+            : guestCart;
+
+        window.localStorage.setItem(guestStorageKey, JSON.stringify(nextGuestCart));
+        setItems(nextGuestCart);
       }
     } catch {
       window.localStorage.removeItem(storageKey);
@@ -81,6 +100,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setItems([]);
     } finally {
       setHydratedStorageKey(storageKey);
+      previousStorageKeyRef.current = storageKey;
     }
   }, [guestStorageKey, loading, storageKey, user?.uid]);
 

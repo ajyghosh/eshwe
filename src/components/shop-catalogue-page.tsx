@@ -13,6 +13,7 @@ import { CategoryCarousel } from "@/components/category-carousel";
 import { SiteFooter } from "@/components/site-footer";
 import { StorefrontHeader } from "@/components/storefront-header";
 import { subscribeToCategoryCards } from "@/lib/homepage";
+import { matchesProductIntent, matchesProductSearch, SHOP_INTENT_TAGS } from "@/lib/product-discovery";
 import { subscribeToSarees } from "@/lib/sarees";
 import {
   buildShopHref,
@@ -30,6 +31,8 @@ const allAvailabilityLabel = "ALL";
 const browseAllLabel = "ALL PRODUCTS";
 const browseNewArrivalsLabel = "NEW ARRIVALS";
 const browseFeaturedLabel = "FEATURED PRODUCTS";
+const allIntentLabel = "ALL INTENTS";
+const defaultSortLabel = "Newest";
 
 type BrowseOption = {
   kind: "all" | "new-arrivals" | "featured" | "curated";
@@ -42,14 +45,19 @@ export function ShopCataloguePage() {
   const searchParams = useSearchParams();
   const searchBrowse = searchParams.get("browse");
   const searchFilter = searchParams.get("filter");
+  const searchQueryParam = searchParams.get("q") ?? "";
   const [products, setProducts] = useState<Saree[]>([]);
   const [categoryCards, setCategoryCards] = useState<CategoryCard[]>([]);
   const [loading, setLoading] = useState(true);
+  const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false);
   const [activeBrowse, setActiveBrowse] = useState(browseAllLabel);
   const [activeCuratedFilter, setActiveCuratedFilter] = useState("");
+  const [activeIntent, setActiveIntent] = useState(allIntentLabel);
   const [activeCategory, setActiveCategory] = useState(allCategoriesLabel);
   const [activeFabric, setActiveFabric] = useState(allFabricsLabel);
   const [activeAvailability, setActiveAvailability] = useState(allAvailabilityLabel);
+  const [searchQuery, setSearchQuery] = useState(searchQueryParam);
+  const [activeSort, setActiveSort] = useState(defaultSortLabel);
 
   useEffect(() => {
     return subscribeToSarees(
@@ -113,16 +121,18 @@ export function ShopCataloguePage() {
 
   useEffect(() => {
     const routeState = resolveShopLocation(pathname, searchBrowse, searchFilter);
+    setSearchQuery(searchQueryParam);
 
     setActiveCategory(allCategoriesLabel);
     setActiveFabric(allFabricsLabel);
     setActiveAvailability(allAvailabilityLabel);
+    setActiveIntent(allIntentLabel);
 
     if (routeState.browse === "new-arrivals") {
       setActiveBrowse(browseNewArrivalsLabel);
       setActiveCuratedFilter("");
-      if (searchBrowse || searchFilter) {
-        replaceVisibleShopPath(buildShopPath({ browse: "new-arrivals" }));
+      if (searchBrowse || searchFilter || searchQueryParam) {
+        replaceVisibleShopUrl(buildShopPath({ browse: "new-arrivals" }), searchQueryParam);
       }
       return;
     }
@@ -130,8 +140,8 @@ export function ShopCataloguePage() {
     if (routeState.browse === "featured") {
       setActiveBrowse(browseFeaturedLabel);
       setActiveCuratedFilter("");
-      if (searchBrowse || searchFilter) {
-        replaceVisibleShopPath(buildShopPath({ browse: "featured" }));
+      if (searchBrowse || searchFilter || searchQueryParam) {
+        replaceVisibleShopUrl(buildShopPath({ browse: "featured" }), searchQueryParam);
       }
       return;
     }
@@ -148,8 +158,20 @@ export function ShopCataloguePage() {
       if (matchingOption) {
         setActiveBrowse(matchingOption.title);
         setActiveCuratedFilter(matchingOption.shopFilter);
-        if (searchBrowse || searchFilter) {
-          replaceVisibleShopPath(buildShopPath({ browse: "curated", filter: matchingOption.shopFilter }));
+        if (searchBrowse || searchFilter || searchQueryParam) {
+          replaceVisibleShopUrl(buildShopPath({ browse: "curated", filter: matchingOption.shopFilter }), searchQueryParam);
+        }
+        return;
+      }
+
+      const matchingIntent = SHOP_INTENT_TAGS.find((intent) => matchesRouteIdentifier(intent, routeState.filter)) ?? null;
+
+      if (matchingIntent) {
+        setActiveBrowse(browseAllLabel);
+        setActiveCuratedFilter("");
+        setActiveIntent(matchingIntent);
+        if (searchBrowse || searchFilter || searchQueryParam) {
+          replaceVisibleShopUrl(buildShopPath({ browse: "curated", filter: matchingIntent }), searchQueryParam);
         }
         return;
       }
@@ -161,8 +183,8 @@ export function ShopCataloguePage() {
         setActiveBrowse(browseAllLabel);
         setActiveCuratedFilter("");
         setActiveCategory(matchingCategory);
-        if (searchBrowse || searchFilter) {
-          replaceVisibleShopPath(buildShopPath({ browse: "curated", filter: matchingCategory }));
+        if (searchBrowse || searchFilter || searchQueryParam) {
+          replaceVisibleShopUrl(buildShopPath({ browse: "curated", filter: matchingCategory }), searchQueryParam);
         }
         return;
       }
@@ -173,8 +195,8 @@ export function ShopCataloguePage() {
         setActiveBrowse(browseAllLabel);
         setActiveCuratedFilter("");
         setActiveFabric(matchingFabric);
-        if (searchBrowse || searchFilter) {
-          replaceVisibleShopPath(buildShopPath({ browse: "curated", filter: matchingFabric }));
+        if (searchBrowse || searchFilter || searchQueryParam) {
+          replaceVisibleShopUrl(buildShopPath({ browse: "curated", filter: matchingFabric }), searchQueryParam);
         }
         return;
       }
@@ -182,12 +204,16 @@ export function ShopCataloguePage() {
 
     setActiveBrowse(browseAllLabel);
     setActiveCuratedFilter("");
-    if (searchBrowse || searchFilter) {
-      replaceVisibleShopPath(buildShopPath());
+    if (searchBrowse || searchFilter || searchQueryParam) {
+      replaceVisibleShopUrl(buildShopPath(), searchQueryParam);
     }
-  }, [browseOptions, categories, fabrics, pathname, searchBrowse, searchFilter]);
+  }, [browseOptions, categories, fabrics, pathname, searchBrowse, searchFilter, searchQueryParam]);
 
   const browseFilteredProducts = products.filter((product) => {
+    if (activeBrowse === browseNewArrivalsLabel) {
+      return matchesProductIntent(product, "New");
+    }
+
     if (activeBrowse === browseFeaturedLabel) {
       return product.featured;
     }
@@ -203,22 +229,28 @@ export function ShopCataloguePage() {
     const matchesCategory =
       activeCategory === allCategoriesLabel || product.category === activeCategory;
     const matchesFabric = activeFabric === allFabricsLabel || product.fabric === activeFabric;
+    const matchesIntent = activeIntent === allIntentLabel || matchesProductIntent(product, activeIntent);
     const matchesAvailability =
       activeAvailability === allAvailabilityLabel ||
       (activeAvailability === "AVAILABLE" && product.status === "active") ||
       (activeAvailability === "OUT OF STOCK" && product.status === "out_of_stock");
+    const matchesSearch = matchesProductSearch(product, searchQuery);
 
-    return matchesCategory && matchesFabric && matchesAvailability;
+    return matchesCategory && matchesFabric && matchesIntent && matchesAvailability && matchesSearch;
   });
+  const sortedProducts = useMemo(
+    () => sortProducts(filteredProducts, activeSort),
+    [activeSort, filteredProducts]
+  );
   const { hasMore, loadMoreRef, visibleItemsCount } = useProgressiveProductGrid(
-    filteredProducts.length,
-    [activeBrowse, activeCuratedFilter, activeCategory, activeFabric, activeAvailability].join("|")
+    sortedProducts.length,
+    [activeBrowse, activeCuratedFilter, activeIntent, activeCategory, activeFabric, activeAvailability, searchQuery, activeSort].join("|")
   );
   const visibleFilteredProducts = useMemo(
-    () => filteredProducts.slice(0, visibleItemsCount),
-    [filteredProducts, visibleItemsCount]
+    () => sortedProducts.slice(0, visibleItemsCount),
+    [sortedProducts, visibleItemsCount]
   );
-  const hasFilteredProducts = filteredProducts.length > 0;
+  const hasFilteredProducts = sortedProducts.length > 0;
   const isEmptyFilteredState = !loading && !hasFilteredProducts;
   const emptyStateTitle =
     activeCategory !== allCategoriesLabel
@@ -231,12 +263,16 @@ export function ShopCataloguePage() {
             ? "Featured pieces are being refreshed"
             : activeBrowse === browseNewArrivalsLabel
               ? "New arrivals are on the way"
+              : activeIntent !== allIntentLabel
+                ? `${activeIntent} picks are being refreshed`
               : "The collection is being updated";
   const emptyStateDescription =
     activeCategory !== allCategoriesLabel
       ? `More ${activeCategory.toLowerCase()} pieces will be added soon. Explore other curated sarees for now.`
       : activeFabric !== allFabricsLabel
         ? `We are curating more ${activeFabric.toLowerCase()} drapes at the moment. Browse other fabrics while they are added.`
+        : activeIntent !== allIntentLabel
+          ? `More ${activeIntent.toLowerCase()} sarees will be added soon. Try nearby intents or browse the full collection.`
         : activeAvailability === "OUT OF STOCK"
           ? "Everything in this selection is sold out for now, but fresh boutique picks will be added soon."
           : activeBrowse === browseFeaturedLabel
@@ -286,31 +322,42 @@ export function ShopCataloguePage() {
     setActiveCategory(allCategoriesLabel);
     setActiveFabric(allFabricsLabel);
     setActiveAvailability(allAvailabilityLabel);
+    setActiveIntent(allIntentLabel);
 
     if (!option || option.kind === "all") {
       setActiveBrowse(browseAllLabel);
       setActiveCuratedFilter("");
-      replaceVisibleShopPath(buildShopPath());
+      replaceVisibleShopUrl(buildShopPath(), searchQuery);
       return;
     }
 
     if (option.kind === "new-arrivals") {
       setActiveBrowse(browseNewArrivalsLabel);
       setActiveCuratedFilter("");
-      replaceVisibleShopPath(buildShopPath({ browse: "new-arrivals" }));
+      replaceVisibleShopUrl(buildShopPath({ browse: "new-arrivals" }), searchQuery);
       return;
     }
 
     if (option.kind === "featured") {
       setActiveBrowse(browseFeaturedLabel);
       setActiveCuratedFilter("");
-      replaceVisibleShopPath(buildShopPath({ browse: "featured" }));
+      replaceVisibleShopUrl(buildShopPath({ browse: "featured" }), searchQuery);
       return;
     }
 
     setActiveBrowse(option.title);
     setActiveCuratedFilter(option.shopFilter);
-    replaceVisibleShopPath(buildShopPath({ browse: "curated", filter: option.shopFilter }));
+    replaceVisibleShopUrl(buildShopPath({ browse: "curated", filter: option.shopFilter }), searchQuery);
+  }
+
+  function handleIntentSelect(value: string) {
+    setActiveBrowse(browseAllLabel);
+    setActiveCuratedFilter("");
+    setActiveIntent(value);
+    replaceVisibleShopUrl(
+      value === allIntentLabel ? buildShopPath() : buildShopPath({ browse: "curated", filter: value }),
+      searchQuery
+    );
   }
 
   function handleCategorySelect(value: string) {
@@ -321,8 +368,9 @@ export function ShopCataloguePage() {
       setActiveCuratedFilter("");
     }
 
-    replaceVisibleShopPath(
-      value === allCategoriesLabel ? buildShopPath() : buildShopPath({ browse: "curated", filter: value })
+    replaceVisibleShopUrl(
+      value === allCategoriesLabel ? buildShopPath() : buildShopPath({ browse: "curated", filter: value }),
+      searchQuery
     );
   }
 
@@ -337,10 +385,77 @@ export function ShopCataloguePage() {
   function handleClearFilters() {
     setActiveBrowse(browseAllLabel);
     setActiveCuratedFilter("");
+    setActiveIntent(allIntentLabel);
     setActiveCategory(allCategoriesLabel);
     setActiveFabric(allFabricsLabel);
     setActiveAvailability(allAvailabilityLabel);
-    replaceVisibleShopPath(buildShopPath());
+    setSearchQuery("");
+    setActiveSort(defaultSortLabel);
+    replaceVisibleShopUrl(buildShopPath(), "");
+  }
+
+  function handleSearchSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    replaceVisibleShopUrl(
+      activeBrowse === browseNewArrivalsLabel
+        ? buildShopPath({ browse: "new-arrivals" })
+        : activeBrowse === browseFeaturedLabel
+          ? buildShopPath({ browse: "featured" })
+          : activeCuratedFilter
+            ? buildShopPath({ browse: "curated", filter: activeCuratedFilter })
+            : activeIntent !== allIntentLabel
+              ? buildShopPath({ browse: "curated", filter: activeIntent })
+              : activeCategory !== allCategoriesLabel
+                ? buildShopPath({ browse: "curated", filter: activeCategory })
+                : buildShopPath(),
+      searchQuery
+    );
+  }
+
+  const activeFilters = buildActiveFilters({
+    activeAvailability,
+    activeBrowse,
+    activeCategory,
+    activeFabric,
+    activeIntent,
+    activeSort,
+    searchQuery
+  });
+  const appliedFilterCount = activeFilters.length;
+
+  function clearSingleFilter(filterKey: string) {
+    if (filterKey === "browse") {
+      handleBrowseSelect(browseAllLabel);
+      return;
+    }
+
+    if (filterKey === "intent") {
+      handleIntentSelect(allIntentLabel);
+      return;
+    }
+
+    if (filterKey === "category") {
+      handleCategorySelect(allCategoriesLabel);
+      return;
+    }
+
+    if (filterKey === "fabric") {
+      handleFabricSelect(allFabricsLabel);
+      return;
+    }
+
+    if (filterKey === "availability") {
+      handleAvailabilitySelect(allAvailabilityLabel);
+      return;
+    }
+
+    if (filterKey === "sort") {
+      setActiveSort(defaultSortLabel);
+      return;
+    }
+
+    setSearchQuery("");
+    replaceVisibleShopUrl(window.location.pathname, "");
   }
 
   return (
@@ -353,39 +468,171 @@ export function ShopCataloguePage() {
       >
         <div className="mx-auto max-w-7xl">
           <div className="relative rounded-[2rem] border border-[#e3d8c9] bg-[#f8f0e3] p-6 shadow-[0_22px_60px_rgba(94,104,79,0.08)] lg:p-8">
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[1.2fr_1fr_1fr_1fr_auto] xl:items-end">
-              <FilterSelect
-                label="Browse"
-                options={browseOptions.map((option) => option.title)}
-                activeValue={activeBrowse}
-                onSelect={handleBrowseSelect}
-              />
-              <FilterSelect
-                label="Category"
-                options={categories}
-                activeValue={activeCategory}
-                onSelect={handleCategorySelect}
-              />
-              <FilterSelect
-                label="Fabric"
-                options={fabrics}
-                activeValue={activeFabric}
-                onSelect={handleFabricSelect}
-              />
-              <FilterSelect
-                label="Availability"
-                options={[allAvailabilityLabel, "AVAILABLE", "OUT OF STOCK"]}
-                activeValue={activeAvailability}
-                onSelect={handleAvailabilitySelect}
-              />
+            <div className="space-y-5">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <p className="brand-caption text-[0.62rem] font-semibold tracking-[0.18em] text-[#7d876f]">
+                    CURATED CATALOGUE
+                  </p>
+                  <h1 className="brand-copy mt-3 text-3xl leading-tight text-[#2b2a29] sm:text-[2.8rem]">
+                    Find the right saree without the clutter.
+                  </h1>
+                  <p className="mt-3 max-w-2xl text-sm leading-7 text-[#667056]">
+                    Search quickly, keep only the filters that matter, and browse the collection with one clear action per card.
+                  </p>
+                </div>
 
-              <button
-                type="button"
-                onClick={handleClearFilters}
-                className="brand-caption h-[52px] rounded-2xl border border-[#d6ccb9] px-5 text-[0.62rem] font-semibold tracking-[0.08em] text-[#5e684f]"
+                <div className="rounded-[1.4rem] border border-[#ddd1c0] bg-[#fffaf2] px-5 py-4 text-sm text-[#667056]">
+                  <p className="brand-caption text-[0.56rem] font-semibold tracking-[0.14em] text-[#7d876f]">
+                    RESULTS
+                  </p>
+                  <p className="mt-2 text-lg font-semibold text-[#2b2a29]">
+                    {sortedProducts.length} piece{sortedProducts.length === 1 ? "" : "s"}
+                  </p>
+                  <p className="mt-1 text-xs text-[#7d876f]">
+                    {appliedFilterCount > 0
+                      ? `${appliedFilterCount} filter${appliedFilterCount === 1 ? "" : "s"} active`
+                      : "Showing the full collection"}
+                  </p>
+                </div>
+              </div>
+
+              <form
+                className="grid gap-4 rounded-[1.6rem] border border-[#e4d8c9] bg-[#fbf7ef] p-4 md:grid-cols-2 xl:grid-cols-[1.45fr_1fr_1fr_1fr_1fr_auto]"
+                onSubmit={handleSearchSubmit}
               >
-                CLEAR FILTERS
-              </button>
+                <FilterInput
+                  label="Search"
+                  value={searchQuery}
+                  onChange={setSearchQuery}
+                  placeholder="Search saree, fabric, color, wedding..."
+                />
+                <FilterSelect
+                  label="Sort"
+                  options={[defaultSortLabel, "Price: Low to High", "Price: High to Low", "Most Relevant"]}
+                  activeValue={activeSort}
+                  onSelect={setActiveSort}
+                />
+                <FilterSelect
+                  label="Category"
+                  options={categories}
+                  activeValue={activeCategory}
+                  onSelect={handleCategorySelect}
+                />
+                <FilterSelect
+                  label="Fabric"
+                  options={fabrics}
+                  activeValue={activeFabric}
+                  onSelect={handleFabricSelect}
+                />
+                <FilterSelect
+                  label="Availability"
+                  options={[allAvailabilityLabel, "AVAILABLE", "OUT OF STOCK"]}
+                  activeValue={activeAvailability}
+                  onSelect={handleAvailabilitySelect}
+                />
+                <div className="flex items-end gap-3">
+                  <button
+                    type="submit"
+                    className="brand-caption h-[52px] rounded-2xl bg-[#5e684f] px-5 text-[0.62rem] font-semibold tracking-[0.08em] text-[#fbf4e8]"
+                  >
+                    APPLY
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleClearFilters}
+                    className="brand-caption h-[52px] rounded-2xl border border-[#d6ccb9] px-5 text-[0.62rem] font-semibold tracking-[0.08em] text-[#5e684f]"
+                  >
+                    CLEAR
+                  </button>
+                </div>
+              </form>
+
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-[1.4rem] border border-[#e4d8c9] bg-[#fffaf2] px-4 py-4">
+                <div>
+                  <p className="brand-caption text-[0.58rem] font-semibold tracking-[0.16em] text-[#7d876f]">
+                    ADVANCED FILTERS
+                  </p>
+                  <p className="mt-2 text-sm text-[#667056]">
+                    Browse mode and shopping intent.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setAdvancedFiltersOpen((current) => !current)}
+                  className="brand-caption inline-flex items-center gap-2 rounded-full border border-[#d6ccb9] bg-[#fffaf2] px-5 py-3 text-[0.62rem] font-semibold tracking-[0.08em] text-[#5e684f]"
+                >
+                  {advancedFiltersOpen ? "HIDE ADVANCED" : "SHOW ADVANCED"}
+                  {(activeBrowse !== browseAllLabel || activeIntent !== allIntentLabel) ? (
+                    <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-[#5e684f] px-1.5 py-0.5 text-[0.58rem] text-[#fbf4e8]">
+                      {(activeBrowse !== browseAllLabel ? 1 : 0) + (activeIntent !== allIntentLabel ? 1 : 0)}
+                    </span>
+                  ) : null}
+                </button>
+              </div>
+
+              {advancedFiltersOpen ? (
+                <div className="space-y-5 rounded-[1.6rem] border border-[#e4d8c9] bg-[#fffaf2] p-5">
+                  <div>
+                    <p className="text-sm font-medium text-[#4f5942]">Browse</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {browseOptions.map((option) => (
+                        <FilterChip
+                          key={option.title}
+                          label={option.title}
+                          active={activeBrowse === option.title}
+                          onClick={() => handleBrowseSelect(option.title)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-sm font-medium text-[#4f5942]">Shop by intent</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <FilterChip
+                        label={allIntentLabel}
+                        active={activeIntent === allIntentLabel}
+                        onClick={() => handleIntentSelect(allIntentLabel)}
+                      />
+                      {SHOP_INTENT_TAGS.map((tag) => (
+                        <FilterChip
+                          key={tag}
+                          label={tag}
+                          active={activeIntent === tag}
+                          onClick={() => handleIntentSelect(tag)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              {activeFilters.length > 0 ? (
+                <div className="rounded-[1.4rem] border border-[#eadfce] bg-[#fffaf2] px-4 py-4">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <p className="text-sm font-medium text-[#4f5942]">Active filters</p>
+                    <p className="text-xs text-[#7d876f]">
+                      {appliedFilterCount} selected
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                  {activeFilters.map((filter) => (
+                    <button
+                      key={filter.key}
+                      type="button"
+                      onClick={() => clearSingleFilter(filter.key)}
+                      className="inline-flex items-center gap-2 rounded-full border border-[#d9ccb8] bg-[#fffaf2] px-3 py-2 text-sm text-[#4f5942]"
+                    >
+                      <span>{filter.label}</span>
+                      <span aria-hidden="true" className="text-[#7d876f]">
+                        ×
+                      </span>
+                    </button>
+                  ))}
+                  </div>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
@@ -404,13 +651,13 @@ export function ShopCataloguePage() {
             </div>
 
             <p className="text-sm text-[#667056]">
-              {filteredProducts.length} piece{filteredProducts.length === 1 ? "" : "s"} found
+              {sortedProducts.length} piece{sortedProducts.length === 1 ? "" : "s"} found
             </p>
           </div>
 
           {loading ? (
             <ProductLoadingGrid count={8} />
-          ) : filteredProducts.length === 0 ? (
+          ) : sortedProducts.length === 0 ? (
             <EmptyCatalogueState
               title={emptyStateTitle}
               description={emptyStateDescription}
@@ -420,7 +667,12 @@ export function ShopCataloguePage() {
             <>
               <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-4">
                 {visibleFilteredProducts.map((product) => (
-                  <CatalogueProductCard key={product.id ?? product.sku} product={product} />
+                  <CatalogueProductCard
+                    key={product.id ?? product.sku}
+                    product={product}
+                    buttonLabel="ADD TO BAG"
+                    showDetailButton={false}
+                  />
                 ))}
               </div>
 
@@ -457,12 +709,19 @@ export function ShopCataloguePage() {
   );
 }
 
-function replaceVisibleShopPath(nextPath: string) {
+function replaceVisibleShopUrl(nextPath: string, searchQuery: string) {
   if (typeof window === "undefined") {
     return;
   }
 
-  window.history.replaceState(window.history.state, "", `${nextPath}${window.location.hash}`);
+  const params = new URLSearchParams();
+
+  if (searchQuery.trim()) {
+    params.set("q", searchQuery.trim());
+  }
+
+  const query = params.toString();
+  window.history.replaceState(window.history.state, "", `${nextPath}${query ? `?${query}` : ""}${window.location.hash}`);
 }
 
 function FilterSelect({
@@ -496,6 +755,54 @@ function FilterSelect({
   );
 }
 
+function FilterInput({
+  label,
+  value,
+  onChange,
+  placeholder
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-sm font-medium text-[#4f5942]">{label}</span>
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        className="h-[52px] w-full rounded-[1rem] border border-[#d6ccb9] bg-[#fbf7ef] px-4 text-sm text-[#4f5942] outline-none transition-colors duration-200 placeholder:text-[#8d867b] focus:border-[#5e684f]"
+      />
+    </label>
+  );
+}
+
+function FilterChip({
+  label,
+  active,
+  onClick
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-full border px-4 py-2 text-sm transition-colors duration-200 ${
+        active
+          ? "border-[#5e684f] bg-[#5e684f] text-[#fbf4e8]"
+          : "border-[#d6ccb9] bg-[#fbf7ef] text-[#4f5942] hover:bg-[#fffaf2]"
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
+
 function matchesCuratedFilter(product: Saree, filterTerm: string) {
   const normalizedFilter = normalizeFilterTerm(filterTerm);
 
@@ -513,4 +820,77 @@ function matchesCuratedFilter(product: Saree, filterTerm: string) {
 
 function normalizeFilterTerm(value: string) {
   return value.trim().toLowerCase();
+}
+
+function sortProducts(products: Saree[], activeSort: string) {
+  const sorted = [...products];
+
+  if (activeSort === "Price: Low to High") {
+    return sorted.sort((left, right) => left.price - right.price);
+  }
+
+  if (activeSort === "Price: High to Low") {
+    return sorted.sort((left, right) => right.price - left.price);
+  }
+
+  if (activeSort === "Most Relevant") {
+    return sorted.sort((left, right) => {
+      const leftScore = Number(left.featured) * 10 + Number(left.status === "active") * 5;
+      const rightScore = Number(right.featured) * 10 + Number(right.status === "active") * 5;
+
+      return rightScore - leftScore;
+    });
+  }
+
+  return sorted;
+}
+
+function buildActiveFilters({
+  activeAvailability,
+  activeBrowse,
+  activeCategory,
+  activeFabric,
+  activeIntent,
+  activeSort,
+  searchQuery
+}: {
+  activeAvailability: string;
+  activeBrowse: string;
+  activeCategory: string;
+  activeFabric: string;
+  activeIntent: string;
+  activeSort: string;
+  searchQuery: string;
+}) {
+  const filters = [];
+
+  if (activeBrowse !== browseAllLabel) {
+    filters.push({ key: "browse", label: activeBrowse });
+  }
+
+  if (activeIntent !== allIntentLabel) {
+    filters.push({ key: "intent", label: activeIntent });
+  }
+
+  if (activeCategory !== allCategoriesLabel) {
+    filters.push({ key: "category", label: activeCategory });
+  }
+
+  if (activeFabric !== allFabricsLabel) {
+    filters.push({ key: "fabric", label: activeFabric });
+  }
+
+  if (activeAvailability !== allAvailabilityLabel) {
+    filters.push({ key: "availability", label: activeAvailability });
+  }
+
+  if (searchQuery.trim()) {
+    filters.push({ key: "search", label: `Search: ${searchQuery.trim()}` });
+  }
+
+  if (activeSort !== defaultSortLabel) {
+    filters.push({ key: "sort", label: activeSort });
+  }
+
+  return filters;
 }

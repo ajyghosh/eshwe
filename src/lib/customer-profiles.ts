@@ -38,6 +38,21 @@ export async function saveCustomerProfile(
   );
 }
 
+export async function saveCustomerFavoriteSkus(userId: string, favoriteSkus: string[]) {
+  if (!db) {
+    throw new Error("Firebase is not configured. Add NEXT_PUBLIC_FIREBASE_* variables.");
+  }
+
+  await setDoc(
+    doc(db, CUSTOMER_PROFILES_COLLECTION, userId),
+    {
+      favoriteSkus: normalizeFavoriteSkus(favoriteSkus),
+      updatedAt: serverTimestamp()
+    },
+    { merge: true }
+  );
+}
+
 function normalizeCustomerProfile(id: string, value: Record<string, unknown>) {
   const profile = value as Partial<CustomerProfile>;
   const normalizedAddresses = normalizeAddresses(profile);
@@ -56,9 +71,31 @@ function normalizeCustomerProfile(id: string, value: Record<string, unknown>) {
     pincode: selectedAddress.pincode,
     selectedAddressId: selectedAddressId || undefined,
     addresses: normalizedAddresses,
+    favoriteSkus: normalizeFavoriteSkus(profile.favoriteSkus),
     createdAt: profile.createdAt,
     updatedAt: profile.updatedAt
   } satisfies CustomerProfile;
+}
+
+function normalizeFavoriteSkus(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const seenSkus = new Set<string>();
+
+  return value
+    .filter((entry): entry is string => typeof entry === "string")
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0)
+    .filter((entry) => {
+      if (seenSkus.has(entry)) {
+        return false;
+      }
+
+      seenSkus.add(entry);
+      return true;
+    });
 }
 
 function normalizeAddresses(profile: Partial<CustomerProfile>) {

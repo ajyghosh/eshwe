@@ -5,7 +5,19 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { CatalogueProductCard } from "@/components/catalogue-product-card";
 import type { Saree } from "@/types/saree";
 
-export function ProductCardCarousel({ products }: { products: Saree[] }) {
+export function ProductCardCarousel({
+  products,
+  buttonLabel,
+  showDetailButton = true,
+  cardClassName = "w-[220px] shrink-0 snap-start sm:w-[250px] lg:w-[calc((100%-6rem)/4)]",
+  maxWidthClassName = "max-w-6xl"
+}: {
+  products: Saree[];
+  buttonLabel?: string;
+  showDetailButton?: boolean;
+  cardClassName?: string;
+  maxWidthClassName?: string;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollResetTimeoutRef = useRef<number | null>(null);
   const isResettingRef = useRef(false);
@@ -168,7 +180,7 @@ export function ProductCardCarousel({ products }: { products: Saree[] }) {
 
   return (
     <div>
-      <div className="relative mx-auto max-w-6xl">
+      <div className={`relative mx-auto ${maxWidthClassName}`}>
         <button
           type="button"
           aria-label="Previous product"
@@ -186,9 +198,13 @@ export function ProductCardCarousel({ products }: { products: Saree[] }) {
             <div
               key={`${product.id ?? product.sku}-${index}`}
               data-product-card="true"
-              className="w-[220px] shrink-0 snap-start sm:w-[250px] lg:w-[calc((100%-6rem)/4)]"
+              className={cardClassName}
             >
-              <CatalogueProductCard product={product} />
+              <CatalogueProductCard
+                product={product}
+                buttonLabel={buttonLabel}
+                showDetailButton={showDetailButton}
+              />
             </div>
           ))}
         </div>

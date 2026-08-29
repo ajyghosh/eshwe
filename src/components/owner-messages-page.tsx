@@ -1,9 +1,11 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import type { User } from "firebase/auth";
 
+import { OwnerBackofficeNav } from "@/components/owner-backoffice-nav";
+import { OwnerSectionHero } from "@/components/owner-section-hero";
 import {
   isPrimaryOwnerEmail,
   normalizeEmail,
@@ -11,16 +13,23 @@ import {
   signOutOwner,
   subscribeToAuth
 } from "@/lib/auth";
-import { subscribeToCustomerMessages } from "@/lib/customer-messages";
+import {
+  getUnreadCustomerMessageCount,
+  isUnreadCustomerMessage,
+  subscribeToCustomerMessages,
+  updateCustomerMessageStatus
+} from "@/lib/customer-messages";
 import { firebaseReady } from "@/lib/firebase";
 import {
   normalizeOwnerEmail,
   subscribeToOwnerAccounts,
   type OwnerAccount
 } from "@/lib/owner-access";
+import { useOwnerBackofficeBadges } from "@/lib/use-owner-backoffice-badges";
 import type { CustomerMessage } from "@/types/customer-message";
 
 export function OwnerMessagesPage() {
+  const router = useRouter();
   const [authLoading, setAuthLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [ownerAccounts, setOwnerAccounts] = useState<OwnerAccount[]>([]);
@@ -30,6 +39,9 @@ export function OwnerMessagesPage() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [ownerAccessError, setOwnerAccessError] = useState<string | null>(null);
   const [messagesError, setMessagesError] = useState<string | null>(null);
+  const [messageActionError, setMessageActionError] = useState<string | null>(null);
+  const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
+  const [updatingMessageId, setUpdatingMessageId] = useState<string | null>(null);
 
   useEffect(() => {
     return subscribeToAuth((nextUser) => {
@@ -65,12 +77,15 @@ export function OwnerMessagesPage() {
   const ownerAuthorized =
     isPrimaryOwnerEmail(user?.email) ||
     ownerAccounts.some((owner) => normalizeOwnerEmail(owner.email) === normalizedUserEmail);
+  const { badges: navBadges } = useOwnerBackofficeBadges(ownerAuthorized);
 
   useEffect(() => {
     if (!user || !ownerAuthorized) {
       setMessages([]);
       setMessagesLoading(false);
       setMessagesError(null);
+      setSelectedMessageId(null);
+      setMessageActionError(null);
       return;
     }
 
@@ -89,6 +104,16 @@ export function OwnerMessagesPage() {
     );
   }, [ownerAuthorized, user]);
 
+  useEffect(() => {
+    if (!selectedMessageId) {
+      return;
+    }
+
+    if (!messages.some((message) => message.id === selectedMessageId)) {
+      setSelectedMessageId(null);
+    }
+  }, [messages, selectedMessageId]);
+
   async function handleSignIn() {
     setAuthError(null);
 
@@ -101,7 +126,33 @@ export function OwnerMessagesPage() {
 
   async function handleSignOut() {
     await signOutOwner();
+    router.replace("/owner");
   }
+
+  async function handleViewMessage(message: CustomerMessage) {
+    setSelectedMessageId(message.id ?? null);
+    setMessageActionError(null);
+
+    if (!message.id || !isUnreadCustomerMessage(message)) {
+      return;
+    }
+
+    setUpdatingMessageId(message.id);
+
+    try {
+      await updateCustomerMessageStatus(message.id, "read");
+    } catch (error) {
+      setMessageActionError(error instanceof Error ? error.message : "Unable to update the message status.");
+    } finally {
+      setUpdatingMessageId(null);
+    }
+  }
+
+  const unreadMessagesCount = useMemo(() => getUnreadCustomerMessageCount(messages), [messages]);
+  const selectedMessage = useMemo(
+    () => messages.find((message) => message.id === selectedMessageId) ?? null,
+    [messages, selectedMessageId]
+  );
 
   if (!firebaseReady) {
     return (
@@ -118,40 +169,25 @@ export function OwnerMessagesPage() {
 
   return (
     <main className="min-h-screen bg-[#fbf4e8] px-6 py-12 text-[#4f5942] sm:px-10 lg:px-12">
-      <div className="mx-auto max-w-6xl">
-        <section className="rounded-[2.2rem] bg-[#5a6851] p-8 text-[#f8ecd2] shadow-[0_30px_80px_rgba(79,89,66,0.18)]">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="brand-caption text-[0.68rem] font-semibold tracking-[0.22em] text-[#f3dfaa]">
-                OWNER MESSAGES
-              </p>
-              <h1 className="brand-copy mt-4 text-4xl leading-[1.05] text-[#f8ecd2] sm:text-5xl">
-                Customer message inbox
-              </h1>
-              <p className="mt-4 max-w-2xl text-sm leading-7 text-[#f8f1e3]/84 sm:text-[0.95rem]">
-                View storefront contact submissions here without crowding the main owner dashboard.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-              <Link
-                href="/owner/"
-                className="brand-caption inline-flex rounded-2xl border border-[#f8ecd2]/28 px-5 py-3 text-[0.62rem] font-semibold tracking-[0.08em] text-[#f8ecd2]"
+      <div className="mx-auto max-w-7xl">
+        <OwnerSectionHero
+          eyebrow="OWNER MESSAGES"
+          title="Customer message inbox"
+          description="View storefront contact submissions in a clean queue and open the full note when you need it."
+          action={
+            user ? (
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className="brand-caption rounded-2xl bg-[#f8ecd2] px-5 py-3 text-[0.62rem] font-semibold tracking-[0.08em] text-[#5a6851]"
               >
-                BACK TO DASHBOARD
-              </Link>
-              {user ? (
-                <button
-                  type="button"
-                  onClick={handleSignOut}
-                  className="brand-caption rounded-2xl bg-[#f8ecd2] px-5 py-3 text-[0.62rem] font-semibold tracking-[0.08em] text-[#5a6851]"
-                >
-                  SIGN OUT
-                </button>
-              ) : null}
-            </div>
-          </div>
-        </section>
+                SIGN OUT
+              </button>
+            ) : null
+          }
+        />
+
+        {ownerAuthorized ? <OwnerBackofficeNav className="mt-6" badges={navBadges} /> : null}
 
         {authLoading || (user && !isPrimaryOwnerEmail(user?.email) && ownerAccountsLoading) ? (
           <div className="mt-10 rounded-[1.8rem] border border-[#e3d8c9] bg-[#f8f0e3] p-8 text-sm text-[#667056]">
@@ -193,9 +229,9 @@ export function OwnerMessagesPage() {
             <aside className="rounded-[1.8rem] border border-[#e3d8c9] bg-white/70 p-8">
               <h3 className="brand-copy text-2xl text-[#3f4738]">Inbox notes</h3>
               <ul className="mt-5 space-y-3 text-sm leading-7 text-[#667056]">
-                <li>Messages come from the storefront contact form.</li>
-                <li>Each entry shows contact details, source page, and submitted time.</li>
-                <li>Use the main dashboard for catalogue work and this page only for follow-up.</li>
+                <li>Unread customer notes stay highlighted until they are opened.</li>
+                <li>Use the queue on the left, then review the full message in the detail panel.</li>
+                <li>The owner navigation badge shows how many messages still need review.</li>
               </ul>
             </aside>
           </div>
@@ -205,51 +241,137 @@ export function OwnerMessagesPage() {
               <div>
                 <h2 className="brand-copy text-2xl text-[#3f4738]">Customer messages</h2>
                 <p className="mt-2 text-sm leading-7 text-[#667056]">
-                  Contact form submissions from the storefront appear here for follow-up.
+                  Review contact submissions in a structured queue, then open the full note on the side.
                 </p>
               </div>
               <span className="rounded-full bg-[#f8f0e3] px-4 py-2 text-xs font-semibold text-[#5e684f]">
-                {messages.length} message{messages.length === 1 ? "" : "s"}
+                {messagesLoading ? "..." : unreadMessagesCount > 0 ? `${unreadMessagesCount} unread` : "All read"}
               </span>
             </div>
 
-            <div className="mt-6 space-y-4">
-              {messagesError ? <p className="text-sm text-[#9d4b45]">{messagesError}</p> : null}
-              {messagesLoading ? (
-                <p className="text-sm text-[#667056]">Loading customer messages…</p>
-              ) : messages.length === 0 ? (
-                <div className="rounded-[1.3rem] border border-dashed border-[#d8cbb7] bg-[#fbf4e8] p-5 text-sm leading-7 text-[#667056]">
-                  No customer messages yet.
-                </div>
-              ) : (
-                messages.map((message) => (
-                  <article
-                    key={message.id}
-                    className="rounded-[1.35rem] border border-[#e8dccd] bg-[#fbf4e8] p-5 shadow-[0_10px_25px_rgba(94,104,79,0.04)]"
-                  >
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="text-base font-semibold text-[#3f4738]">{message.email}</p>
-                          <span className="rounded-full bg-[#efe4c6] px-2.5 py-1 text-[0.68rem] font-semibold text-[#5e684f]">
-                            NEW
-                          </span>
-                        </div>
-                        <p className="mt-1 text-sm text-[#667056]">{message.phone}</p>
-                      </div>
-
-                      <div className="text-left text-xs text-[#667056] sm:text-right">
-                        <p>{message.sourcePath || "/"}</p>
-                        <p className="mt-1">{formatTimestamp(message.createdAt)}</p>
-                      </div>
+            <div className="mt-6 grid gap-6 xl:grid-cols-[1.35fr_0.95fr]">
+              <div>
+                {messagesError ? <p className="text-sm text-[#9d4b45]">{messagesError}</p> : null}
+                {messageActionError ? <p className="mt-2 text-sm text-[#9d4b45]">{messageActionError}</p> : null}
+                {messagesLoading ? (
+                  <p className="text-sm text-[#667056]">Loading customer messages…</p>
+                ) : messages.length === 0 ? (
+                  <div className="rounded-[1.3rem] border border-dashed border-[#d8cbb7] bg-[#fbf4e8] p-5 text-sm leading-7 text-[#667056]">
+                    No customer messages yet.
+                  </div>
+                ) : (
+                  <div className="overflow-hidden rounded-[1.5rem] border border-[#e3d8c9] bg-[#fffaf1]">
+                    <div className="hidden grid-cols-[1.1fr_0.95fr_0.9fr_0.9fr_0.75fr] gap-4 border-b border-[#e8dccd] bg-[#f6edde] px-5 py-4 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-[#7d876f] lg:grid">
+                      <span>Contact</span>
+                      <span>Phone</span>
+                      <span>Received</span>
+                      <span>Action</span>
+                      <span>Status</span>
                     </div>
 
-                    <div className="mt-4 rounded-[1.1rem] bg-white/72 px-4 py-4 text-sm leading-7 text-[#4f5942]">
-                      {message.message}
+                    <div className="divide-y divide-[#ece1d3]">
+                      {messages.map((message) => {
+                        const isUnread = isUnreadCustomerMessage(message);
+                        const isSelected = selectedMessageId === message.id;
+
+                        return (
+                          <article
+                            key={message.id ?? `${message.email}-${message.phone}-${message.sourcePath}`}
+                            className={`grid gap-4 px-5 py-5 text-sm text-[#4f5942] lg:grid-cols-[1.1fr_0.95fr_0.9fr_0.9fr_0.75fr] lg:items-center ${
+                              isUnread ? "bg-[#fff4ee]" : isSelected ? "bg-[#fcf6ea]" : "bg-transparent"
+                            }`}
+                          >
+                            <div className="min-w-0">
+                              <p className="text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-[#8a836f] lg:hidden">
+                                Contact
+                              </p>
+                              <p className="truncate font-semibold text-[#2b2a29]">{message.email}</p>
+                              <p className="mt-1 truncate text-xs text-[#667056]">{message.sourcePath || "/"}</p>
+                            </div>
+
+                            <div>
+                              <p className="text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-[#8a836f] lg:hidden">
+                                Phone
+                              </p>
+                              <p>{message.phone || "NA"}</p>
+                            </div>
+
+                            <div>
+                              <p className="text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-[#8a836f] lg:hidden">
+                                Received
+                              </p>
+                              <p>{formatTimestamp(message.createdAt)}</p>
+                            </div>
+
+                            <div>
+                              <p className="text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-[#8a836f] lg:hidden">
+                                Action
+                              </p>
+                              <button
+                                type="button"
+                                onClick={() => void handleViewMessage(message)}
+                                disabled={updatingMessageId === message.id}
+                                className="brand-caption inline-flex rounded-full border border-[#d6ccb9] bg-white/80 px-3 py-1.5 text-[0.5rem] font-semibold tracking-[0.08em] text-[#4f5942] disabled:cursor-not-allowed disabled:opacity-60"
+                              >
+                                {updatingMessageId === message.id ? "OPENING..." : isSelected ? "OPEN" : "VIEW MESSAGE"}
+                              </button>
+                            </div>
+
+                            <div>
+                              <p className="text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-[#8a836f] lg:hidden">
+                                Status
+                              </p>
+                              <span
+                                className={`inline-flex rounded-full px-3 py-1.5 text-[0.68rem] font-semibold ${
+                                  isUnread ? "bg-[#a84c43] text-[#fff4ef]" : "bg-[#e6efe1] text-[#48603f]"
+                                }`}
+                              >
+                                {isUnread ? "UNREAD" : "READ"}
+                              </span>
+                            </div>
+                          </article>
+                        );
+                      })}
                     </div>
-                  </article>
-                ))
-              )}
+                  </div>
+                )}
+              </div>
+
+              <aside className="rounded-[1.5rem] border border-[#e3d8c9] bg-[#fbf4e8] p-6 shadow-[0_10px_30px_rgba(94,104,79,0.04)] sm:p-7">
+                <p className="brand-caption text-[0.58rem] font-semibold tracking-[0.16em] text-[#7d876f]">
+                  MESSAGE DETAIL
+                </p>
+                {selectedMessage ? (
+                  <>
+                    <div className="mt-4 flex flex-wrap items-center gap-3">
+                      <h3 className="brand-copy text-2xl text-[#2b2a29]">{selectedMessage.email}</h3>
+                      <span
+                        className={`inline-flex rounded-full px-3 py-1.5 text-[0.68rem] font-semibold ${
+                          isUnreadCustomerMessage(selectedMessage)
+                            ? "bg-[#a84c43] text-[#fff4ef]"
+                            : "bg-[#e6efe1] text-[#48603f]"
+                        }`}
+                      >
+                        {isUnreadCustomerMessage(selectedMessage) ? "UNREAD" : "READ"}
+                      </span>
+                    </div>
+
+                    <div className="mt-5 space-y-3 text-sm text-[#4f5942]">
+                      <DetailRow label="Phone" value={selectedMessage.phone || "NA"} />
+                      <DetailRow label="Source page" value={selectedMessage.sourcePath || "/"} />
+                      <DetailRow label="Received" value={formatTimestamp(selectedMessage.createdAt)} />
+                    </div>
+
+                    <div className="mt-6 rounded-[1.2rem] border border-[#e3d8c9] bg-white/80 px-4 py-4 text-sm leading-7 text-[#4f5942]">
+                      {selectedMessage.message}
+                    </div>
+                  </>
+                ) : (
+                  <div className="mt-4 rounded-[1.2rem] border border-dashed border-[#d8cbb7] bg-white/70 p-5 text-sm leading-7 text-[#667056]">
+                    Select <span className="font-semibold text-[#4f5942]">View message</span> on any row to open the full customer note here.
+                  </div>
+                )}
+              </aside>
             </div>
           </section>
         )}
@@ -258,13 +380,40 @@ export function OwnerMessagesPage() {
   );
 }
 
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-col gap-1 rounded-[1rem] bg-white/56 px-4 py-3">
+      <p className="text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-[#8a836f]">{label}</p>
+      <p>{value}</p>
+    </div>
+  );
+}
+
 function formatTimestamp(value: unknown) {
-  if (!value || typeof value !== "object" || !("toDate" in value) || typeof value.toDate !== "function") {
+  const timestamp = getTimestampValue(value);
+
+  if (!timestamp) {
     return "Just now";
   }
 
   return new Intl.DateTimeFormat("en-IN", {
     dateStyle: "medium",
     timeStyle: "short"
-  }).format(value.toDate());
+  }).format(new Date(timestamp));
+}
+
+function getTimestampValue(value: unknown) {
+  if (!value || typeof value !== "object") {
+    return 0;
+  }
+
+  if ("toMillis" in value && typeof value.toMillis === "function") {
+    return value.toMillis();
+  }
+
+  if ("toDate" in value && typeof value.toDate === "function") {
+    return value.toDate().getTime();
+  }
+
+  return 0;
 }

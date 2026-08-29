@@ -342,7 +342,7 @@ function handleCors(request, response, allowedMethods) {
     response.set("Vary", "Origin");
   }
 
-  response.set("Access-Control-Allow-Headers", "Content-Type");
+  response.set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Firebase-AppCheck");
   response.set("Access-Control-Allow-Methods", allowedMethods.join(", "));
 
   if (request.method === "OPTIONS") {

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { useCart } from "@/components/cart-provider";
+import { FavoriteToggleButton } from "@/components/favorite-toggle-button";
 import { NotifyWaitlistDialog } from "@/components/notify-waitlist-dialog";
 import { getPurchasableQuantityLimit, isProductPurchasable } from "@/lib/inventory";
 import { buildProductDetailHref } from "@/lib/storefront-routes";
@@ -11,10 +12,12 @@ import type { Saree } from "@/types/saree";
 
 export function CatalogueProductCard({
   product,
-  buttonLabel
+  buttonLabel,
+  showDetailButton = true
 }: {
   product: Saree;
   buttonLabel?: string;
+  showDetailButton?: boolean;
 }) {
   const { addItem, items, updateQuantity } = useCart();
   const [waitlistDialogOpen, setWaitlistDialogOpen] = useState(false);
@@ -52,9 +55,12 @@ export function CatalogueProductCard({
 
   return (
     <article className="flex flex-col">
-      <Link href={buildProductDetailHref(product.slug)} className="group block">
-        <ProductMedia product={product} />
-      </Link>
+      <div className="relative">
+        <Link href={buildProductDetailHref(product.slug)} className="group block">
+          <ProductMedia product={product} />
+        </Link>
+        <FavoriteToggleButton sku={product.sku} className="absolute right-5 top-5 z-10" />
+      </div>
 
       <div className="pt-5">
         <Link href={buildProductDetailHref(product.slug)} className="group block">
@@ -112,12 +118,14 @@ export function CatalogueProductCard({
             </button>
           )}
 
-          <Link
-            href={buildProductDetailHref(product.slug)}
-            className="brand-caption inline-flex rounded-2xl border border-[#d6ccb9] px-5 py-2.5 text-[0.52rem] font-semibold tracking-[0.05em] text-[#5e684f] sm:text-[0.58rem]"
-          >
-            VIEW DETAILS
-          </Link>
+          {showDetailButton ? (
+            <Link
+              href={buildProductDetailHref(product.slug)}
+              className="brand-caption inline-flex rounded-2xl border border-[#d6ccb9] px-5 py-2.5 text-[0.52rem] font-semibold tracking-[0.05em] text-[#5e684f] sm:text-[0.58rem]"
+            >
+              VIEW DETAILS
+            </Link>
+          ) : null}
         </div>
       </div>
 

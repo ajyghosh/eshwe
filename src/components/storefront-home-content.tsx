@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 
 import { CategoryCarousel } from "@/components/category-carousel";
 import { subscribeToCategoryCards, subscribeToHomePageContent } from "@/lib/homepage";
+import { SHOP_INTENT_TAGS } from "@/lib/product-discovery";
 import { buildShopHref } from "@/lib/storefront-routes";
 import {
   DEFAULT_HOME_PAGE_CONTENT,
@@ -172,6 +173,33 @@ export function StorefrontHomeContent({ homeReady }: { homeReady: boolean }) {
                     {homePageContent.launchBody}
                   </p>
                 ) : null}
+
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <Link
+                    href="/shop/"
+                    className="brand-caption inline-flex rounded-full bg-[#fbf4e8] px-5 py-3 text-[0.62rem] font-semibold tracking-[0.12em] !text-[#485343] transition-colors duration-200 hover:bg-white"
+                  >
+                    SHOP SAREES
+                  </Link>
+                  <Link
+                    href="#categories"
+                    className="brand-caption inline-flex rounded-full border border-[#fbf4e8]/24 px-5 py-3 text-[0.62rem] font-semibold tracking-[0.12em] text-[#fbf4e8] transition-colors duration-200 hover:bg-[#fbf4e8]/10"
+                  >
+                    EXPLORE COLLECTIONS
+                  </Link>
+                </div>
+
+                <div className="mt-5 flex flex-wrap gap-2">
+                  {SHOP_INTENT_TAGS.slice(0, 5).map((tag) => (
+                    <Link
+                      key={tag}
+                      href={`/shop/?browse=curated&filter=${encodeURIComponent(tag)}`}
+                      className="rounded-full border border-[#fbf4e8]/18 bg-[#fbf4e8]/8 px-3 py-1.5 text-xs text-[#f8f1e3] transition-colors duration-200 hover:bg-[#fbf4e8]/14"
+                    >
+                      {tag}
+                    </Link>
+                  ))}
+                </div>
               </div>
             </div>
           </div>

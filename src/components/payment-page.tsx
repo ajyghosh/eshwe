@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -7,12 +8,13 @@ import { useEffect, useRef, useState } from "react";
 import { useAuthSession } from "@/components/auth-provider";
 import { formatCurrency } from "@/components/catalogue-product-card";
 import { useCart } from "@/components/cart-provider";
+import { CheckoutProgress } from "@/components/checkout-progress";
 import { SiteFooter } from "@/components/site-footer";
 import { StorefrontHeader } from "@/components/storefront-header";
 import { getCustomerProfile, saveCustomerProfile } from "@/lib/customer-profiles";
 import { isCartItemUnavailable } from "@/lib/inventory";
 import { saveLatestOrderConfirmation, type OrderConfirmationData } from "@/lib/order-confirmation";
-import { buildProtectedJsonHeaders } from "@/lib/protected-request";
+import { buildProtectedJsonHeadersForPath } from "@/lib/protected-request";
 import {
   getRazorpayApiUrl,
   loadRazorpayCheckoutScript,
@@ -53,6 +55,8 @@ type CreateOrderResponse = {
   razorpayOrderId: string;
 };
 
+type PaymentOverlayStep = "verifying" | null;
+
 const emptyGuestForm: PaymentFormState = {
   fullName: "",
   email: "",
@@ -76,7 +80,7 @@ const emptyAddressDialogForm: AddressDialogFormState = {
 
 export function PaymentPage() {
   const { items, isReady, subtotal, savings, shippingFee, packagingFee, total, clearCart } = useCart();
-  const { user } = useAuthSession();
+  const { user, signIn } = useAuthSession();
   const router = useRouter();
   const [savedAddresses, setSavedAddresses] = useState<CustomerAddress[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState("");
@@ -91,7 +95,9 @@ export function PaymentPage() {
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
   const [paymentSubmitting, setPaymentSubmitting] = useState(false);
+  const [paymentOverlayStep, setPaymentOverlayStep] = useState<PaymentOverlayStep>(null);
   const orderConfirmationRedirectRef = useRef(false);
+  const checkoutProgressStep = paymentSubmitting || paymentOverlayStep ? "pay" : "address";
 
   const selectedAddress = savedAddresses.find((address) => address.id === selectedAddressId) ?? null;
   const guestCanProceed =
@@ -107,6 +113,8 @@ export function PaymentPage() {
     );
   const hasUnavailableItems = items.some((item) => isCartItemUnavailable(item));
   const canProceedToPayment = items.length > 0 && !hasUnavailableItems && (user ? Boolean(selectedAddress) : guestCanProceed);
+  const itemCount = items.reduce((count, item) => count + item.quantity, 0);
+  const subtotalLabel = `Subtotal${itemCount > 0 ? ` (${itemCount} item${itemCount === 1 ? "" : "s"})` : ""}`;
 
   useEffect(() => {
     setGuestForm((currentForm) => ({
@@ -193,6 +201,16 @@ export function PaymentPage() {
     }
   }, [isReady, items.length, router]);
 
+  useEffect(() => {
+    if (items.length === 0) {
+      return;
+    }
+
+    void loadRazorpayCheckoutScript().catch((error) => {
+      console.warn(error instanceof Error ? error.message : "Failed to preload Razorpay checkout.");
+    });
+  }, [items.length]);
+
   function handleGuestFieldChange(field: keyof PaymentFormState, value: string) {
     setGuestForm((currentForm) => ({
       ...currentForm,
@@ -242,6 +260,14 @@ export function PaymentPage() {
   function handleSelectSavedAddress(addressId: string) {
     setSelectedAddressId(addressId);
     setProfileError(null);
+  }
+
+  async function handleSignIn() {
+    try {
+      await signIn();
+    } catch {
+      setProfileError("Sign in failed.");
+    }
   }
 
   async function handleSaveAddress() {
@@ -310,7 +336,11 @@ export function PaymentPage() {
 
     try {
       const order = await createOrder(deliveryAddress);
-      await loadRazorpayCheckoutScript();
+
+      if (!window.Razorpay) {
+        await loadRazorpayCheckoutScript();
+      }
+
       let checkoutFinished = false;
 
       if (!window.Razorpay) {
@@ -338,6 +368,7 @@ export function PaymentPage() {
               return;
             }
 
+            setPaymentOverlayStep(null);
             setPaymentSubmitting(false);
             setPaymentMessage(null);
           }
@@ -345,7 +376,8 @@ export function PaymentPage() {
         handler: async (paymentResponse) => {
           checkoutFinished = true;
           setPaymentSubmitting(true);
-          setPaymentMessage("Verifying payment...");
+          setPaymentOverlayStep("verifying");
+          setPaymentMessage("Preparing your receipt...");
 
           try {
             await verifyPayment(order.internalOrderId, paymentResponse);
@@ -356,6 +388,7 @@ export function PaymentPage() {
             clearCart();
             router.replace("/order-confirmation");
           } catch (error) {
+            setPaymentOverlayStep(null);
             setPaymentMessage(error instanceof Error ? error.message : "Payment verification failed.");
           } finally {
             setPaymentSubmitting(false);
@@ -374,6 +407,7 @@ export function PaymentPage() {
       setPaymentSubmitting(false);
       setPaymentMessage(null);
     } catch (error) {
+      setPaymentOverlayStep(null);
       setPaymentSubmitting(false);
       setPaymentMessage(null);
       setProfileError(error instanceof Error ? error.message : "Unable to start payment.");
@@ -382,10 +416,11 @@ export function PaymentPage() {
 
   async function createOrder(deliveryAddress: PaymentFormState): Promise<CreateOrderResponse> {
     let response: Response;
-    const headers = await buildProtectedJsonHeaders();
+    const requestUrl = getRazorpayApiUrl("create-order");
+    const headers = await buildProtectedJsonHeadersForPath(requestUrl);
 
     try {
-      response = await fetch(getRazorpayApiUrl("create-order"), {
+      response = await fetch(requestUrl, {
         method: "POST",
         headers,
         body: JSON.stringify({
@@ -430,8 +465,9 @@ export function PaymentPage() {
   }
 
   async function verifyPayment(internalOrderId: string, paymentResponse: RazorpayHandlerResponse) {
-    const headers = await buildProtectedJsonHeaders();
-    const response = await fetch(getRazorpayApiUrl("verify-payment"), {
+    const requestUrl = getRazorpayApiUrl("verify-payment");
+    const headers = await buildProtectedJsonHeadersForPath(requestUrl);
+    const response = await fetch(requestUrl, {
       method: "POST",
       headers,
       body: JSON.stringify({
@@ -493,17 +529,25 @@ export function PaymentPage() {
 
   return (
     <main className="min-h-screen bg-[#fbf4e8] text-[#4f5942]">
+      {paymentOverlayStep ? (
+        <ReceiptPreparingOverlay
+          customerName={(user ? selectedAddress?.fullName ?? "" : guestForm.fullName).trim() || "there"}
+          itemCount={itemCount}
+        />
+      ) : null}
+
       <StorefrontHeader />
 
       <section className="px-6 py-10 sm:px-10 lg:px-12">
         <div className="mx-auto max-w-7xl">
+          <CheckoutProgress currentStep={checkoutProgressStep} />
           <div className="mb-8">
             <p className="brand-caption text-[0.62rem] font-semibold tracking-[0.18em] text-[#7d876f]">PAYMENT</p>
             <h1 className="brand-copy mt-3 text-3xl leading-tight text-[#2b2a29] sm:text-[2.8rem]">
-              Address, sign in, and payment.
+              Delivery address and secure checkout.
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-7 text-[#667056]">
-              If you have already registered, sign in to use saved addresses. Otherwise, add your delivery address and continue to payment.
+              Keep this step focused: sign in if you already have an account, otherwise add the address for this order and continue to Razorpay.
             </p>
           </div>
 
@@ -532,98 +576,50 @@ export function PaymentPage() {
 
                 {user ? (
                   <>
-                    <div className="grid gap-4 lg:grid-cols-2">
-                      <div className="rounded-[1.5rem] border border-[#ddd1c0] bg-[#fbf7ef] p-5">
-                        <div className="flex items-start justify-between gap-4">
-                          <p className="text-xs font-semibold tracking-[0.14em] text-[#7d876f]">CURRENT ADDRESS</p>
+                    <div className="rounded-[1.5rem] border border-[#ddd1c0] bg-[#fbf7ef] p-5">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <p className="text-xs font-semibold tracking-[0.14em] text-[#7d876f]">DELIVERY ADDRESS</p>
+                          <p className="mt-2 text-sm text-[#667056]">
+                            Use the saved address for this order or update it here.
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
                           {selectedAddress ? (
                             <button
                               type="button"
                               onClick={() => handleEditSavedAddress(selectedAddress)}
                               className="rounded-full border border-[#d6ccb9] bg-[#fffaf2] px-4 py-2 text-xs font-semibold tracking-[0.1em] text-[#4f5942]"
                             >
-                              Edit Address
+                              Edit
                             </button>
                           ) : null}
+                          <button
+                            type="button"
+                            onClick={handleOpenAddressDialog}
+                            className="rounded-full border border-[#d6ccb9] bg-[#fffaf2] px-4 py-2 text-xs font-semibold tracking-[0.1em] text-[#4f5942]"
+                          >
+                            {selectedAddress ? "Replace" : "Add address"}
+                          </button>
                         </div>
-                        {selectedAddress ? (
-                          <div className="mt-4 space-y-2">
-                            <p className="text-base font-semibold text-[#2b2a29]">
-                              {selectedAddress.label || "Saved Address"}
-                            </p>
-                            <p className="text-sm leading-6 text-[#667056]">
-                              {selectedAddress.fullName}
-                              <br />
-                              {selectedAddress.address}, {selectedAddress.city}, {selectedAddress.state} -{" "}
-                              {selectedAddress.pincode}
-                            </p>
-                            <p className="text-sm leading-6 text-[#667056]">
-                              {selectedAddress.phone} · {selectedAddress.email}
-                            </p>
-                          </div>
-                        ) : (
-                          <p className="mt-4 text-sm leading-6 text-[#667056]">
-                            No saved address yet. Add one to continue.
+                      </div>
+                      {selectedAddress ? (
+                        <div className="mt-4 rounded-[1.2rem] border border-[#e6dccf] bg-white/70 px-4 py-4">
+                          <p className="text-base font-semibold text-[#2b2a29]">{selectedAddress.fullName}</p>
+                          <p className="mt-1 text-sm leading-6 text-[#667056]">
+                            {selectedAddress.address}, {selectedAddress.city}, {selectedAddress.state} -{" "}
+                            {selectedAddress.pincode}
                           </p>
-                        )}
-                      </div>
-
-                      <div className="rounded-[1.5rem] border border-dashed border-[#cdbda8] bg-[#fffaf2] p-5">
-                        <p className="text-xs font-semibold tracking-[0.14em] text-[#7d876f]">ADD ADDRESS</p>
-                        <p className="mt-4 text-sm leading-6 text-[#667056]">
-                          Add a new address in a popup, save it to your account, and use it for this order.
-                        </p>
-                        <button
-                          type="button"
-                          onClick={handleOpenAddressDialog}
-                          className="mt-5 rounded-full bg-[#5e684f] px-5 py-3 text-sm font-semibold text-[#fbf4e8]"
-                        >
-                          Add Address
-                        </button>
-                      </div>
-                    </div>
-
-                    {savedAddresses.length > 0 ? (
-                      <div className="rounded-[1.5rem] border border-[#ddd1c0] bg-[#fbf7ef] p-5">
-                        <p className="text-xs font-semibold tracking-[0.14em] text-[#7d876f]">SELECT SAVED ADDRESS</p>
-                        <div className="mt-4 grid gap-3">
-                          {savedAddresses.map((address) => {
-                            const isSelected = address.id === selectedAddressId;
-
-                            return (
-                              <div
-                                key={address.id}
-                                className={`rounded-[1.3rem] border px-4 py-4 text-left transition-colors ${
-                                  isSelected
-                                    ? "border-[#5e684f] bg-[#f1e8d8]"
-                                    : "border-[#ddd1c0] bg-[#fffaf2] hover:border-[#cdbda8]"
-                                }`}
-                              >
-                                <div className="flex items-start justify-between gap-4">
-                                  <div>
-                                    <p className="text-sm font-semibold text-[#2b2a29]">{address.label}</p>
-                                    <p className="mt-1 text-sm leading-6 text-[#667056]">
-                                      {address.fullName}
-                                      <br />
-                                      {address.address}, {address.city}, {address.state} - {address.pincode}
-                                    </p>
-                                  </div>
-                                  <div className="flex flex-col items-end gap-2">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleSelectSavedAddress(address.id)}
-                                      className="rounded-full border border-[#d6ccb9] bg-[#fffaf2] px-4 py-2 text-xs font-semibold tracking-[0.1em] text-[#4f5942]"
-                                    >
-                                      {isSelected ? "Selected" : "Use This"}
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
+                          <p className="mt-1 text-sm leading-6 text-[#667056]">
+                            {selectedAddress.phone} · {selectedAddress.email}
+                          </p>
                         </div>
-                      </div>
-                    ) : null}
+                      ) : (
+                        <p className="mt-4 text-sm leading-6 text-[#667056]">
+                          No saved address available for this account.
+                        </p>
+                      )}
+                    </div>
 
                     <div className="rounded-[1.5rem] border border-[#ddd1c0] bg-[#fbf7ef] p-5">
                       <p className="text-xs font-semibold tracking-[0.14em] text-[#7d876f]">ORDER NOTES</p>
@@ -637,54 +633,73 @@ export function PaymentPage() {
                     </div>
                   </>
                 ) : (
-                  <div className="rounded-[1.5rem] border border-[#ddd1c0] bg-[#fbf7ef] p-5">
-                    <p className="text-xs font-semibold tracking-[0.14em] text-[#7d876f]">ADD ADDRESS</p>
-                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                      <PaymentInput
-                        label="Full name"
-                        value={guestForm.fullName}
-                        onChange={(value) => handleGuestFieldChange("fullName", value)}
-                      />
-                      <PaymentInput
-                        label="Email"
-                        type="email"
-                        value={guestForm.email}
-                        onChange={(value) => handleGuestFieldChange("email", value)}
-                      />
-                      <PaymentInput
-                        label="Phone"
-                        type="tel"
-                        value={guestForm.phone}
-                        onChange={(value) => handleGuestFieldChange("phone", value)}
-                      />
-                      <PaymentInput
-                        label="Pincode"
-                        value={guestForm.pincode}
-                        onChange={(value) => handleGuestFieldChange("pincode", value)}
-                      />
-                      <div className="sm:col-span-2">
+                  <div className="space-y-5">
+                    <div className="rounded-[1.5rem] border border-[#ddd1c0] bg-[#fffaf2] p-5">
+                      <p className="text-xs font-semibold tracking-[0.14em] text-[#7d876f]">SIGN IN</p>
+                      <p className="mt-4 max-w-xl text-sm leading-6 text-[#667056]">
+                        Existing customer? Sign in to use your saved address and checkout faster.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => void handleSignIn()}
+                        className="brand-caption mt-5 inline-flex rounded-2xl bg-[#5e684f] px-6 py-3 text-[0.66rem] font-semibold tracking-[0.08em] text-[#fbf4e8]"
+                      >
+                        SIGN IN WITH GOOGLE
+                      </button>
+                    </div>
+
+                    <div className="rounded-[1.5rem] border border-[#ddd1c0] bg-[#fbf7ef] p-5">
+                      <p className="text-xs font-semibold tracking-[0.14em] text-[#7d876f]">DELIVERY ADDRESS</p>
+                      <p className="mt-3 text-sm leading-6 text-[#667056]">
+                        Add the address for this order and continue to payment.
+                      </p>
+                      <div className="mt-4 grid gap-4 sm:grid-cols-2">
                         <PaymentInput
-                          label="Address"
-                          value={guestForm.address}
-                          onChange={(value) => handleGuestFieldChange("address", value)}
+                          label="Full name"
+                          value={guestForm.fullName}
+                          onChange={(value) => handleGuestFieldChange("fullName", value)}
                         />
-                      </div>
-                      <PaymentInput
-                        label="City"
-                        value={guestForm.city}
-                        onChange={(value) => handleGuestFieldChange("city", value)}
-                      />
-                      <PaymentInput
-                        label="State"
-                        value={guestForm.state}
-                        onChange={(value) => handleGuestFieldChange("state", value)}
-                      />
-                      <div className="sm:col-span-2">
-                        <PaymentTextarea
-                          label="Order notes"
-                          value={orderNotes}
-                          onChange={setOrderNotes}
+                        <PaymentInput
+                          label="Email"
+                          type="email"
+                          value={guestForm.email}
+                          onChange={(value) => handleGuestFieldChange("email", value)}
                         />
+                        <PaymentInput
+                          label="Phone"
+                          type="tel"
+                          value={guestForm.phone}
+                          onChange={(value) => handleGuestFieldChange("phone", value)}
+                        />
+                        <PaymentInput
+                          label="Pincode"
+                          value={guestForm.pincode}
+                          onChange={(value) => handleGuestFieldChange("pincode", value)}
+                        />
+                        <div className="sm:col-span-2">
+                          <PaymentInput
+                            label="Address"
+                            value={guestForm.address}
+                            onChange={(value) => handleGuestFieldChange("address", value)}
+                          />
+                        </div>
+                        <PaymentInput
+                          label="City"
+                          value={guestForm.city}
+                          onChange={(value) => handleGuestFieldChange("city", value)}
+                        />
+                        <PaymentInput
+                          label="State"
+                          value={guestForm.state}
+                          onChange={(value) => handleGuestFieldChange("state", value)}
+                        />
+                        <div className="sm:col-span-2">
+                          <PaymentTextarea
+                            label="Order notes"
+                            value={orderNotes}
+                            onChange={setOrderNotes}
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -692,14 +707,17 @@ export function PaymentPage() {
               </section>
 
               <aside className="space-y-6">
-                <section className="rounded-[2rem] border border-[#d9cebe] bg-[#fffaf2] p-6 shadow-[0_24px_60px_rgba(94,104,79,0.1)] sm:p-7">
-                  <p className="brand-caption text-[0.62rem] font-semibold tracking-[0.18em] text-[#7d876f]">
-                    ORDER SUMMARY
+                <section className="rounded-[2rem] border border-[#dfd4c5] bg-[#fffdf8] p-5 shadow-[0_24px_60px_rgba(94,104,79,0.08)] sm:p-6">
+                  <p className="brand-caption text-[0.62rem] font-semibold tracking-[0.18em] text-[#2b2a29]">
+                    RAZORPAY CHECKOUT
+                  </p>
+                  <p className="mt-3 text-sm leading-6 text-[#667056]">
+                    Review the order here, then continue to the secure Razorpay payment window.
                   </p>
 
-                  <div className="mt-5 space-y-3">
+                  <div className="mt-5 space-y-4">
                     {items.map((item) => (
-                      <div key={item.sku} className="flex items-start justify-between gap-4 text-sm text-[#667056]">
+                      <div key={item.sku} className="flex items-start justify-between gap-4 text-sm text-[#5f6259]">
                         <div>
                           <p className="font-medium text-[#2b2a29]">{item.name}</p>
                           <p className="mt-1">
@@ -714,28 +732,36 @@ export function PaymentPage() {
                     ))}
                   </div>
 
-                  <div className="mt-5 space-y-4 border-t border-[#e3d8c9] pt-5 text-sm text-[#667056]">
-                    <SummaryRow label="Subtotal" value={formatCurrency(subtotal)} />
+                  <div className="mt-6 space-y-4 border-t border-[#e9dfd1] pt-5 text-sm text-[#5f6259]">
+                    <SummaryRow label={subtotalLabel} value={formatCurrency(subtotal)} />
                     <SummaryRow
                       label="Shipping"
                       value={shippingFee === 0 && subtotal > 0 ? "Free" : formatCurrency(shippingFee)}
+                      valueClassName={shippingFee === 0 && subtotal > 0 ? "text-[#5e684f]" : undefined}
                     />
                     <SummaryRow
                       label="Packaging"
                       value={packagingFee === 0 && subtotal > 0 ? "Free" : formatCurrency(packagingFee)}
+                      valueClassName={packagingFee === 0 && subtotal > 0 ? "text-[#5e684f]" : undefined}
                     />
-                    {savings > 0 ? <SummaryRow label="Product savings" value={`-${formatCurrency(savings)}`} /> : null}
+                    {savings > 0 ? (
+                      <SummaryRow
+                        label="Product savings"
+                        value={`-${formatCurrency(savings)}`}
+                        valueClassName="text-[#b85b52]"
+                      />
+                    ) : null}
                   </div>
 
-                  <div className="mt-5 border-t border-[#e3d8c9] pt-5">
-                    <div className="flex items-center justify-between text-lg font-semibold text-[#2b2a29]">
-                      <span>Total</span>
-                      <span>{formatCurrency(total)}</span>
+                  <div className="mt-6 border-t border-[#e9dfd1] pt-5">
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="brand-copy text-[1.7rem] leading-none text-[#2b2a29]">Total</span>
+                      <span className="text-[1.8rem] font-semibold leading-none text-[#2b2a29]">{formatCurrency(total)}</span>
                     </div>
-                    <p className="mt-2 text-xs leading-5 text-[#7a7f72]">
+                    <p className="mt-2 text-xs leading-5 text-[#9a9a93]">
                       {user
-                        ? "Select a saved address or add one, then continue to Razorpay."
-                        : "Fill in the address form, then continue to Razorpay."}
+                        ? "Your address is ready. Continue to Razorpay."
+                        : "Add your address to continue to Razorpay."}
                     </p>
                   </div>
 
@@ -743,20 +769,26 @@ export function PaymentPage() {
                     type="button"
                     onClick={() => void handleProceedToPayment()}
                     disabled={!canProceedToPayment || paymentSubmitting || profileSaving || profileLoading}
-                    className="brand-caption mt-6 inline-flex w-full items-center justify-center rounded-[1.1rem] bg-[#5e684f] px-5 py-4 text-[0.68rem] font-semibold tracking-[0.14em] text-[#fbf4e8] disabled:cursor-not-allowed disabled:opacity-60"
+                    className="brand-caption mt-5 inline-flex w-full items-center justify-center gap-2.5 rounded-[1rem] bg-[#5e684f] px-5 py-3.5 text-[0.68rem] font-semibold tracking-[0.14em] text-[#fbf4e8] disabled:cursor-not-allowed disabled:opacity-60"
                   >
+                    <span aria-hidden="true" className="inline-flex">
+                      <svg viewBox="0 0 20 20" className="h-3.5 w-3.5 fill-none stroke-current stroke-[1.8]">
+                        <path d="M6.5 8V6.5a3.5 3.5 0 1 1 7 0V8" />
+                        <rect x="4.5" y="8" width="11" height="8.5" rx="2" />
+                      </svg>
+                    </span>
                     {paymentSubmitting
                       ? paymentMessage === "Redirecting to secure payment"
-                        ? "REDIRECTING TO PAYMENT"
+                        ? "REDIRECTING TO RAZORPAY"
                         : "PROCESSING"
                       : profileSaving
                         ? "PROCESSING"
-                        : hasUnavailableItems
-                          ? "UNAVAILABLE ITEMS IN BAG"
-                          : "PROCEED TO PAYMENT"}
+                      : hasUnavailableItems
+                        ? "UNAVAILABLE ITEMS IN BAG"
+                          : "CONTINUE TO RAZORPAY"}
                   </button>
 
-                  {paymentMessage ? (
+                  {paymentMessage && !paymentOverlayStep ? (
                     <div className="mt-4 flex items-center gap-3 rounded-[1rem] border border-[#d8cbb7] bg-[#fbf7ef] px-4 py-3 text-sm leading-6 text-[#667056]">
                       <span
                         aria-hidden="true"
@@ -765,6 +797,7 @@ export function PaymentPage() {
                       <p>{paymentMessage}</p>
                     </div>
                   ) : null}
+
                 </section>
               </aside>
             </div>
@@ -787,6 +820,103 @@ export function PaymentPage() {
 
       <SiteFooter homeHref="/" contactId="contact" />
     </main>
+  );
+}
+
+function ReceiptPreparingOverlay({
+  customerName,
+  itemCount
+}: {
+  customerName: string;
+  itemCount: number;
+}) {
+  return (
+    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-[rgba(251,244,232,0.82)] px-6 backdrop-blur-[10px]">
+      <div className="relative w-full max-w-2xl overflow-hidden rounded-[2.4rem] border border-[#ddd0bc] bg-[linear-gradient(180deg,rgba(255,250,242,0.98)_0%,rgba(247,237,224,0.96)_100%)] px-7 py-8 shadow-[0_30px_100px_rgba(94,104,79,0.18)] sm:px-10 sm:py-10">
+        <div aria-hidden className="absolute inset-x-12 top-0 h-px bg-gradient-to-r from-transparent via-[#cfb47d] to-transparent" />
+
+        <div className="flex flex-col items-center text-center">
+          <div className="flex h-20 w-20 items-center justify-center rounded-[1.6rem] border border-[#dcc9ad] bg-[linear-gradient(135deg,#fff3df_0%,#efd8ab_100%)] shadow-[0_18px_40px_rgba(176,111,61,0.16)]">
+            <Image
+              src="/eshwelogo.png"
+              alt="Eshwe"
+              width={64}
+              height={64}
+              className="h-16 w-16 object-contain"
+              priority
+            />
+          </div>
+
+          <p className="brand-caption mt-5 text-[0.62rem] font-semibold tracking-[0.18em] text-[#7d876f]">
+            PAYMENT RECEIVED
+          </p>
+          <h2 className="brand-copy mt-4 text-3xl leading-tight text-[#2b2a29] sm:text-[2.8rem]">
+            Preparing your receipt.
+          </h2>
+          <p className="mt-4 max-w-xl text-sm leading-7 text-[#667056]">
+            Payment confirmed for {customerName}. We are verifying {itemCount} item{itemCount === 1 ? "" : "s"} and
+            opening the order confirmation now.
+          </p>
+        </div>
+
+        <div className="mx-auto mt-8 max-w-md">
+          <div className="relative rounded-[1.8rem] border border-[#d7ccb9] bg-[#667056] px-6 pb-6 pt-5 shadow-[0_22px_45px_rgba(94,104,79,0.2)]">
+            <div className="mx-auto h-2 w-28 rounded-full bg-[rgba(255,250,242,0.26)]" />
+            <div className="absolute left-1/2 top-[3.2rem] h-3 w-44 -translate-x-1/2 rounded-full bg-[rgba(35,42,28,0.18)] blur-md" />
+
+            <div className="receipt-printer-card absolute left-1/2 top-[3.2rem] w-[78%] -translate-x-1/2 overflow-hidden rounded-b-[1.3rem] rounded-t-[0.8rem] border border-[#eadfce] bg-[#fffaf2] shadow-[0_18px_34px_rgba(47,40,32,0.16)]">
+              <div className="receipt-shine h-2 w-full bg-[linear-gradient(90deg,rgba(255,255,255,0)_0%,rgba(255,255,255,0.72)_50%,rgba(255,255,255,0)_100%)]" />
+              <div className="space-y-3 px-5 pb-5 pt-4">
+                <div className="flex items-center justify-between">
+                  <span className="h-2.5 w-20 rounded-full bg-[#d8cbb7]" />
+                  <span className="h-2.5 w-14 rounded-full bg-[#ece3d6]" />
+                </div>
+                <div className="h-px w-full bg-[#ece1d3]" />
+                <div className="space-y-2">
+                  <span className="block h-2.5 w-full rounded-full bg-[#e6dbc9]" />
+                  <span className="block h-2.5 w-[82%] rounded-full bg-[#e6dbc9]" />
+                  <span className="block h-2.5 w-[65%] rounded-full bg-[#efe6d9]" />
+                </div>
+                <div className="h-px w-full bg-[#ece1d3]" />
+                <div className="flex items-center justify-between">
+                  <span className="h-2.5 w-16 rounded-full bg-[#e6dbc9]" />
+                  <span className="h-3 w-20 rounded-full bg-[#d2dec9]" />
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-48">
+              <div className="grid grid-cols-3 gap-3">
+                <StatusPill label="Payment" value="Captured" />
+                <StatusPill label="Receipt" value="Printing" />
+                <StatusPill label="Next" value="Preview" />
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 flex items-center justify-center gap-2">
+            <span className="receipt-progress-dot h-2.5 w-2.5 rounded-full bg-[#5e684f]" />
+            <span className="receipt-progress-dot h-2.5 w-2.5 rounded-full bg-[#5e684f] [animation-delay:180ms]" />
+            <span className="receipt-progress-dot h-2.5 w-2.5 rounded-full bg-[#5e684f] [animation-delay:360ms]" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StatusPill({
+  label,
+  value
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-[1.2rem] border border-[rgba(255,250,242,0.14)] bg-[rgba(255,250,242,0.1)] px-3 py-3 text-center">
+      <p className="text-[0.58rem] font-semibold tracking-[0.14em] text-[rgba(255,250,242,0.72)]">{label}</p>
+      <p className="mt-1 text-xs font-medium text-[#fffaf2]">{value}</p>
+    </div>
   );
 }
 
@@ -836,11 +966,19 @@ function PaymentTextarea({
   );
 }
 
-function SummaryRow({ label, value }: { label: string; value: string }) {
+function SummaryRow({
+  label,
+  value,
+  valueClassName
+}: {
+  label: string;
+  value: string;
+  valueClassName?: string;
+}) {
   return (
     <div className="flex items-center justify-between gap-4">
       <span>{label}</span>
-      <span className="font-medium text-[#2b2a29]">{value}</span>
+      <span className={`font-medium text-[#2b2a29] ${valueClassName ?? ""}`}>{value}</span>
     </div>
   );
 }

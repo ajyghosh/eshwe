@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import type { User } from "firebase/auth";
 
+import { OwnerBackofficeNav } from "@/components/owner-backoffice-nav";
+import { OwnerSectionHero } from "@/components/owner-section-hero";
 import {
   isPrimaryOwnerEmail,
   normalizeEmail,
@@ -12,10 +15,7 @@ import {
   subscribeToAuth
 } from "@/lib/auth";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
-import { OwnerCategoryManager } from "@/components/owner-category-manager";
-import { OwnerHomepageManager } from "@/components/owner-homepage-manager";
-import { OwnerProductMasterManager } from "@/components/owner-product-master-manager";
-import { OwnerProductGroupManager } from "@/components/owner-product-group-manager";
+import { seedDummyCatalogue } from "@/lib/dummy-catalogue";
 import {
   defaultDryingTips,
   defaultProductLength,
@@ -36,14 +36,13 @@ import { subscribeToCustomerMessages } from "@/lib/customer-messages";
 import { deleteSareeImages, uploadSareeImage } from "@/lib/storage";
 import { subscribeToWaitlistEntries } from "@/lib/waitlist";
 import {
-  addOwnerAccount,
   normalizeOwnerEmail,
-  removeOwnerAccount,
   subscribeToOwnerAccounts,
   type OwnerAccount
 } from "@/lib/owner-access";
 import { firebaseReady } from "@/lib/firebase";
 import { DEFAULT_AVAILABLE_STOCK, getEffectiveAvailabilityStatus, normalizeAvailableStock } from "@/lib/inventory";
+import { formatOccasionSummary, MANUAL_OCCASION_TAGS, normalizeOccasionTags } from "@/lib/product-discovery";
 import type { ProductMasterOption } from "@/types/product-master-option";
 import type { ProductGroup } from "@/types/product-group";
 import type { Saree, SareeStatus } from "@/types/saree";
@@ -65,6 +64,7 @@ type ProductFormState = {
   originalPrice: string;
   discountPercent: string;
   collectionLabel: string;
+  occasionTags: string[];
   availableStock: string;
   status: SareeStatus;
   featured: boolean;
@@ -79,10 +79,11 @@ type ProductFormState = {
 };
 
 export function OwnerDashboard() {
+  const router = useRouter();
   const [dialogState, setDialogState] = useState<
     | { type: "signout" }
     | { type: "delete-product"; product: Saree }
-    | { type: "remove-owner"; email: string }
+    | { type: "seed-dummy" }
     | null
   >(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -93,7 +94,6 @@ export function OwnerDashboard() {
   const [productGroups, setProductGroups] = useState<ProductGroup[]>([]);
   const [ownerAccounts, setOwnerAccounts] = useState<OwnerAccount[]>([]);
   const [ownerAccountsLoading, setOwnerAccountsLoading] = useState(true);
-  const [ownerEmailInput, setOwnerEmailInput] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -104,10 +104,9 @@ export function OwnerDashboard() {
   const [waitlistCount, setWaitlistCount] = useState(0);
   const [waitlistLoading, setWaitlistLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [isOwnerSaving, setIsOwnerSaving] = useState(false);
-  const [isOwnerRemovingEmail, setIsOwnerRemovingEmail] = useState<string | null>(null);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isDeletingId, setIsDeletingId] = useState<string | null>(null);
+  const [isSeedingDummy, setIsSeedingDummy] = useState(false);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [isProductFormOpen, setIsProductFormOpen] = useState(false);
   const [primaryImageFile, setPrimaryImageFile] = useState<File | null>(null);
@@ -129,7 +128,7 @@ export function OwnerDashboard() {
         setProducts(nextProducts);
         setProductsLoading(false);
       },
-      { max: 100 },
+      {},
       (error) => {
         setReadError(error.message);
         setProductsLoading(false);
@@ -176,7 +175,6 @@ export function OwnerDashboard() {
   const ownerAuthorized =
     isPrimaryOwnerEmail(user?.email) ||
     ownerAccounts.some((owner) => normalizeOwnerEmail(owner.email) === normalizedUserEmail);
-  const canManageOwnerAccounts = isPrimaryOwnerEmail(user?.email);
 
   useEffect(() => {
     if (!user || !ownerAuthorized) {
@@ -272,6 +270,7 @@ export function OwnerDashboard() {
       await signOutOwner();
       resetForm();
       setDialogState(null);
+      router.replace("/owner");
     } finally {
       setIsSigningOut(false);
     }
@@ -303,6 +302,7 @@ export function OwnerDashboard() {
           ? String(product.discountPercent)
           : "",
       collectionLabel: product.collectionLabel ?? "",
+      occasionTags: normalizeOccasionTags(product.occasionTags),
       availableStock: String(normalizeAvailableStock(product.availableStock)),
       status: getEffectiveAvailabilityStatus(product.status, normalizeAvailableStock(product.availableStock)),
       featured: product.featured,
@@ -423,6 +423,7 @@ export function OwnerDashboard() {
         .split("\n")
         .map((item) => item.trim())
         .filter(Boolean);
+      const occasionTags = normalizeOccasionTags(form.occasionTags);
 
       const payload: Omit<Saree, "id" | "createdAt" | "updatedAt"> = {
         name: form.name.trim(),
@@ -436,6 +437,7 @@ export function OwnerDashboard() {
         originalPrice,
         discountPercent: computedDiscount,
         collectionLabel: form.collectionLabel.trim() || null,
+        occasionTags,
         availableStock,
         status: resolveStatusForSave(form.status, availableStock),
         featured: form.featured,
@@ -504,54 +506,33 @@ export function OwnerDashboard() {
     }
   }
 
-  async function handleAddOwnerAccount(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    if (!canManageOwnerAccounts) {
-      setOwnerAccessError("Only the primary owner can manage additional owner accounts.");
+  async function handleSeedDummyCatalogue() {
+    if (!ownerAuthorized) {
+      setActionError("You must be signed in as the owner to generate dummy products.");
       return;
     }
 
-    const nextEmail = normalizeOwnerEmail(ownerEmailInput);
-
-    if (!nextEmail) {
-      setOwnerAccessError("Owner email is required.");
-      return;
-    }
-
-    setIsOwnerSaving(true);
-    setOwnerAccessError(null);
+    setIsSeedingDummy(true);
+    setActionError(null);
     setActionNotice(null);
 
     try {
-      await addOwnerAccount(nextEmail, user?.email);
-      setOwnerEmailInput("");
-      setActionNotice(`${nextEmail} can now access the owner dashboard.`);
-    } catch (error) {
-      setOwnerAccessError(error instanceof Error ? error.message : "Saving owner email failed.");
-    } finally {
-      setIsOwnerSaving(false);
-    }
-  }
+      const result = await seedDummyCatalogue({
+        existingProducts: products,
+        productGroups,
+        productMasterOptions
+      });
 
-  async function confirmRemoveOwnerAccount(email: string) {
-    if (!canManageOwnerAccounts) {
-      setOwnerAccessError("Only the primary owner can manage additional owner accounts.");
-      return;
-    }
-
-    setIsOwnerRemovingEmail(email);
-    setOwnerAccessError(null);
-    setActionNotice(null);
-
-    try {
-      await removeOwnerAccount(email);
-      setActionNotice(`${email} was removed from owner access.`);
+      setActionNotice(
+        result.created > 0
+          ? `Created ${result.created} dummy products across ${result.categories.length} categor${result.categories.length === 1 ? "y" : "ies"}. Skipped ${result.skipped} existing SKU${result.skipped === 1 ? "" : "s"}.`
+          : `No new dummy products were created. Skipped ${result.skipped} existing SKU${result.skipped === 1 ? "" : "s"}.`
+      );
       setDialogState(null);
     } catch (error) {
-      setOwnerAccessError(error instanceof Error ? error.message : "Removing owner email failed.");
+      setActionError(error instanceof Error ? error.message : "Dummy catalogue generation failed.");
     } finally {
-      setIsOwnerRemovingEmail(null);
+      setIsSeedingDummy(false);
     }
   }
 
@@ -570,31 +551,33 @@ export function OwnerDashboard() {
       return;
     }
 
-    await confirmRemoveOwnerAccount(dialogState.email);
+    if (dialogState.type === "seed-dummy") {
+      await handleSeedDummyCatalogue();
+    }
   }
 
   const dialogPending =
     (dialogState?.type === "signout" && isSigningOut) ||
     (dialogState?.type === "delete-product" &&
       Boolean(dialogState.product.id && isDeletingId === dialogState.product.id)) ||
-    (dialogState?.type === "remove-owner" && isOwnerRemovingEmail === dialogState.email);
+    (dialogState?.type === "seed-dummy" && isSeedingDummy);
 
   const dialogTitle =
     dialogState?.type === "signout"
       ? "Sign out of the owner panel?"
       : dialogState?.type === "delete-product"
         ? "Delete this product?"
-        : dialogState?.type === "remove-owner"
-          ? "Remove owner access?"
-          : "";
+        : dialogState?.type === "seed-dummy"
+          ? "Generate dummy catalogue data?"
+        : "";
 
   const dialogMessage =
     dialogState?.type === "signout"
       ? "You will be signed out of the owner dashboard on this device."
       : dialogState?.type === "delete-product"
         ? `${dialogState.product.name} will be deleted from the catalogue and its uploaded images will also be removed.`
-        : dialogState?.type === "remove-owner"
-          ? `${dialogState.email} will no longer be able to sign in to the owner dashboard.`
+        : dialogState?.type === "seed-dummy"
+          ? "This will create up to 100 dummy products per available category using reusable local images and mixed product states for testing. Existing dummy SKUs will be skipped."
           : "";
 
   const dialogConfirmLabel =
@@ -602,11 +585,11 @@ export function OwnerDashboard() {
       ? "SIGN OUT"
       : dialogState?.type === "delete-product"
         ? "DELETE PRODUCT"
-        : dialogState?.type === "remove-owner"
-          ? "REMOVE ACCESS"
+        : dialogState?.type === "seed-dummy"
+          ? "GENERATE DUMMY DATA"
           : "CONFIRM";
 
-  const dialogTone = dialogState?.type === "signout" ? "neutral" : "danger";
+  const dialogTone = dialogState?.type === "delete-product" ? "danger" : "neutral";
 
   const stats = {
     total: products.length,
@@ -823,6 +806,40 @@ export function OwnerDashboard() {
                 ))}
               </select>
             </Field>
+            <Field label="Occasion / Use case">
+              <div className="rounded-[1.25rem] border border-[#d9ccb8] bg-white/80 px-4 py-4">
+                <div className="flex flex-wrap gap-2">
+                  {MANUAL_OCCASION_TAGS.map((tag) => {
+                    const selected = form.occasionTags.includes(tag);
+
+                    return (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() =>
+                          setForm((current) => ({
+                            ...current,
+                            occasionTags: selected
+                              ? current.occasionTags.filter((item) => item !== tag)
+                              : [...current.occasionTags, tag]
+                          }))
+                        }
+                        className={`rounded-full border px-3 py-2 text-sm transition ${
+                          selected
+                            ? "border-[#5e684f] bg-[#5e684f] text-[#fbf4e8]"
+                            : "border-[#d9ccb8] bg-[#f8f1e5] text-[#5f6852]"
+                        }`}
+                      >
+                        {tag}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="mt-3 text-xs leading-6 text-[#667056]">
+                  Used for storefront browsing like wedding, gifting, and everyday.
+                </p>
+              </div>
+            </Field>
             <Field label="Available stock">
               <input
                 value={form.availableStock}
@@ -1002,26 +1019,31 @@ export function OwnerDashboard() {
   return (
     <main className="min-h-screen bg-[#fbf4e8] px-6 py-12 text-[#4f5942] sm:px-10 lg:px-12">
       <div className="mx-auto max-w-7xl">
-        <div className="rounded-[2.2rem] bg-[#5a6851] p-8 text-[#f8ecd2] shadow-[0_30px_80px_rgba(79,89,66,0.18)]">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <p className="brand-caption text-[0.68rem] font-semibold tracking-[0.22em] text-[#f3dfaa]">
-                OWNER BACKOFFICE
-              </p>
-              <h1 className="brand-copy mt-4 text-4xl leading-[1.05] text-[#f8ecd2] sm:text-5xl">
-                Manage the eshwe catalogue
-              </h1>
-              <p className="mt-4 max-w-2xl text-sm leading-7 text-[#f8f1e3]/84 sm:text-[0.95rem]">
-                Create, update, feature, and retire products from a single Firebase-powered dashboard.
-              </p>
-            </div>
+        <OwnerSectionHero
+          eyebrow="OWNER CATALOGUE"
+          title="Catalogue workspace for products, pricing, and stock"
+          description="Use this page for catalogue operations only. Storefront structure, orders, messages, waitlist, and owner access now live in their own pages."
+          action={
+            user ? (
+              <button
+                type="button"
+                onClick={() => setDialogState({ type: "signout" })}
+                className="brand-caption rounded-2xl bg-[#f8ecd2] px-5 py-3 text-[0.62rem] font-semibold tracking-[0.08em] text-[#5a6851]"
+              >
+                SIGN OUT
+              </button>
+            ) : null
+          }
+        />
 
-            <div className="rounded-[1.4rem] bg-[#f8ecd2]/8 px-5 py-4 text-sm text-[#f8f1e3]/84 backdrop-blur">
-              <p>Private dashboard access</p>
-              <p className="mt-1 font-semibold text-[#f3dfaa]">Authorized accounts only</p>
-            </div>
-          </div>
-        </div>
+        <OwnerBackofficeNav
+          className="mt-6"
+          badges={{
+            "/owner/messages": customerMessagesLoading ? "..." : customerMessageCount,
+            "/owner/orders": "Paid",
+            "/owner/waitlist": waitlistLoading ? "..." : waitlistCount
+          }}
+        />
 
         {authLoading || (user && !isPrimaryOwnerEmail(user?.email) && ownerAccountsLoading) ? (
           <div className="mt-10 rounded-[1.8rem] border border-[#e3d8c9] bg-[#f8f0e3] p-8 text-sm text-[#667056]">
@@ -1120,97 +1142,6 @@ export function OwnerDashboard() {
               </Link>
             </section>
 
-            <section className="rounded-[1.8rem] border border-[#e3d8c9] bg-white/70 p-7 sm:p-8">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <h2 className="brand-copy text-2xl text-[#3f4738]">Owner access</h2>
-                  <p className="mt-2 text-sm leading-7 text-[#667056]">
-                    Add or remove other owner Gmail IDs that should be allowed into the dashboard.
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleSignOut}
-                  className="brand-caption rounded-2xl border border-[#cfc2ad] px-5 py-3 text-[0.62rem] font-semibold tracking-[0.08em] text-[#5e684f]"
-                >
-                  LOG OUT
-                </button>
-              </div>
-
-              <div className="mt-6 grid gap-6 xl:grid-cols-[0.9fr_1.1fr] xl:items-start">
-                <form className="space-y-4 pt-1" onSubmit={handleAddOwnerAccount}>
-                  <Field label="Owner Gmail ID">
-                    <input
-                      value={ownerEmailInput}
-                      onChange={(event) => setOwnerEmailInput(event.target.value)}
-                      className={inputClassName}
-                      placeholder="owner@gmail.com"
-                      type="email"
-                    />
-                  </Field>
-
-                  <div className="flex flex-wrap gap-3">
-                    <button
-                      type="submit"
-                      disabled={!canManageOwnerAccounts || isOwnerSaving}
-                      className="brand-caption rounded-2xl bg-[#5e684f] px-5 py-3 text-[0.62rem] font-semibold tracking-[0.08em] text-[#fbf4e8] disabled:opacity-60"
-                    >
-                      {isOwnerSaving ? "ADDING..." : "ADD OWNER"}
-                    </button>
-                    {!canManageOwnerAccounts ? (
-                      <p className="self-center text-xs text-[#667056]">Only the primary owner can change owner access.</p>
-                    ) : null}
-                  </div>
-
-                  {ownerAccessError ? <p className="text-sm text-[#9d4b45]">{ownerAccessError}</p> : null}
-                </form>
-
-                <div className="space-y-4">
-                  <div className="pt-1">
-                    <p className="text-sm font-medium text-[#4f5942]">Authorized owners</p>
-                    <p className="mt-2 text-xs leading-6 text-[#667056]">Additional Gmail IDs currently allowed into the dashboard.</p>
-                  </div>
-
-                  {ownerAccountsLoading ? (
-                    <p className="text-sm text-[#667056]">Loading owner accounts…</p>
-                  ) : ownerAccounts.length === 0 ? (
-                    <div className="rounded-[1.3rem] border border-dashed border-[#d8cbb7] bg-[#fbf4e8] p-5 text-sm leading-7 text-[#667056]">
-                      No additional owner accounts added yet.
-                    </div>
-                  ) : (
-                    ownerAccounts.map((owner) => (
-                      <div
-                        key={owner.id ?? owner.email}
-                        className="flex flex-col gap-3 rounded-[1.2rem] border border-[#e5d8c8] bg-[#fbf4e8] px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
-                      >
-                        <div>
-                          <p className="text-sm font-semibold text-[#3f4738]">{owner.email}</p>
-                          <p className="mt-1 text-xs text-[#667056]">Additional owner access</p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setDialogState({ type: "remove-owner", email: owner.email })}
-                          disabled={!canManageOwnerAccounts || isOwnerRemovingEmail === owner.email}
-                          className="brand-caption rounded-full border border-[#d4c5b2] px-4 py-2 text-[0.52rem] font-semibold tracking-[0.08em] text-[#9d4b45] disabled:opacity-60"
-                        >
-                          {isOwnerRemovingEmail === owner.email ? "REMOVING..." : "REMOVE"}
-                        </button>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </section>
-
-            <OwnerHomepageManager />
-
-            <OwnerCategoryManager />
-
-            <OwnerProductGroupManager />
-
-            <OwnerProductMasterManager />
-
             <section className="space-y-8">
               <section className="rounded-[1.8rem] border border-[#e3d8c9] bg-[#f8f0e3] p-7 sm:p-8">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -1231,7 +1162,15 @@ export function OwnerDashboard() {
                     </button>
                     <button
                       type="button"
-                  onClick={() => setDialogState({ type: "signout" })}
+                      onClick={() => setDialogState({ type: "seed-dummy" })}
+                      disabled={isSeedingDummy}
+                      className="brand-caption rounded-2xl border border-[#cfc2ad] bg-white/70 px-5 py-3 text-[0.62rem] font-semibold tracking-[0.08em] text-[#5e684f] disabled:opacity-60"
+                    >
+                      {isSeedingDummy ? "GENERATING..." : "GENERATE DUMMY DATA"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDialogState({ type: "signout" })}
                       className="brand-caption rounded-2xl border border-[#cfc2ad] px-4 py-3 text-[0.58rem] font-semibold tracking-[0.08em] text-[#5e684f]"
                     >
                       SIGN OUT
@@ -1282,6 +1221,14 @@ export function OwnerDashboard() {
                     className="brand-caption rounded-2xl bg-[#5e684f] px-5 py-3 text-[0.62rem] font-semibold tracking-[0.08em] text-[#fbf4e8]"
                   >
                     ADD NEW ITEM
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDialogState({ type: "seed-dummy" })}
+                    disabled={isSeedingDummy}
+                    className="brand-caption rounded-2xl border border-[#cfc2ad] bg-white/75 px-5 py-3 text-[0.62rem] font-semibold tracking-[0.08em] text-[#5e684f] disabled:opacity-60"
+                  >
+                    {isSeedingDummy ? "GENERATING..." : "GENERATE DUMMY DATA"}
                   </button>
                 </div>
 
@@ -1335,6 +1282,9 @@ export function OwnerDashboard() {
                                   <p className="mt-1 text-sm text-[#667056]">
                                     {product.sku} · {product.fabric}
                                   </p>
+                                  {product.occasionTags?.length ? (
+                                    <p className="mt-1 text-sm text-[#667056]">{formatOccasionSummary(product.occasionTags)}</p>
+                                  ) : null}
                                   <p className="mt-1 text-sm text-[#667056]">
                                     Stock {normalizeAvailableStock(product.availableStock)}
                                   </p>
@@ -1419,6 +1369,7 @@ function createEmptyForm(): ProductFormState {
     originalPrice: "",
     discountPercent: "",
     collectionLabel: "",
+    occasionTags: [],
     availableStock: String(DEFAULT_AVAILABLE_STOCK),
     status: "active",
     featured: false,

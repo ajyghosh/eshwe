@@ -8,10 +8,10 @@ import { useEffect, useState } from "react";
 import { SiteFooter } from "@/components/site-footer";
 import { StorefrontHeader } from "@/components/storefront-header";
 import {
-  downloadOrderReceipt,
   formatOrderConfirmationDate,
   formatOrderConfirmationDateOnly,
   formatOrderConfirmationPaymentStatus,
+  openOrderReceiptPreview,
   readLatestOrderConfirmation,
   type OrderConfirmationData
 } from "@/lib/order-confirmation";
@@ -125,8 +125,8 @@ export function OrderConfirmationPage() {
                   Thank you. Your order is confirmed.
                 </h1>
                 <p className="mt-4 max-w-2xl text-sm leading-7 text-[#667056]">
-                  We have captured your payment and saved the order details below. Download the receipt if you want a
-                  local copy for records.
+                  We have captured your payment and saved the order details below. Open the receipt in a clean browser
+                  view if you want to review it separately.
                 </p>
 
                 <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -139,10 +139,10 @@ export function OrderConfirmationPage() {
                 <div className="mt-8 flex flex-wrap gap-4">
                   <button
                     type="button"
-                    onClick={() => downloadOrderReceipt(confirmation)}
+                    onClick={() => openOrderReceiptPreview(confirmation)}
                     className="brand-caption inline-flex items-center justify-center rounded-full bg-[#5e684f] px-6 py-3 text-[0.68rem] font-semibold tracking-[0.14em] text-[#fbf4e8]"
                   >
-                    SAVE PDF RECEIPT
+                    VIEW RECEIPT
                   </button>
                   <Link
                     href="/shop"

@@ -1,9 +1,11 @@
 "use client";
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { User } from "firebase/auth";
 
+import { OwnerBackofficeNav } from "@/components/owner-backoffice-nav";
+import { OwnerSectionHero } from "@/components/owner-section-hero";
 import {
   isPrimaryOwnerEmail,
   normalizeEmail,
@@ -17,6 +19,7 @@ import {
   subscribeToOwnerAccounts,
   type OwnerAccount
 } from "@/lib/owner-access";
+import { useOwnerBackofficeBadges } from "@/lib/use-owner-backoffice-badges";
 import { subscribeToSuccessfulOrders, updateOrderDispatchStatus } from "@/lib/orders";
 import type { CheckoutOrder } from "@/types/order";
 
@@ -66,6 +69,7 @@ function waitForPrintWindowAssets(printWindow: Window, timeoutMs = 1600) {
 }
 
 export function OwnerOrdersPage() {
+  const router = useRouter();
   const [authLoading, setAuthLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [ownerAccounts, setOwnerAccounts] = useState<OwnerAccount[]>([]);
@@ -112,6 +116,7 @@ export function OwnerOrdersPage() {
   const ownerAuthorized =
     isPrimaryOwnerEmail(user?.email) ||
     ownerAccounts.some((owner) => normalizeOwnerEmail(owner.email) === normalizedUserEmail);
+  const { badges: navBadges } = useOwnerBackofficeBadges(ownerAuthorized);
 
   useEffect(() => {
     if (!user || !ownerAuthorized) {
@@ -148,6 +153,7 @@ export function OwnerOrdersPage() {
 
   async function handleSignOut() {
     await signOutOwner();
+    router.replace("/owner");
   }
 
   function handleViewSlip(orderId: string) {
@@ -242,39 +248,27 @@ export function OwnerOrdersPage() {
   return (
     <main className="min-h-screen bg-[#fbf4e8] px-6 py-12 text-[#4f5942] sm:px-10 lg:px-12 print:bg-white print:px-0 print:py-0">
       <div className="mx-auto max-w-7xl print:max-w-none">
-        <section className="rounded-[2.2rem] bg-[#5a6851] p-8 text-[#f8ecd2] shadow-[0_30px_80px_rgba(79,89,66,0.18)] print:hidden">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="brand-caption text-[0.68rem] font-semibold tracking-[0.22em] text-[#f3dfaa]">
-                OWNER ORDERS
-              </p>
-              <h1 className="brand-copy mt-4 text-4xl leading-[1.05] text-[#f8ecd2] sm:text-5xl">
-                Successful orders and print slips
-              </h1>
-              <p className="mt-4 max-w-2xl text-sm leading-7 text-[#f8f1e3]/84 sm:text-[0.95rem]">
-                Open confirmed orders, print the order slip or address label, and mark dispatched orders complete.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-              <Link
-                href="/owner/"
-                className="brand-caption inline-flex rounded-2xl border border-[#f8ecd2]/28 px-5 py-3 text-[0.62rem] font-semibold tracking-[0.08em] text-[#f8ecd2]"
+        <OwnerSectionHero
+          eyebrow="OWNER ORDERS"
+          title="Successful orders and print slips"
+          description="Open confirmed orders, print the order slip or address label, and mark dispatched orders complete."
+          className="print:hidden"
+          action={
+            user ? (
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className="brand-caption rounded-2xl bg-[#f8ecd2] px-5 py-3 text-[0.62rem] font-semibold tracking-[0.08em] text-[#5a6851]"
               >
-                BACK TO DASHBOARD
-              </Link>
-              {user ? (
-                <button
-                  type="button"
-                  onClick={handleSignOut}
-                  className="brand-caption rounded-2xl bg-[#f8ecd2] px-5 py-3 text-[0.62rem] font-semibold tracking-[0.08em] text-[#5a6851]"
-                >
-                  SIGN OUT
-                </button>
-              ) : null}
-            </div>
-          </div>
-        </section>
+                SIGN OUT
+              </button>
+            ) : null
+          }
+        />
+
+        {ownerAuthorized ? (
+          <OwnerBackofficeNav className="mt-6 print:hidden" badges={navBadges} />
+        ) : null}
 
         {authLoading || (user && !isPrimaryOwnerEmail(user?.email) && ownerAccountsLoading) ? (
           <div className="mt-10 rounded-[1.8rem] border border-[#e3d8c9] bg-[#f8f0e3] p-8 text-sm text-[#667056] print:hidden">

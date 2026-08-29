@@ -1,8 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
+import { createPortal } from "react-dom";
 
+import { useAuthSession } from "@/components/auth-provider";
+import { getCustomerProfile } from "@/lib/customer-profiles";
+import { buildProductDetailPath } from "@/lib/storefront-routes";
 import { createWaitlistEntry } from "@/lib/waitlist";
 import type { Saree } from "@/types/saree";
 
@@ -17,12 +20,21 @@ export function NotifyWaitlistDialog({
   product,
   onClose
 }: NotifyWaitlistDialogProps) {
-  const pathname = usePathname();
+  const { user } = useAuthSession();
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+
+    return () => {
+      setMounted(false);
+    };
+  }, []);
 
   useEffect(() => {
     if (!notice) {
@@ -51,6 +63,40 @@ export function NotifyWaitlistDialog({
     }
   }, [open]);
 
+  useEffect(() => {
+    if (!open || !user) {
+      return;
+    }
+
+    const currentUser = user;
+    let cancelled = false;
+
+    async function preloadSignedInContact() {
+      try {
+        const customerProfile = await getCustomerProfile(currentUser.uid).catch(() => null);
+        const resolvedEmail = customerProfile?.email?.trim() || currentUser.email?.trim() || "";
+        const resolvedPhone = customerProfile?.phone?.trim() || "";
+
+        if (cancelled) {
+          return;
+        }
+
+        setEmail((current) => current || resolvedEmail);
+        setPhone((current) => current || resolvedPhone);
+      } catch {
+        if (cancelled) {
+          return;
+        }
+      }
+    }
+
+    void preloadSignedInContact();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, user]);
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -76,9 +122,9 @@ export function NotifyWaitlistDialog({
         productCategory: product.category,
         email,
         phone,
-        sourcePath: pathname || "/"
+        sourcePath: resolveWaitlistSourcePath(product)
       });
-      setNotice("We saved your request and will notify you when this saree is back.");
+      setNotice("We saved your request and will let you know when this saree is back.");
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : "Saving waitlist request failed.");
     } finally {
@@ -86,11 +132,11 @@ export function NotifyWaitlistDialog({
     }
   }
 
-  if (!open || !product) {
+  if (!open || !product || !mounted) {
     return null;
   }
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[95] flex items-center justify-center bg-[#3f4738]/36 px-4 py-6 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-xl rounded-[2rem] border border-[#dfd2c1] bg-[#fbf4e8] p-6 shadow-[0_30px_90px_rgba(63,71,56,0.22)] sm:p-7">
         <div className="flex items-start justify-between gap-4">
@@ -153,8 +199,13 @@ export function NotifyWaitlistDialog({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
+}
+
+function resolveWaitlistSourcePath(product: Saree) {
+  return buildProductDetailPath(product.slug);
 }
 
 const inputClassName =

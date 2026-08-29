@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://eshwe.com/sitemap.xml
+Host: https://eshwe.com

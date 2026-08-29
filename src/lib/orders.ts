@@ -91,6 +91,10 @@ export async function updateOrderDispatchStatus(orderId: string, dispatchStatus:
   });
 }
 
+export function getPendingDispatchCount(orders: Pick<CheckoutOrder, "dispatchStatus">[]) {
+  return orders.filter((order) => order.dispatchStatus !== "completed").length;
+}
+
 function isSuccessfulOrder(order: Partial<CheckoutOrder>) {
   return (
     order.paymentStatus === "captured" ||

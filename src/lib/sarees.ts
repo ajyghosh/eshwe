@@ -15,6 +15,7 @@ import { updateDoc, where } from "firebase/firestore";
 
 import { db } from "@/lib/firebase";
 import { getEffectiveAvailabilityStatus, normalizeAvailableStock } from "@/lib/inventory";
+import { normalizeOccasionTags } from "@/lib/product-discovery";
 import type { Saree, SareeStatus } from "@/types/saree";
 
 const COLLECTION_NAME = "sarees";
@@ -71,10 +72,12 @@ export function subscribeToSarees(
 function hydrateSaree(id: string, data: Record<string, unknown>) {
   const availableStock = normalizeAvailableStock(data.availableStock);
   const status = getEffectiveAvailabilityStatus((data.status as SareeStatus) || "active", availableStock);
+  const occasionTags = normalizeOccasionTags(data.occasionTags as string[] | null | undefined);
 
   return {
     id,
     ...data,
+    occasionTags,
     availableStock,
     status
   } as Saree;

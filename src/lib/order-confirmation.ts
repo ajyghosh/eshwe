@@ -110,53 +110,43 @@ export function formatOrderConfirmationPaymentStatus(status: string) {
   return status;
 }
 
-export function downloadOrderReceipt(confirmation: OrderConfirmationData) {
+export function openOrderReceiptPreview(confirmation: OrderConfirmationData) {
   if (typeof window === "undefined") {
     return;
   }
 
-  const receiptHtml = buildOrderReceiptHtml(confirmation, window.location.origin);
-  const shortOrderId = buildShortOrderId(confirmation.internalOrderId);
-  const printWindow = window.open("", "_blank", "width=940,height=1180");
+  const previewWindow = window.open("", "_blank", "width=980,height=1200");
 
-  if (!printWindow) {
-    const receiptBlob = new Blob([receiptHtml], { type: "text/html;charset=utf-8" });
-    const receiptUrl = window.URL.createObjectURL(receiptBlob);
-    const link = document.createElement("a");
-
-    link.href = receiptUrl;
-    link.download = `eshwe-order-receipt-${shortOrderId}.html`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(receiptUrl);
+  if (!previewWindow) {
     return;
   }
 
-  printWindow.document.open();
-  printWindow.document.write(receiptHtml);
-  printWindow.document.close();
+  const receiptHtml = buildOrderReceiptHtml(confirmation, window.location.origin);
 
-  try {
-    printWindow.history.replaceState({}, "", `/order-confirmation/receipt/${encodeURIComponent(shortOrderId)}`);
-  } catch {
-    // Ignore history updates if the browser blocks them for the print window.
-  }
-
-  void waitForPrintWindowAssets(printWindow).finally(() => {
-    printWindow.focus();
-    printWindow.print();
-  });
+  previewWindow.document.open();
+  previewWindow.document.write(receiptHtml);
+  previewWindow.document.close();
 }
 
 function buildOrderReceiptHtml(confirmation: OrderConfirmationData, origin: string) {
-  const shortOrderId = buildShortOrderId(confirmation.internalOrderId);
-  const placedAt = formatOrderConfirmationDateOnly(confirmation.createdAtIso);
-  const itemRows = confirmation.items
+  const placedAt = formatOrderConfirmationDate(confirmation.createdAtIso);
+  const noteValue = confirmation.notes.trim() ? escapeHtml(confirmation.notes) : "No note added";
+  const paymentStatus = confirmation.paymentStatus.trim() || "pending";
+  const itemCount = String(confirmation.items.length);
+  const itemsMarkup = confirmation.items
     .map((item) => {
-      const unitPrice = typeof item.unitPrice === "number" ? formatCurrency(item.unitPrice, confirmation.summary.currency) : "-";
+      const unitPrice =
+        typeof item.unitPrice === "number" ? formatCurrency(item.unitPrice, confirmation.summary.currency) : "-";
       const lineTotal =
-        typeof item.unitPrice === "number" ? formatCurrency(item.unitPrice * item.quantity, confirmation.summary.currency) : "-";
+        typeof item.unitPrice === "number"
+          ? formatCurrency(item.unitPrice * item.quantity, confirmation.summary.currency)
+          : "-";
+      const originalTotal =
+        typeof item.unitOriginalPrice === "number" &&
+        typeof item.unitPrice === "number" &&
+        item.unitOriginalPrice > item.unitPrice
+          ? formatCurrency(item.unitOriginalPrice * item.quantity, confirmation.summary.currency)
+          : "";
 
       return `
         <tr>
@@ -166,40 +156,21 @@ function buildOrderReceiptHtml(confirmation: OrderConfirmationData, origin: stri
           </td>
           <td>${escapeHtml(String(item.quantity))}</td>
           <td>${escapeHtml(unitPrice)}</td>
-          <td>${escapeHtml(lineTotal)}</td>
+          <td>
+            <strong>${escapeHtml(lineTotal)}</strong>
+            ${originalTotal ? `<div class="strike">${escapeHtml(originalTotal)}</div>` : ""}
+          </td>
         </tr>
       `;
     })
     .join("");
-  const summaryRows = `
-    <tr class="summary-row summary-divider">
-      <td colspan="3">Subtotal</td>
-      <td class="summary-value">${escapeHtml(formatCurrency(confirmation.summary.subtotal, confirmation.summary.currency))}</td>
-    </tr>
-    <tr class="summary-row">
-      <td colspan="3">Shipping</td>
-      <td class="summary-value">${escapeHtml(formatCurrency(confirmation.summary.shippingFee, confirmation.summary.currency))}</td>
-    </tr>
-    <tr class="summary-row">
-      <td colspan="3">Packaging</td>
-      <td class="summary-value">${escapeHtml(formatCurrency(confirmation.summary.packagingFee, confirmation.summary.currency))}</td>
-    </tr>
-    <tr class="summary-row">
-      <td colspan="3">Savings</td>
-      <td class="summary-value">${escapeHtml(`-${formatCurrency(confirmation.summary.savings, confirmation.summary.currency)}`)}</td>
-    </tr>
-    <tr class="summary-row summary-total">
-      <td colspan="3">Total</td>
-      <td class="summary-value">${escapeHtml(formatCurrency(confirmation.summary.total, confirmation.summary.currency))}</td>
-    </tr>
-  `;
 
   return `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>eshwe-order-receipt-${escapeHtml(shortOrderId)}.pdf</title>
+    <title>Order Receipt ${escapeHtml(confirmation.internalOrderId)}</title>
     <style>
       :root {
         color-scheme: light;
@@ -238,20 +209,18 @@ function buildOrderReceiptHtml(confirmation: OrderConfirmationData, origin: stri
         gap: 16px;
       }
       .logo {
-        width: 76px;
-        height: 76px;
-        border-radius: 22px;
-        background: radial-gradient(circle at top, #fff8ed 0%, #f1dfbc 100%);
-        border: 1px solid rgba(176, 111, 61, 0.16);
+        width: 58px;
+        height: 58px;
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.8);
+        border: 1px solid rgba(94, 104, 79, 0.12);
         display: flex;
         align-items: center;
         justify-content: center;
       }
       .logo img {
-        width: 66px;
-        height: 66px;
-        display: block;
-        object-fit: contain;
+        width: 42px;
+        height: 42px;
       }
       .eyebrow {
         font-size: 11px;
@@ -315,43 +284,39 @@ function buildOrderReceiptHtml(confirmation: OrderConfirmationData, origin: stri
         font-size: 12px;
         color: #667056;
       }
-      tfoot td {
-        padding: 10px 0;
+      .strike {
+        margin-top: 4px;
+        font-size: 12px;
+        color: #8d8b87;
+        text-decoration: line-through;
       }
-      .summary-row td {
-        border-bottom: 0;
-        color: #5c6550;
+      .summary-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 7px 0;
       }
-      .summary-divider td {
-        padding-top: 16px;
-      }
-      .summary-value {
-        text-align: right;
-      }
-      .summary-total td {
+      .summary-total {
+        margin-top: 10px;
+        padding-top: 12px;
+        border-top: 1px solid #dfd2bd;
         font-weight: 700;
-        color: #2b2a29;
       }
       .footer {
         margin-top: 18px;
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-end;
-        gap: 12px;
         font-size: 12px;
         color: #667056;
       }
-      @page {
-        margin: 14mm;
-        size: A4;
-      }
-      .card,
-      .header,
-      .sheet,
-      table,
-      tr {
-        break-inside: avoid;
-        page-break-inside: avoid;
+      @media (max-width: 699px) {
+        .header {
+          flex-direction: column;
+        }
+        .meta {
+          text-align: left;
+        }
+        .grid {
+          grid-template-columns: 1fr;
+        }
       }
       @media print {
         body {
@@ -365,9 +330,6 @@ function buildOrderReceiptHtml(confirmation: OrderConfirmationData, origin: stri
           border-radius: 0;
           box-shadow: none;
         }
-        .footer {
-          margin-top: 14px;
-        }
       }
     </style>
   </head>
@@ -377,7 +339,7 @@ function buildOrderReceiptHtml(confirmation: OrderConfirmationData, origin: stri
         <div class="header">
           <div class="brand">
             <div class="logo">
-              <img src="${escapeHtml(origin)}/eshwelogo-transparent.png" alt="Eshwe" width="66" height="66" />
+              <img src="${escapeHtml(origin)}/eshwelogo-transparent.png" alt="Eshwe" width="42" height="42" />
             </div>
             <div>
               <div class="eyebrow">Order Confirmation</div>
@@ -386,8 +348,9 @@ function buildOrderReceiptHtml(confirmation: OrderConfirmationData, origin: stri
           </div>
           <div class="meta">
             <div><strong>Order ID:</strong> ${escapeHtml(confirmation.internalOrderId)}</div>
-            <div><strong>Razorpay Order:</strong> ${escapeHtml(confirmation.razorpayOrderId)}</div>
-            <div><strong>Payment ID:</strong> ${escapeHtml(confirmation.razorpayPaymentId)}</div>
+            <div><strong>Razorpay Order:</strong> ${escapeHtml(confirmation.razorpayOrderId || "-")}</div>
+            <div><strong>Payment ID:</strong> ${escapeHtml(confirmation.razorpayPaymentId || "-")}</div>
+            <div><strong>Placed:</strong> ${escapeHtml(placedAt)}</div>
           </div>
         </div>
 
@@ -397,19 +360,17 @@ function buildOrderReceiptHtml(confirmation: OrderConfirmationData, origin: stri
               <div class="card-title">Shipping To</div>
               <div><strong>${escapeHtml(confirmation.customer.fullName)}</strong></div>
               <div>${escapeHtml(confirmation.customer.address)}</div>
-              <div>${escapeHtml(confirmation.customer.city)}, ${escapeHtml(confirmation.customer.state)} ${escapeHtml(
-    confirmation.customer.pincode
-  )}</div>
+              <div>${escapeHtml(confirmation.customer.city)}, ${escapeHtml(confirmation.customer.state)} ${escapeHtml(confirmation.customer.pincode)}</div>
               <div>${escapeHtml(confirmation.customer.phone)}</div>
               <div>${escapeHtml(confirmation.customer.email)}</div>
             </section>
 
             <section class="card">
               <div class="card-title">Payment</div>
-              <div><strong>Status:</strong> ${escapeHtml(formatOrderConfirmationPaymentStatus(confirmation.paymentStatus))}</div>
-              <div><strong>Items:</strong> ${escapeHtml(String(confirmation.items.length))}</div>
+              <div><strong>Status:</strong> ${escapeHtml(paymentStatus)}</div>
+              <div><strong>Items:</strong> ${escapeHtml(itemCount)}</div>
               <div><strong>Currency:</strong> ${escapeHtml(confirmation.summary.currency)}</div>
-              <div><strong>Customer Note:</strong> ${escapeHtml(confirmation.notes || "No note added")}</div>
+              <div><strong>Customer Note:</strong> ${noteValue}</div>
             </section>
 
             <section class="card wide">
@@ -424,18 +385,23 @@ function buildOrderReceiptHtml(confirmation: OrderConfirmationData, origin: stri
                   </tr>
                 </thead>
                 <tbody>
-                  ${itemRows}
+                  ${itemsMarkup}
                 </tbody>
-                <tfoot>
-                  ${summaryRows}
-                </tfoot>
               </table>
+            </section>
+
+            <section class="card">
+              <div class="card-title">Summary</div>
+              <div class="summary-row"><span>Subtotal</span><strong>${escapeHtml(formatCurrency(confirmation.summary.subtotal, confirmation.summary.currency))}</strong></div>
+              <div class="summary-row"><span>Shipping</span><strong>${escapeHtml(formatCurrency(confirmation.summary.shippingFee, confirmation.summary.currency))}</strong></div>
+              <div class="summary-row"><span>Packaging</span><strong>${escapeHtml(formatCurrency(confirmation.summary.packagingFee, confirmation.summary.currency))}</strong></div>
+              <div class="summary-row"><span>Savings</span><strong>${escapeHtml(`-${formatCurrency(confirmation.summary.savings, confirmation.summary.currency)}`)}</strong></div>
+              <div class="summary-row summary-total"><span>Total</span><strong>${escapeHtml(formatCurrency(confirmation.summary.total, confirmation.summary.currency))}</strong></div>
             </section>
           </div>
 
           <div class="footer">
-            <div>eshwe.com</div>
-            <div>${escapeHtml(placedAt)}</div>
+            Keep this receipt for your records. You can print this file directly from your browser.
           </div>
         </div>
       </div>
@@ -453,10 +419,6 @@ function formatCurrency(amount: number, currency: string) {
   }).format(amount);
 }
 
-function buildShortOrderId(orderId: string) {
-  return orderId.slice(-8).toUpperCase();
-}
-
 function escapeHtml(value: string) {
   return value
     .replaceAll("&", "&amp;")
@@ -464,32 +426,4 @@ function escapeHtml(value: string) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
-}
-
-function waitForPrintWindowAssets(printWindow: Window, timeoutMs = 1800) {
-  const images = Array.from(printWindow.document.images);
-
-  if (images.length === 0) {
-    return Promise.resolve();
-  }
-
-  return Promise.race([
-    Promise.all(
-      images.map(
-        (image) =>
-          new Promise<void>((resolve) => {
-            if (image.complete) {
-              resolve();
-              return;
-            }
-
-            image.addEventListener("load", () => resolve(), { once: true });
-            image.addEventListener("error", () => resolve(), { once: true });
-          })
-      )
-    ).then(() => undefined),
-    new Promise<void>((resolve) => {
-      window.setTimeout(resolve, timeoutMs);
-    })
-  ]);
 }

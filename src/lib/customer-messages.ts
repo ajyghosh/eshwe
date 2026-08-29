@@ -1,10 +1,12 @@
 import {
   addDoc,
   collection,
+  doc,
   onSnapshot,
   orderBy,
   query,
-  serverTimestamp
+  serverTimestamp,
+  updateDoc
 } from "firebase/firestore";
 
 import { db } from "@/lib/firebase";
@@ -26,6 +28,20 @@ export async function createCustomerMessage(
     sourcePath: message.sourcePath.trim() || "/",
     status: "new",
     createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  });
+}
+
+export async function updateCustomerMessageStatus(messageId: string, status: "new" | "read") {
+  if (!db) {
+    throw new Error("Firestore is not available.");
+  }
+
+  const messageRef = doc(db, CUSTOMER_MESSAGES_COLLECTION, messageId);
+
+  await updateDoc(messageRef, {
+    readAt: status === "read" ? serverTimestamp() : null,
+    status,
     updatedAt: serverTimestamp()
   });
 }
@@ -59,4 +75,12 @@ export function subscribeToCustomerMessages(
       onError?.(error);
     }
   );
+}
+
+export function isUnreadCustomerMessage(message: Pick<CustomerMessage, "status">) {
+  return message.status !== "read";
+}
+
+export function getUnreadCustomerMessageCount(messages: Pick<CustomerMessage, "status">[]) {
+  return messages.filter(isUnreadCustomerMessage).length;
 }

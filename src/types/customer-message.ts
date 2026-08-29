@@ -4,7 +4,8 @@ export type CustomerMessage = {
   phone: string;
   message: string;
   sourcePath: string;
-  status: "new";
+  status?: "new" | "read" | null;
   createdAt?: unknown;
+  readAt?: unknown;
   updatedAt?: unknown;
 };

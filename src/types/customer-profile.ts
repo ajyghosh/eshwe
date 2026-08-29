@@ -21,6 +21,7 @@ export type CustomerProfile = {
   pincode: string;
   selectedAddressId?: string;
   addresses?: CustomerAddress[];
+  favoriteSkus?: string[];
   createdAt?: unknown;
   updatedAt?: unknown;
 };

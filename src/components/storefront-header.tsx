@@ -2,11 +2,12 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { useAuthSession } from "@/components/auth-provider";
 import { useCart } from "@/components/cart-provider";
+import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { saveCustomerProfile } from "@/lib/customer-profiles";
 import { createCustomerMessage } from "@/lib/customer-messages";
 import { subscribeToCategoryCards } from "@/lib/homepage";
@@ -30,12 +31,15 @@ export function StorefrontHeader({
   contentVisible?: boolean;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { user, loading, signIn, signOut } = useAuthSession();
   const { totalItems } = useCart();
   const accountMenuRef = useRef<HTMLDivElement | null>(null);
   const [categoryCards, setCategoryCards] = useState<CategoryCard[]>([]);
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [searchPanelOpen, setSearchPanelOpen] = useState(false);
+  const [headerSearch, setHeaderSearch] = useState("");
   const [createAccountDialogOpen, setCreateAccountDialogOpen] = useState(false);
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
@@ -45,6 +49,7 @@ export function StorefrontHeader({
   const [contactNotice, setContactNotice] = useState<string | null>(null);
   const [authSubmitting, setAuthSubmitting] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [signOutDialogOpen, setSignOutDialogOpen] = useState(false);
   const [createAccountSubmitting, setCreateAccountSubmitting] = useState(false);
   const [createAccountError, setCreateAccountError] = useState<string | null>(null);
   const [createAccountForm, setCreateAccountForm] = useState<CreateAccountFormState>({
@@ -58,10 +63,10 @@ export function StorefrontHeader({
   const headerClassName = absolute
     ? `fixed inset-x-0 top-0 z-30 transition-[background-color,border-color,backdrop-filter] duration-700 ease-out ${
         contentVisible
-          ? "border-b border-white/45 bg-[rgba(251,244,232,0.82)] backdrop-blur-md"
-          : "border-b border-transparent bg-[rgba(251,244,232,0.08)]"
+          ? "bg-[rgba(251,244,232,0.82)] backdrop-blur-md"
+          : "bg-[rgba(251,244,232,0.08)]"
       }`
-    : "fixed inset-x-0 top-0 z-30 border-b border-white/45 bg-[#fbf4e8]";
+    : "fixed inset-x-0 top-0 z-30 bg-[#fbf4e8]";
 
   useEffect(() => {
     if (!contactNotice) {
@@ -80,7 +85,9 @@ export function StorefrontHeader({
 
   useEffect(() => {
     setAccountMenuOpen(false);
+    setSearchPanelOpen(false);
     setAuthError(null);
+    setSignOutDialogOpen(false);
     setCreateAccountDialogOpen(false);
     setCreateAccountError(null);
   }, [pathname]);
@@ -163,11 +170,21 @@ export function StorefrontHeader({
     try {
       await signOut();
       setAccountMenuOpen(false);
+      setSignOutDialogOpen(false);
     } catch (error) {
       setAuthError(error instanceof Error ? error.message : "Sign out failed.");
     } finally {
       setAuthSubmitting(false);
     }
+  }
+
+  function handleHeaderSearchSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const normalizedQuery = headerSearch.trim();
+    setSearchPanelOpen(false);
+
+    router.push(normalizedQuery ? `/shop/?q=${encodeURIComponent(normalizedQuery)}` : "/shop/");
   }
 
   function updateCreateAccountField(field: keyof CreateAccountFormState, value: string) {
@@ -194,6 +211,12 @@ export function StorefrontHeader({
     setAuthError(null);
     setCreateAccountError(null);
     setCreateAccountDialogOpen(true);
+  }
+
+  function openSignOutDialog() {
+    setAccountMenuOpen(false);
+    setAuthError(null);
+    setSignOutDialogOpen(true);
   }
 
   function closeCreateAccountDialog() {
@@ -259,7 +282,7 @@ export function StorefrontHeader({
   const headerCategories = [
     {
       href: "/shop/",
-      label: "Sarees"
+      label: "Shop"
     },
     ...categoryCards.slice(0, 6).map((card) => ({
       href: buildShopHref({ browse: "curated", filter: card.shopFilter || card.title }),
@@ -309,24 +332,23 @@ export function StorefrontHeader({
                 ) : null}
               </div>
 
-              <nav className="flex shrink-0 items-center gap-3 text-[#667056]">
-                <Link
-                  href="/shop"
-                  aria-label="Search catalogue"
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full text-[#2b2a29] transition-colors duration-200 hover:bg-[#f1e8d8]"
-                >
-                  <HeaderSearchIcon />
-                </Link>
+              <nav className="flex shrink-0 items-center gap-2 text-[#667056]">
+                <HeaderActionButton
+                  label="Search"
+                  icon={<HeaderSearchIcon />}
+                  onClick={() => setSearchPanelOpen((current) => !current)}
+                  active={searchPanelOpen}
+                  iconOnly
+                />
                 <div ref={accountMenuRef} className="relative">
-                  <button
-                    type="button"
+                  <HeaderActionButton
+                    label="Account"
+                    icon={<HeaderAccountIcon />}
                     onClick={() => setAccountMenuOpen((current) => !current)}
+                    active={accountMenuOpen}
                     disabled={loading || authSubmitting || createAccountSubmitting}
-                    aria-label={user ? "Account" : "Sign in"}
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-full text-[#2b2a29] transition-colors duration-200 hover:bg-[#f1e8d8] disabled:opacity-60"
-                  >
-                    <HeaderAccountIcon />
-                  </button>
+                    iconOnly
+                  />
 
                   {accountMenuOpen ? (
                     <div className="absolute right-0 top-[calc(100%+0.5rem)] min-w-[180px] rounded-[1.2rem] border border-[#ddd1c0] bg-[#fbf7ef] p-2 shadow-[0_20px_45px_rgba(63,71,56,0.16)]">
@@ -342,7 +364,7 @@ export function StorefrontHeader({
                           </Link>
                           <button
                             type="button"
-                            onClick={() => void handleHeaderSignOut()}
+                            onClick={openSignOutDialog}
                             disabled={authSubmitting}
                             className="w-full rounded-[0.95rem] px-3 py-2 text-left text-sm font-semibold text-[#4f5942] transition-colors duration-200 hover:bg-[#f1e8d8] disabled:opacity-60"
                           >
@@ -372,19 +394,42 @@ export function StorefrontHeader({
                     </div>
                   ) : null}
                 </div>
-                <span aria-hidden="true" className="hidden h-10 w-px bg-[#d6ccb9] sm:block" />
+                <span aria-hidden="true" className="mx-1 h-12 w-px bg-[#d8ccb9]" />
                 <Link
                   href="/checkout"
                   aria-label={`View bag with ${totalItems} item${totalItems === 1 ? "" : "s"}`}
-                  className="relative inline-flex h-10 w-10 items-center justify-center rounded-full text-[#2b2a29] transition-colors duration-200 hover:bg-[#f1e8d8]"
+                  className="relative inline-flex h-10 w-10 items-center justify-center text-[#768068] transition-colors duration-200 hover:text-[#5e684f]"
                 >
                   <HeaderCartIcon />
-                  <span className="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full bg-[#5e684f] px-1.5 py-0.5 text-[0.62rem] font-normal leading-none text-[#fbf4e8]">
+                  <span className="absolute -right-1.5 -top-2 inline-flex min-w-6 items-center justify-center rounded-full bg-[#a8574d] px-1.5 py-1 text-[0.66rem] font-medium leading-none text-[#fbf4e8]">
                     {totalItems}
                   </span>
                 </Link>
               </nav>
             </div>
+
+            {searchPanelOpen ? (
+              <div className="rounded-[1.35rem] border border-[#ddd1c0] bg-[#fffaf2] p-3 shadow-[0_18px_40px_rgba(94,104,79,0.08)]">
+                <form className="flex flex-col gap-3 sm:flex-row" onSubmit={handleHeaderSearchSubmit}>
+                  <label className="sr-only" htmlFor="header-search">
+                    Search catalogue
+                  </label>
+                  <input
+                    id="header-search"
+                    value={headerSearch}
+                    onChange={(event) => setHeaderSearch(event.target.value)}
+                    placeholder="Search by saree name, fabric, color, wedding, gifting..."
+                    className="h-11 min-w-0 flex-1 rounded-[1rem] border border-[#d9ccb8] bg-white px-4 text-sm text-[#2b2a29] outline-none transition-colors duration-200 placeholder:text-[#948978] focus:border-[#5e684f]"
+                  />
+                  <button
+                    type="submit"
+                    className="brand-caption inline-flex h-11 items-center justify-center rounded-[1rem] bg-[#5e684f] px-5 text-[0.62rem] font-semibold tracking-[0.08em] text-[#fbf4e8]"
+                  >
+                    SEARCH CATALOGUE
+                  </button>
+                </form>
+              </div>
+            ) : null}
 
             {headerCategories.length > 0 ? (
               <div className="flex gap-5 overflow-x-auto pb-1 text-[0.88rem] text-[#2b2a29] lg:hidden">
@@ -477,6 +522,18 @@ export function StorefrontHeader({
           </div>
         </div>
       ) : null}
+
+      <ConfirmationDialog
+        open={signOutDialogOpen}
+        title="Sign out of your account?"
+        message="You will be logged out from this device and will need to sign in again to access your profile, addresses, and orders."
+        confirmLabel="SIGN OUT"
+        cancelLabel="STAY SIGNED IN"
+        tone="neutral"
+        pending={authSubmitting}
+        onConfirm={() => void handleHeaderSignOut()}
+        onClose={() => setSignOutDialogOpen(false)}
+      />
 
       {createAccountDialogOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#3f4738]/36 px-4 py-6 sm:px-6 lg:px-8">
@@ -588,6 +645,47 @@ export function StorefrontHeader({
         </div>
       ) : null}
     </>
+  );
+}
+
+function HeaderActionButton({
+  label,
+  icon,
+  onClick,
+  active = false,
+  disabled = false,
+  iconOnly = false
+}: {
+  label: string;
+  icon: ReactNode;
+  onClick: () => void;
+  active?: boolean;
+  disabled?: boolean;
+  iconOnly?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      className={`inline-flex items-center justify-center transition-colors duration-200 disabled:opacity-60 ${
+        iconOnly ? "h-10 w-10" : "h-10 gap-2 rounded-full border px-4 text-sm font-medium"
+      } ${
+        active
+          ? iconOnly
+            ? "text-[#2b2a29]"
+            : "border-[#5e684f] bg-[#eef1e8] text-[#2b2a29]"
+          : iconOnly
+            ? "text-[#768068] hover:text-[#5e684f]"
+            : "border-[#d8cdbb] bg-[#fbf7ef] text-[#2b2a29] hover:bg-[#f1e8d8]"
+      }`}
+    >
+      <span aria-hidden="true" className={iconOnly ? "" : "text-[#5e684f]"}>
+        {icon}
+      </span>
+      {iconOnly ? <span className="sr-only">{label}</span> : <span>{label}</span>}
+    </button>
   );
 }
 

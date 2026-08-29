@@ -1,14 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 
 import { useAuthSession } from "@/components/auth-provider";
+import { useCart } from "@/components/cart-provider";
+import { useFavorites } from "@/components/favorites-provider";
+import { isProductPurchasable } from "@/lib/inventory";
+import { openOrderReceiptPreview, type OrderConfirmationData } from "@/lib/order-confirmation";
 import { SiteFooter } from "@/components/site-footer";
 import { StorefrontHeader } from "@/components/storefront-header";
 import { getCustomerProfile, saveCustomerProfile } from "@/lib/customer-profiles";
 import { subscribeToCustomerOrders } from "@/lib/orders";
+import { subscribeToSarees } from "@/lib/sarees";
+import { buildProductDetailHref } from "@/lib/storefront-routes";
 import type { CustomerAddress } from "@/types/customer-profile";
 import type { CheckoutOrder } from "@/types/order";
+import type { Saree } from "@/types/saree";
 
 type AddressDialogFormState = {
   label: string;
@@ -34,12 +42,16 @@ const emptyAddressDialogForm: AddressDialogFormState = {
 
 export function AccountPage() {
   const { user, loading, signIn } = useAuthSession();
+  const { favoriteSkus, favoritesCount, removeFavoriteSkus } = useFavorites();
+  const { addItem, items } = useCart();
   const [savedAddresses, setSavedAddresses] = useState<CustomerAddress[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState("");
   const [orders, setOrders] = useState<CheckoutOrder[]>([]);
+  const [catalogueProducts, setCatalogueProducts] = useState<Saree[]>([]);
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
   const [ordersLoading, setOrdersLoading] = useState(false);
+  const [catalogueLoading, setCatalogueLoading] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [profileMessage, setProfileMessage] = useState<string | null>(null);
   const [ordersError, setOrdersError] = useState<string | null>(null);
@@ -121,6 +133,28 @@ export function AccountPage() {
   }, [user?.uid]);
 
   useEffect(() => {
+    if (!user?.uid) {
+      setCatalogueProducts([]);
+      setCatalogueLoading(false);
+      return;
+    }
+
+    setCatalogueLoading(true);
+
+    return subscribeToSarees(
+      (nextProducts) => {
+        setCatalogueProducts(nextProducts.filter((product) => product.status !== "draft"));
+        setCatalogueLoading(false);
+      },
+      { status: ["active", "out_of_stock"] },
+      () => {
+        setCatalogueProducts([]);
+        setCatalogueLoading(false);
+      }
+    );
+  }, [user?.uid]);
+
+  useEffect(() => {
     if (!profileMessage) {
       return;
     }
@@ -134,6 +168,34 @@ export function AccountPage() {
     };
   }, [profileMessage]);
 
+  const favoriteProducts = useMemo(() => {
+    if (favoriteSkus.length === 0 || catalogueProducts.length === 0) {
+      return [];
+    }
+
+    const productsBySku = new Map(catalogueProducts.map((product) => [product.sku, product]));
+
+    return favoriteSkus
+      .map((sku) => productsBySku.get(sku))
+      .filter((product): product is Saree => Boolean(product));
+  }, [catalogueProducts, favoriteSkus]);
+
+  const unavailableFavoritesCount = Math.max(favoritesCount - favoriteProducts.length, 0);
+
+  useEffect(() => {
+    if (favoriteSkus.length === 0 || items.length === 0) {
+      return;
+    }
+
+    const favoriteSkusInBag = favoriteSkus.filter((sku) => items.some((item) => item.sku === sku && item.quantity > 0));
+
+    if (favoriteSkusInBag.length === 0) {
+      return;
+    }
+
+    removeFavoriteSkus(favoriteSkusInBag);
+  }, [favoriteSkus, items, removeFavoriteSkus]);
+
   async function handleSignIn() {
     try {
       await signIn();
@@ -142,27 +204,17 @@ export function AccountPage() {
     }
   }
 
-  function handleViewOrderDetails(order: CheckoutOrder) {
-    if (typeof window === "undefined") {
+  function handleOpenOrderReceipt(order: CheckoutOrder) {
+    openOrderReceiptPreview(buildOrderConfirmation(order));
+  }
+
+  function handleAddFavoriteToBag(product: Saree) {
+    if (!isProductPurchasable(product)) {
       return;
     }
 
-    const printWindow = window.open("", "_blank", "width=920,height=980");
-
-    if (!printWindow) {
-      setOrdersError("Enable pop-ups to open the order slip.");
-      return;
-    }
-
-    printWindow.document.open();
-    printWindow.document.write(buildOrderSlipHtml(order, window.location.origin));
-    printWindow.document.close();
-
-    try {
-      printWindow.history.replaceState({}, "", `/account/orders/${encodeURIComponent(order.id)}`);
-    } catch {
-      // Ignore history updates if the browser blocks them for the preview window.
-    }
+    addItem(product, 1);
+    removeFavoriteSkus([product.sku]);
   }
 
   function handleAddressDialogFieldChange(field: keyof AddressDialogFormState, value: string) {
@@ -247,14 +299,21 @@ export function AccountPage() {
 
       <section className="px-6 py-10 sm:px-10 lg:px-12">
         <div className="mx-auto max-w-7xl">
-          <div className="mb-8">
-            <p className="brand-caption text-[0.62rem] font-semibold tracking-[0.18em] text-[#7d876f]">ACCOUNT</p>
-            <h1 className="brand-copy mt-3 text-3xl leading-tight text-[#2b2a29] sm:text-[2.8rem]">
-              Your profile, addresses, and orders.
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-[#667056]">
-              Review saved addresses and your recent orders in one place.
-            </p>
+          <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="brand-caption text-[0.62rem] font-semibold tracking-[0.18em] text-[#7d876f]">ACCOUNT</p>
+              <h1 className="brand-copy mt-3 text-3xl leading-tight text-[#2b2a29] sm:text-[2.8rem]">
+                Your profile, addresses, and orders.
+              </h1>
+              <p className="mt-3 max-w-2xl text-sm leading-7 text-[#667056]">
+                Review saved addresses and your recent orders in one place.
+              </p>
+            </div>
+            {user ? (
+              <p className="brand-copy text-xl text-[#3f4738] sm:pb-1 sm:text-2xl">
+                {user.displayName || "Eshwe Customer"}
+              </p>
+            ) : null}
           </div>
 
           {loading ? (
@@ -266,7 +325,7 @@ export function AccountPage() {
               <div className="rounded-[2rem] border border-[#e3d8c9] bg-[#f8f0e3] p-8 shadow-[0_22px_60px_rgba(94,104,79,0.08)]">
                 <h2 className="brand-copy text-3xl text-[#2b2a29]">Sign in to view your profile</h2>
                 <p className="mt-4 max-w-xl text-sm leading-7 text-[#667056]">
-                  Use your account to view saved addresses and orders linked to your checkout history.
+                  Use your account to view saved addresses, favorites, and orders linked to your checkout history.
                 </p>
                 <button
                   type="button"
@@ -282,40 +341,22 @@ export function AccountPage() {
                 <h3 className="brand-copy text-2xl text-[#2b2a29]">What you will see</h3>
                 <ul className="mt-5 space-y-3 text-sm leading-7 text-[#667056]">
                   <li>Saved delivery addresses from checkout.</li>
+                  <li>Favorites you saved while browsing.</li>
                   <li>Orders linked to your signed-in account.</li>
-                  <li>One place to manage addresses and view order history.</li>
+                  <li>One place to manage addresses and revisit saved pieces.</li>
                 </ul>
               </aside>
             </section>
           ) : (
             <div className="grid gap-8 xl:grid-cols-[370px_minmax(0,1fr)]">
-              <aside className="space-y-6">
-                <section className="rounded-[2rem] border border-[#d9cebe] bg-[#fffaf2] p-6 shadow-[0_24px_60px_rgba(94,104,79,0.1)] sm:p-7">
-                  <p className="brand-caption text-[0.62rem] font-semibold tracking-[0.18em] text-[#7d876f]">
-                    PROFILE
-                  </p>
-                  <h2 className="brand-copy mt-4 text-2xl text-[#2b2a29]">
-                    {user.displayName || "Eshwe Customer"}
-                  </h2>
-                  <p className="mt-2 text-sm text-[#667056]">{user.email}</p>
-                </section>
-
+              <aside>
                 <section className="rounded-[2rem] border border-[#e3d8c9] bg-[#f8f0e3] p-6 shadow-[0_22px_60px_rgba(94,104,79,0.08)] sm:p-7">
                   <div className="flex items-center justify-between gap-4">
                     <div>
                       <p className="brand-caption text-[0.62rem] font-semibold tracking-[0.18em] text-[#7d876f]">
                         SAVED ADDRESSES
                       </p>
-                      <div className="mt-3 flex items-center gap-4">
-                        <h2 className="brand-copy text-2xl text-[#2b2a29]">Your addresses</h2>
-                        <button
-                          type="button"
-                          onClick={handleOpenAddressDialog}
-                          className="brand-caption inline-flex rounded-full border border-[#cbbda5] bg-[#fff8eb] px-3.5 py-1.5 text-[0.58rem] font-semibold tracking-[0.08em] text-[#5e684f]"
-                        >
-                          ADD NEW
-                        </button>
-                      </div>
+                      <h2 className="brand-copy mt-3 text-2xl text-[#2b2a29]">Your address</h2>
                     </div>
                   </div>
 
@@ -326,22 +367,33 @@ export function AccountPage() {
                       <p className="text-sm text-[#667056]">Loading saved addresses...</p>
                     ) : savedAddresses.length === 0 ? (
                       <div className="rounded-[1.3rem] border border-dashed border-[#d8cbb7] bg-[#fbf4e8] p-5 text-sm leading-7 text-[#667056]">
-                        No saved address yet. Add one here.
+                        <p>No saved address yet. Add your address here.</p>
+                        <button
+                          type="button"
+                          onClick={handleOpenAddressDialog}
+                          className="brand-caption mt-4 inline-flex rounded-full border border-[#cbbda5] bg-[#fff8eb] px-4 py-2 text-[0.58rem] font-semibold tracking-[0.08em] text-[#5e684f]"
+                        >
+                          ADD ADDRESS
+                        </button>
                       </div>
                     ) : (
                       savedAddresses.map((address, index) => (
                         <article
                           key={address.id}
-                          className="rounded-[1.35rem] border border-[#e8dccd] bg-[#fbf4e8] p-5 shadow-[0_10px_25px_rgba(94,104,79,0.04)]"
+                          className={`rounded-[1.2rem] border px-4 py-4 shadow-[0_10px_25px_rgba(94,104,79,0.04)] ${
+                            address.id === selectedAddressId
+                              ? "border-[#cabb9f] bg-[#fffaf2]"
+                              : "border-[#e8dccd] bg-[#fbf4e8]"
+                          }`}
                         >
                           <div className="flex items-start justify-between gap-4">
                             <div className="flex flex-wrap items-center gap-2">
-                              <p className="text-base font-semibold text-[#3f4738]">
-                                {address.label || `Address ${index + 1}`}
+                              <p className="text-sm font-semibold text-[#3f4738]">
+                                {address.fullName}
                               </p>
                               {address.id === selectedAddressId ? (
                                 <span className="rounded-full bg-[#efe4c6] px-2.5 py-1 text-[0.68rem] font-semibold text-[#5e684f]">
-                                  CURRENT
+                                  SAVED
                                 </span>
                               ) : null}
                             </div>
@@ -353,16 +405,11 @@ export function AccountPage() {
                               Edit
                             </button>
                           </div>
-                          <p className="mt-3 text-sm leading-7 text-[#667056]">
-                            {address.fullName}
-                            <br />
-                            {address.address}
-                            <br />
-                            {address.city}, {address.state} - {address.pincode}
-                            <br />
-                            {address.phone}
-                            <br />
-                            {address.email}
+                          <p className="mt-2 text-sm leading-6 text-[#667056]">
+                            {address.address}, {address.city}, {address.state} - {address.pincode}
+                          </p>
+                          <p className="mt-1 text-sm leading-6 text-[#667056]">
+                            {address.phone} · {address.email}
                           </p>
                         </article>
                       ))
@@ -371,102 +418,151 @@ export function AccountPage() {
                 </section>
               </aside>
 
-              <section className="rounded-[2rem] border border-[#e3d8c9] bg-[#f8f0e3] p-6 shadow-[0_22px_60px_rgba(94,104,79,0.08)] sm:p-8">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <p className="brand-caption text-[0.62rem] font-semibold tracking-[0.18em] text-[#7d876f]">
-                      MY ORDERS
-                    </p>
-                    <h2 className="brand-copy mt-3 text-2xl text-[#2b2a29]">Order history</h2>
+              <div className="space-y-8">
+                <section className="rounded-[2rem] border border-[#e3d8c9] bg-[#f8f0e3] p-6 shadow-[0_22px_60px_rgba(94,104,79,0.08)] sm:p-8">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="brand-caption text-[0.62rem] font-semibold tracking-[0.18em] text-[#7d876f]">
+                        FAVORITES
+                      </p>
+                      <h2 className="brand-copy mt-3 text-2xl text-[#2b2a29]">Saved pieces</h2>
+                      <p className="mt-2 text-sm text-[#667056]">Sarees you marked to revisit later.</p>
+                    </div>
+                    <span className="rounded-full bg-white/72 px-4 py-2 text-xs font-semibold text-[#5e684f]">
+                      {favoritesCount}
+                    </span>
                   </div>
-                  <span className="rounded-full bg-white/72 px-4 py-2 text-xs font-semibold text-[#5e684f]">
-                    {orders.length}
-                  </span>
-                </div>
 
-                <div className="mt-6 space-y-4">
-                  {ordersError ? <p className="text-sm text-[#9d4b45]">{ordersError}</p> : null}
-                  {ordersLoading ? (
-                    <p className="text-sm text-[#667056]">Loading your orders...</p>
-                  ) : orders.length === 0 ? (
-                    <div className="rounded-[1.3rem] border border-dashed border-[#d8cbb7] bg-[#fbf4e8] p-6 text-sm leading-7 text-[#667056]">
-                      No orders linked to this account yet.
-                    </div>
-                  ) : (
-                    <div className="overflow-hidden rounded-[1.5rem] border border-[#ddd1c0] bg-[#fbf7ef] shadow-[0_10px_25px_rgba(94,104,79,0.04)]">
-                      <div className="hidden grid-cols-[1.35fr_1.3fr_0.8fr_0.7fr_0.8fr_1fr] gap-4 border-b border-[#e4d8c8] bg-white/55 px-5 py-4 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-[#7d876f] md:grid">
-                        <span>Order</span>
-                        <span>Date</span>
-                        <span>Total</span>
-                        <span>Items</span>
-                        <span>Status</span>
-                        <span>Details</span>
+                  <div className="mt-6 space-y-4">
+                    {catalogueLoading && favoritesCount > 0 ? (
+                      <p className="text-sm text-[#667056]">Loading your saved pieces...</p>
+                    ) : favoritesCount === 0 ? (
+                      <div className="rounded-[1.3rem] border border-dashed border-[#d8cbb7] bg-[#fbf4e8] p-6 text-sm leading-7 text-[#667056]">
+                        No favorites yet. Tap the heart on any saree to save it here.
                       </div>
+                    ) : favoriteProducts.length === 0 ? (
+                      <div className="rounded-[1.3rem] border border-dashed border-[#d8cbb7] bg-[#fbf4e8] p-6 text-sm leading-7 text-[#667056]">
+                        Your saved sarees are not available to display right now.
+                      </div>
+                    ) : (
+                      <>
+                        {unavailableFavoritesCount > 0 ? (
+                          <p className="text-sm text-[#667056]">
+                            {unavailableFavoritesCount} saved {unavailableFavoritesCount === 1 ? "piece is" : "pieces are"} unavailable right now.
+                          </p>
+                        ) : null}
+                        <div className="space-y-3">
+                          {favoriteProducts.map((product) => (
+                            <FavoriteRow
+                              key={product.sku}
+                              product={product}
+                              cartQuantity={items.find((item) => item.sku === product.sku)?.quantity ?? 0}
+                              onAddToBag={handleAddFavoriteToBag}
+                            />
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </section>
 
-                      {orders.map((order, index) => (
-                        <article
-                          key={order.id}
-                          className={`px-5 py-4 ${index !== orders.length - 1 ? "border-b border-[#eadfce]" : ""}`}
-                        >
-                          <div className="grid gap-3 md:grid-cols-[1.35fr_1.3fr_0.8fr_0.7fr_0.8fr_1fr] md:items-center md:gap-4">
-                            <div>
-                              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[#7d876f] md:hidden">
-                                Order
-                              </p>
-                              <p className="text-sm font-semibold text-[#2b2a29]">
-                                #{order.id.slice(0, 8).toUpperCase()}
-                              </p>
-                            </div>
-
-                            <div>
-                              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[#7d876f] md:hidden">
-                                Date
-                              </p>
-                              <p className="text-sm text-[#4f5942]">{formatTimestamp(order.createdAt)}</p>
-                            </div>
-
-                            <div>
-                              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[#7d876f] md:hidden">
-                                Total
-                              </p>
-                              <p className="text-sm text-[#2b2a29]">{formatCurrency(order.amountBreakdown?.total)}</p>
-                            </div>
-
-                            <div>
-                              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[#7d876f] md:hidden">
-                                Items
-                              </p>
-                              <p className="text-sm text-[#4f5942]">
-                                {order.cartItems?.length || 0}
-                              </p>
-                            </div>
-
-                            <div>
-                              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[#7d876f] md:hidden">
-                                Status
-                              </p>
-                              <p className="text-sm font-medium text-[#5e684f]">{formatOrderStatus(order)}</p>
-                            </div>
-
-                            <div>
-                              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[#7d876f] md:hidden">
-                                Details
-                              </p>
-                              <button
-                                type="button"
-                                onClick={() => handleViewOrderDetails(order)}
-                                className="brand-caption inline-flex border-b border-[#7d876f] pb-0.5 text-[0.62rem] font-semibold tracking-[0.08em] text-[#4f5942]"
-                              >
-                                VIEW ORDER DETAILS
-                              </button>
-                            </div>
-                          </div>
-                        </article>
-                      ))}
+                <section className="rounded-[2rem] border border-[#e3d8c9] bg-[#f8f0e3] p-6 shadow-[0_22px_60px_rgba(94,104,79,0.08)] sm:p-8">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="brand-caption text-[0.62rem] font-semibold tracking-[0.18em] text-[#7d876f]">
+                        MY ORDERS
+                      </p>
+                      <h2 className="brand-copy mt-3 text-2xl text-[#2b2a29]">Order history</h2>
                     </div>
-                  )}
-                </div>
-              </section>
+                    <span className="rounded-full bg-white/72 px-4 py-2 text-xs font-semibold text-[#5e684f]">
+                      {orders.length}
+                    </span>
+                  </div>
+
+                  <div className="mt-6 space-y-4">
+                    {ordersError ? <p className="text-sm text-[#9d4b45]">{ordersError}</p> : null}
+                    {ordersLoading ? (
+                      <p className="text-sm text-[#667056]">Loading your orders...</p>
+                    ) : orders.length === 0 ? (
+                      <div className="rounded-[1.3rem] border border-dashed border-[#d8cbb7] bg-[#fbf4e8] p-6 text-sm leading-7 text-[#667056]">
+                        No orders linked to this account yet.
+                      </div>
+                    ) : (
+                      <>
+                        <div className="overflow-hidden rounded-[1.5rem] border border-[#ddd1c0] bg-[#fbf7ef] shadow-[0_10px_25px_rgba(94,104,79,0.04)]">
+                          <div className="hidden grid-cols-[1.35fr_1.3fr_0.8fr_0.7fr_0.8fr_1fr] gap-4 border-b border-[#e4d8c8] bg-white/55 px-5 py-4 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-[#7d876f] md:grid">
+                            <span>Order</span>
+                            <span>Date</span>
+                            <span>Total</span>
+                            <span>Items</span>
+                            <span>Status</span>
+                            <span>Receipt</span>
+                          </div>
+
+                          {orders.map((order, index) => (
+                            <article
+                              key={order.id}
+                              className={`px-5 py-4 ${index !== orders.length - 1 ? "border-b border-[#eadfce]" : ""}`}
+                            >
+                              <div className="grid gap-3 md:grid-cols-[1.35fr_1.3fr_0.8fr_0.7fr_0.8fr_1fr] md:items-center md:gap-4">
+                                <div>
+                                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[#7d876f] md:hidden">
+                                    Order
+                                  </p>
+                                  <p className="text-sm font-semibold text-[#2b2a29]">
+                                    #{order.id.slice(0, 8).toUpperCase()}
+                                  </p>
+                                </div>
+
+                                <div>
+                                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[#7d876f] md:hidden">
+                                    Date
+                                  </p>
+                                  <p className="text-sm text-[#4f5942]">{formatTimestamp(order.createdAt)}</p>
+                                </div>
+
+                                <div>
+                                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[#7d876f] md:hidden">
+                                    Total
+                                  </p>
+                                  <p className="text-sm text-[#2b2a29]">{formatCurrency(order.amountBreakdown?.total)}</p>
+                                </div>
+
+                                <div>
+                                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[#7d876f] md:hidden">
+                                    Items
+                                  </p>
+                                  <p className="text-sm text-[#4f5942]">{order.cartItems?.length || 0}</p>
+                                </div>
+
+                                <div>
+                                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[#7d876f] md:hidden">
+                                    Status
+                                  </p>
+                                  <p className="text-sm font-medium text-[#5e684f]">{formatOrderStatus(order)}</p>
+                                </div>
+
+                                <div>
+                                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[#7d876f] md:hidden">
+                                    Details
+                                  </p>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenOrderReceipt(order)}
+                                    className="brand-caption inline-flex border-b border-[#7d876f] pb-0.5 text-[0.62rem] font-semibold tracking-[0.08em] text-[#4f5942]"
+                                  >
+                                    VIEW RECEIPT
+                                  </button>
+                                </div>
+                              </div>
+                            </article>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </section>
+              </div>
             </div>
           )}
         </div>
@@ -701,322 +797,123 @@ function formatOrderStatus(order: CheckoutOrder) {
   return "PENDING";
 }
 
-function buildOrderSlipHtml(order: CheckoutOrder, origin: string) {
-  const shortOrderId = buildShortOrderId(order.id);
-  const placedAt = formatTimestamp(order.createdAt);
-  const items = (order.cartItems || [])
-    .map(
-      (item) => `
-        <tr>
-          <td style="padding:12px 0;border-bottom:1px solid #e6dccf;">
-            <div style="font-weight:600;color:#2b2a29;">${escapeHtml(item.name)}</div>
-            <div style="margin-top:4px;font-size:12px;color:#667056;">
-              SKU ${escapeHtml(item.sku)}${item.color ? ` · ${escapeHtml(item.color)}` : ""}
-            </div>
-          </td>
-          <td style="padding:12px 0;border-bottom:1px solid #e6dccf;text-align:right;color:#4f5942;">Qty ${item.quantity}</td>
-          <td style="padding:12px 0;border-bottom:1px solid #e6dccf;text-align:right;color:#2b2a29;font-weight:600;">${escapeHtml(
-            formatCurrency(item.unitPrice)
-          )}</td>
-        </tr>
-      `
-    )
-    .join("");
+function FavoriteRow({
+  product,
+  cartQuantity,
+  onAddToBag
+}: {
+  product: Saree;
+  cartQuantity: number;
+  onAddToBag: (product: Saree) => void;
+}) {
+  const productHref = buildProductDetailHref(product.slug);
+  const inBag = cartQuantity > 0;
 
-  const addressLines = [
-    order.customer?.fullName || "NA",
-    order.customer?.address || "NA",
-    [order.customer?.city, order.customer?.state].filter(Boolean).join(", "),
-    order.customer?.pincode || "",
-    order.customer?.phone || "",
-    order.customer?.email || ""
-  ]
-    .filter(Boolean)
-    .map((line) => `<div>${escapeHtml(line)}</div>`)
-    .join("");
+  return (
+    <article className="flex flex-col gap-4 rounded-[1.2rem] border border-[#e4d8c8] bg-[#fffaf2] p-4 shadow-[0_10px_24px_rgba(94,104,79,0.04)] sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex min-w-0 items-center gap-4">
+        <Link href={productHref} className="block shrink-0">
+          <div
+            className="h-20 w-16 rounded-[0.9rem] border border-[#eadfce] bg-[#efe5d7]"
+            style={{
+              backgroundImage: product.primaryImageUrl
+                ? `linear-gradient(180deg, rgba(255,249,236,0.05), rgba(43,24,14,0.1)), url('${product.primaryImageUrl}')`
+                : "linear-gradient(180deg, #e8dfd4 0%, #b7b2ad 100%)",
+              backgroundPosition: "center",
+              backgroundSize: "cover"
+            }}
+          />
+        </Link>
 
-  return `<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>eshwe-order-slip-${escapeHtml(shortOrderId)}.pdf</title>
-    <style>
-      :root {
-        color-scheme: light;
-      }
-      * {
-        box-sizing: border-box;
-      }
-      body {
-        margin: 0;
-        background: #f6efe3;
-        color: #3f4738;
-        font-family: Georgia, "Times New Roman", serif;
-      }
-      .page {
-        max-width: 920px;
-        margin: 0 auto;
-        padding: 32px;
-      }
-      .slip {
-        background: #fffdf9;
-        border: 1px solid #cdbda8;
-        border-radius: 28px;
-        padding: 28px;
-      }
-      .header {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 20px;
-        padding-bottom: 20px;
-        border-bottom: 1px solid #e5d9c9;
-      }
-      .header-left {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-      }
-      .logo-wrap {
-        border: 1px solid #d7cab6;
-        background: #fbf4e8;
-        border-radius: 18px;
-        padding: 10px;
-      }
-      .qr-wrap {
-        border: 1px solid #d7cab6;
-        background: #fffdf9;
-        border-radius: 16px;
-        padding: 8px;
-      }
-      .caption {
-        font: 600 11px/1.2 Arial, sans-serif;
-        letter-spacing: 0.18em;
-        color: #7d876f;
-      }
-      h1 {
-        margin: 8px 0 0;
-        font-size: 34px;
-        line-height: 1.05;
-        font-weight: 600;
-        color: #2b2a29;
-      }
-      .sub {
-        margin-top: 8px;
-        font: 14px/1.6 Arial, sans-serif;
-        color: #667056;
-      }
-      .qr-image {
-        width: 72px;
-        height: 72px;
-        display: block;
-      }
-      .grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 20px;
-        margin-top: 24px;
-      }
-      .card {
-        border: 1px solid #e6dccf;
-        background: #fbf7ef;
-        border-radius: 22px;
-        padding: 16px;
-      }
-      .wide {
-        grid-column: 1 / -1;
-      }
-      .card-title {
-        font: 600 11px/1.2 Arial, sans-serif;
-        letter-spacing: 0.14em;
-        color: #7d876f;
-      }
-      .meta {
-        margin-top: 12px;
-        font: 14px/1.7 Arial, sans-serif;
-        color: #4f5942;
-      }
-      .meta strong {
-        color: #2b2a29;
-      }
-      .items {
-        margin-top: 24px;
-        border: 1px solid #e6dccf;
-        background: #fbf7ef;
-        border-radius: 22px;
-        padding: 16px;
-      }
-      .footer {
-        margin-top: 18px;
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-end;
-        gap: 12px;
-        font: 12px/1.5 Arial, sans-serif;
-        color: #667056;
-      }
-      .items-head {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 16px;
-        padding-bottom: 12px;
-        border-bottom: 1px solid #e7dccb;
-        font: 600 11px/1.2 Arial, sans-serif;
-        letter-spacing: 0.14em;
-        color: #7d876f;
-      }
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 8px;
-        font: 14px/1.6 Arial, sans-serif;
-      }
-      .summary-row td {
-        padding-top: 10px;
-        padding-bottom: 10px;
-        border-bottom: 0;
-        color: #4f5942;
-      }
-      .summary-divider td {
-        border-top: 1px solid #e7dccb;
-        padding-top: 16px;
-      }
-      .summary-value {
-        text-align: right;
-      }
-      .summary-total td {
-        font-weight: 700;
-        color: #2b2a29;
-      }
-      @media print {
-        body {
-          background: white;
-        }
-        .page {
-          max-width: none;
-          padding: 0;
-        }
-        .slip {
-          border-radius: 0;
-          border-color: #3f4738;
-        }
-      }
-    </style>
-  </head>
-  <body>
-    <div class="page">
-      <div class="slip">
-        <div class="header">
-          <div class="header-left">
-            <div class="logo-wrap">
-              <img src="${escapeHtml(origin)}/eshwelogo-transparent.png" alt="Eshwe" width="58" height="58" />
-            </div>
-            <div>
-              <div class="caption">ESHWE SAREE STUDIO</div>
-              <h1>Order Slip</h1>
-              <div class="sub">${escapeHtml(order.customer?.fullName || "Customer")}</div>
-            </div>
+        <div className="min-w-0">
+          <Link href={productHref} className="block">
+            <h3 className="brand-copy truncate text-lg text-[#2b2a29]">{product.name}</h3>
+          </Link>
+          <p className="mt-1 text-sm text-[#667056]">
+            {product.fabric}
+            {product.color ? ` · ${product.color}` : ""}
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            <span className="text-sm font-semibold text-[#1f1a17]">{formatCurrency(product.price)}</span>
+            {typeof product.originalPrice === "number" ? (
+              <span className="text-sm text-[#8d8b87] line-through">{formatCurrency(product.originalPrice)}</span>
+            ) : null}
+            {product.status === "out_of_stock" ? (
+              <span className="rounded-full bg-[#efe4c6] px-2.5 py-1 text-[0.66rem] font-semibold text-[#5e684f]">
+                OUT OF STOCK
+              </span>
+            ) : null}
           </div>
-          <div class="qr-wrap">
-            <img src="${escapeHtml(origin)}/eshweqr.png" alt="Eshwe QR" class="qr-image" />
-          </div>
-        </div>
-
-        <div class="grid">
-          <div class="card">
-            <div class="card-title">ORDER</div>
-            <div class="meta">
-              <div><strong>Order ID:</strong> ${escapeHtml(order.id)}</div>
-              <div><strong>Phone:</strong> ${escapeHtml(order.customer?.phone || "NA")}</div>
-              <div><strong>Email:</strong> ${escapeHtml(order.customer?.email || "NA")}</div>
-              <div><strong>Payment:</strong> ${escapeHtml(formatPaymentMethod(order.paymentMethod))}</div>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-title">STATUS</div>
-            <div class="meta">
-              <div><strong>Order Status:</strong> ${escapeHtml(formatOrderStatus(order))}</div>
-              ${
-                order.dispatchStatus === "completed"
-                  ? `<div><strong>Dispatch:</strong> Completed</div>`
-                  : `<div><strong>Dispatch:</strong> In progress</div>`
-              }
-            </div>
-          </div>
-
-          <div class="card wide">
-            <div class="card-title">DELIVERY ADDRESS</div>
-            <div class="meta">${addressLines}</div>
-          </div>
-        </div>
-
-        <div class="items">
-          <div class="items-head">
-            <span>ORDER ITEMS</span>
-            <span>${order.cartItems?.length || 0} item${order.cartItems?.length === 1 ? "" : "s"}</span>
-          </div>
-          <table>
-            <tbody>
-              ${items}
-            </tbody>
-            <tfoot>
-              <tr class="summary-row summary-divider">
-                <td colspan="2">Subtotal</td>
-                <td class="summary-value">${escapeHtml(formatCurrency(order.amountBreakdown?.subtotal))}</td>
-              </tr>
-              <tr class="summary-row">
-                <td colspan="2">Shipping</td>
-                <td class="summary-value">${escapeHtml(formatCurrency(order.amountBreakdown?.shippingFee))}</td>
-              </tr>
-              <tr class="summary-row">
-                <td colspan="2">Packaging</td>
-                <td class="summary-value">${escapeHtml(formatCurrency(order.amountBreakdown?.packagingFee))}</td>
-              </tr>
-              <tr class="summary-row summary-total">
-                <td colspan="2">Total</td>
-                <td class="summary-value">${escapeHtml(formatCurrency(order.amountBreakdown?.total))}</td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-        <div class="footer">
-          <div>eshwe.com</div>
-          <div>${escapeHtml(placedAt)}</div>
         </div>
       </div>
-    </div>
-    <script>
-      window.addEventListener("load", function () {
-        window.focus();
-      });
-    </script>
-  </body>
-</html>`;
+
+      <div className="flex flex-wrap items-center gap-3 sm:justify-end">
+        {product.status === "out_of_stock" ? null : inBag ? (
+          <span className="rounded-full bg-[#eef2e7] px-3.5 py-2 text-[0.7rem] font-semibold text-[#5e684f]">
+            {cartQuantity} IN BAG
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={() => onAddToBag(product)}
+            className="brand-caption inline-flex items-center justify-center rounded-full bg-[#5e684f] px-4 py-2.5 text-[0.58rem] font-semibold tracking-[0.08em] text-[#fbf4e8]"
+          >
+            ADD TO BAG
+          </button>
+        )}
+
+        <Link
+          href={productHref}
+          className="brand-caption inline-flex items-center justify-center rounded-full border border-[#d6ccb9] px-4 py-2.5 text-[0.58rem] font-semibold tracking-[0.08em] text-[#5e684f]"
+        >
+          VIEW DETAILS
+        </Link>
+      </div>
+    </article>
+  );
 }
 
-function formatPaymentMethod(value?: string | null) {
-  if (!value) {
-    return "Razorpay";
+function buildOrderConfirmation(order: CheckoutOrder) {
+  return {
+    createdAtIso: buildOrderCreatedAtIso(order.createdAt),
+    customer: {
+      address: order.customer?.address || "",
+      city: order.customer?.city || "",
+      email: order.customer?.email || "",
+      fullName: order.customer?.fullName || "Customer",
+      phone: order.customer?.phone || "",
+      pincode: order.customer?.pincode || "",
+      state: order.customer?.state || ""
+    },
+    internalOrderId: order.id,
+    items: (order.cartItems ?? []).map((item) => ({
+      color: item.color,
+      name: item.name,
+      primaryImageUrl: item.primaryImageUrl,
+      quantity: item.quantity,
+      sku: item.sku,
+      unitOriginalPrice: item.unitOriginalPrice,
+      unitPrice: item.unitPrice
+    })),
+    notes: order.notes || "",
+    paymentStatus: order.paymentStatus || order.status || "pending",
+    razorpayOrderId: order.razorpayOrderId || "",
+    razorpayPaymentId: order.razorpayPaymentId || "",
+    summary: {
+      currency: order.currency || "INR",
+      packagingFee: order.amountBreakdown?.packagingFee || 0,
+      savings: order.amountBreakdown?.savings || 0,
+      shippingFee: order.amountBreakdown?.shippingFee || 0,
+      subtotal: order.amountBreakdown?.subtotal || 0,
+      total: order.amountBreakdown?.total || 0
+    }
+  } satisfies OrderConfirmationData;
+}
+
+function buildOrderCreatedAtIso(value: unknown) {
+  if (!value || typeof value !== "object" || !("toDate" in value) || typeof value.toDate !== "function") {
+    return new Date().toISOString();
   }
 
-  return value
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
-function buildShortOrderId(orderId: string) {
-  return orderId.slice(-8).toUpperCase();
-}
-
-function escapeHtml(value: string) {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
+  return value.toDate().toISOString();
 }

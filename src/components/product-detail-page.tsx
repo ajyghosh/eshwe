@@ -6,11 +6,13 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { useCart } from "@/components/cart-provider";
 import { CatalogueProductCard, EmptyCatalogueState } from "@/components/catalogue-product-card";
+import { FavoriteToggleButton } from "@/components/favorite-toggle-button";
 import { NotifyWaitlistDialog } from "@/components/notify-waitlist-dialog";
 import { ProductCardCarousel } from "@/components/product-card-carousel";
 import { SiteFooter } from "@/components/site-footer";
 import { StorefrontHeader } from "@/components/storefront-header";
 import { getPurchasableQuantityLimit, isProductPurchasable } from "@/lib/inventory";
+import { getProductDiscoveryTags } from "@/lib/product-discovery";
 import {
   defaultDryingTips,
   defaultProductLength,
@@ -155,15 +157,15 @@ export function ProductDetailPage() {
       return visibleProducts.slice(0, 8);
     }
 
-    const sameCategory = visibleProducts.filter(
-      (item) => item.slug !== product.slug && item.category === product.category
-    );
-
-    if (sameCategory.length > 0) {
-      return sameCategory;
-    }
-
-    return visibleProducts.filter((item) => item.slug !== product.slug).slice(0, 8);
+    return visibleProducts
+      .filter((item) => item.slug !== product.slug)
+      .map((item) => ({
+        item,
+        score: getRelatedProductScore(product, item)
+      }))
+      .sort((left, right) => right.score - left.score)
+      .map(({ item }) => item)
+      .slice(0, 8);
   }, [product, visibleProducts]);
 
   const relatedHeading = product
@@ -179,6 +181,7 @@ export function ProductDetailPage() {
     : "Browse other available sarees from the current collection.";
 
   const activeImage = galleryImages[activeImageIndex] || product?.primaryImageUrl || "";
+  const productTags = product ? getProductDiscoveryTags(product) : [];
   const productDetailFacts = product ? buildProductDetailFacts(product) : [];
   const designDetailFacts = product ? buildDesignDetailFacts(product) : [];
   const materialCareFacts = product ? buildMaterialCareFacts(product) : [];
@@ -308,6 +311,8 @@ export function ProductDetailPage() {
                       }}
                     />
 
+                    <FavoriteToggleButton sku={product.sku} size="large" className="absolute right-5 top-5 z-10" />
+
                     <div className="absolute left-5 top-5 flex flex-col gap-3">
                       {typeof product.discountPercent === "number" && product.discountPercent > 0 ? (
                         <span className="brand-caption rounded-[0.85rem] bg-[#5e684f] px-4 py-2 text-[0.56rem] font-semibold tracking-[0.08em] text-[#fbf4e8]">
@@ -344,17 +349,26 @@ export function ProductDetailPage() {
                   </div>
 
                   {galleryImages.length > 1 ? (
-                    <div className="mt-6 flex items-center justify-center gap-4">
+                    <div className="mt-6 grid grid-cols-4 gap-3 sm:grid-cols-5">
                       {galleryImages.map((image, index) => (
                         <button
                           key={`${image}-${index}`}
                           type="button"
                           aria-label={`Go to image ${index + 1}`}
                           onClick={() => setActiveImageIndex(index)}
-                          className={`h-3 w-3 rounded-full transition-colors duration-300 ${
-                            index === activeImageIndex ? "bg-[#5e684f]" : "bg-[#5e684f]/20"
+                          className={`overflow-hidden rounded-[1rem] border transition-colors duration-300 ${
+                            index === activeImageIndex ? "border-[#5e684f]" : "border-[#ddd1c0]"
                           }`}
-                        />
+                        >
+                          <div
+                            className="aspect-[0.82] w-full bg-[#efe5d7]"
+                            style={{
+                              backgroundImage: `url('${image}')`,
+                              backgroundPosition: "center",
+                              backgroundSize: "cover"
+                            }}
+                          />
+                        </button>
                       ))}
                     </div>
                   ) : null}
@@ -387,23 +401,30 @@ export function ProductDetailPage() {
                       <span>{product.color}</span>
                     </div>
 
-                    <div className="mt-4 flex flex-wrap items-center gap-3">
-                      <Link
-                        href={buildShopHref({ browse: "curated", filter: product.category })}
-                        className="brand-caption inline-flex h-[38px] w-[112px] shrink-0 items-center justify-center rounded-2xl border border-[#d6ccb9] px-3 text-[0.54rem] font-semibold tracking-[0.08em] text-[#5e684f]"
-                      >
-                        VIEW SIMILAR
-                      </Link>
+                    {productTags.length > 0 ? (
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {productTags.map((tag) => (
+                          <span
+                            key={tag}
+                            className="rounded-full border border-[#ddd1c0] bg-[#fffaf2] px-3 py-1.5 text-xs text-[#5f6852]"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+
+                    <div className="mt-5 flex flex-wrap items-center gap-3">
                       {product.status === "out_of_stock" ? (
                         <button
                           type="button"
                           onClick={() => setWaitlistDialogOpen(true)}
-                          className="brand-caption inline-flex h-[38px] w-[112px] shrink-0 items-center justify-center rounded-2xl bg-[#3f4738] px-3 text-[0.54rem] font-semibold tracking-[0.08em] text-[#fbf4e8]"
+                          className="brand-caption inline-flex h-[46px] min-w-[180px] items-center justify-center rounded-2xl bg-[#3f4738] px-5 text-[0.58rem] font-semibold tracking-[0.08em] text-[#fbf4e8]"
                         >
                           NOTIFY ME
                         </button>
                       ) : cartQuantity > 0 ? (
-                        <div className="grid h-[38px] w-[112px] shrink-0 grid-cols-[24px_1fr_24px] items-center rounded-2xl border border-[#d6ccb9] bg-[#5e684f] px-1 text-[#fbf4e8]">
+                        <div className="grid h-[46px] min-w-[180px] grid-cols-[32px_1fr_32px] items-center rounded-2xl border border-[#d6ccb9] bg-[#5e684f] px-2 text-[#fbf4e8]">
                           <InlineCartButton label="Decrease quantity" onClick={handleDecreaseCartQuantity}>
                             -
                           </InlineCartButton>
@@ -420,12 +441,38 @@ export function ProductDetailPage() {
                         <button
                           type="button"
                           onClick={handleAddToCart}
-                          className="brand-caption inline-flex h-[38px] w-[112px] shrink-0 items-center justify-center rounded-2xl bg-[#5e684f] px-3 text-[0.54rem] font-semibold tracking-[0.08em] text-[#fbf4e8]"
+                          className="brand-caption inline-flex h-[46px] min-w-[180px] items-center justify-center rounded-2xl bg-[#5e684f] px-5 text-[0.58rem] font-semibold tracking-[0.08em] text-[#fbf4e8]"
                         >
                           ADD TO CART
                         </button>
                       )}
+                      <Link
+                        href={buildShopHref({ browse: "curated", filter: product.category })}
+                        className="brand-caption inline-flex h-[46px] items-center justify-center rounded-2xl border border-[#d6ccb9] px-5 text-[0.56rem] font-semibold tracking-[0.08em] text-[#5e684f]"
+                      >
+                        VIEW SIMILAR
+                      </Link>
                     </div>
+
+                    <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                      <TrustPill
+                        title={product.status === "active" ? "Ready to ship" : "Back soon"}
+                        description={
+                          product.status === "active"
+                            ? product.availableStock <= 2
+                              ? `Only ${product.availableStock} left in stock`
+                              : "In-stock pieces are reserved at checkout"
+                            : "Join the waitlist for the next restock"
+                        }
+                      />
+                      <TrustPill title="Secure payment" description="Checkout continues with Razorpay" />
+                      <TrustPill title="Shipping" description="Free shipping on prepaid orders" />
+                      <TrustPill title="Returns" description="Shipping and returns details at checkout" />
+                    </div>
+
+                    {(product.productNote || defaultProductNote) ? (
+                      <p className="mt-4 text-sm leading-6 text-[#667056]">{product.productNote || defaultProductNote}</p>
+                    ) : null}
 
                     <p className="mt-4 max-w-2xl text-sm leading-6 text-[#667056] sm:text-[0.95rem]">
                       {product.description}
@@ -458,9 +505,9 @@ export function ProductDetailPage() {
                     />
                   </div>
 
-                  <div className="rounded-[1.15rem] border border-[#ddd1c0] bg-[#fbf7ef] px-4 py-3 sm:px-5">
+                  <div className="rounded-[1.15rem] border border-[#e4d8c9] bg-white/70 px-4 py-3 sm:px-5">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-[0.76rem] text-[#667056]">{copied ? "Link copied" : "Share this saree"}</span>
+                      <span className="text-[0.76rem] text-[#667056]">{copied ? "Link copied" : "Share if you want a second opinion"}</span>
                       <ShareIconLink
                         href={buildFacebookShareUrl(currentUrl)}
                         label="Share on Facebook"
@@ -490,14 +537,6 @@ export function ProductDetailPage() {
                         icon={<MailIcon />}
                       />
                     </div>
-
-                    {(product.productNote || defaultProductNote) ? (
-                      <div className="mt-3 border-t border-[#e3d8c9] pt-3">
-                        <p className="text-[0.74rem] leading-5 text-[#7a7f72]">
-                          {product.productNote || defaultProductNote}
-                        </p>
-                      </div>
-                    ) : null}
                   </div>
 
                 </section>
@@ -734,6 +773,21 @@ function ShareIconLink({
   );
 }
 
+function TrustPill({
+  title,
+  description
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="rounded-[1.15rem] border border-[#ddd1c0] bg-[#fffaf2] px-4 py-3">
+      <p className="text-sm font-semibold text-[#2b2a29]">{title}</p>
+      <p className="mt-1 text-sm leading-6 text-[#667056]">{description}</p>
+    </div>
+  );
+}
+
 function buildProductDetailFacts(product: Saree) {
   return [
     { label: "Category", value: product.category },
@@ -756,12 +810,43 @@ function buildMaterialCareFacts(product: Saree) {
   ];
 }
 
+function getRelatedProductScore(referenceProduct: Saree, candidateProduct: Saree) {
+  let score = 0;
+  const referenceTags = new Set(getProductDiscoveryTags(referenceProduct));
+  const candidateTags = getProductDiscoveryTags(candidateProduct);
+
+  if (candidateProduct.category === referenceProduct.category) {
+    score += 8;
+  }
+
+  if (candidateProduct.fabric === referenceProduct.fabric) {
+    score += 5;
+  }
+
+  if (candidateProduct.featured) {
+    score += 2;
+  }
+
+  candidateTags.forEach((tag) => {
+    if (referenceTags.has(tag)) {
+      score += 4;
+    }
+  });
+
+  return score;
+}
+
 function buildImageIdentifiers(url: string, path?: string | null) {
   const identifiers = new Set<string>();
-  const cleanPath = path?.trim();
+  const cleanPath = normalizeImageIdentifier(path);
 
   if (cleanPath) {
     identifiers.add(cleanPath);
+    const pathFileName = extractImageFileName(cleanPath);
+
+    if (pathFileName) {
+      identifiers.add(pathFileName);
+    }
   }
 
   try {
@@ -772,16 +857,52 @@ function buildImageIdentifiers(url: string, path?: string | null) {
       identifiers.add(firebaseObjectPath);
     }
 
-    identifiers.add(`${parsedUrl.origin}${parsedUrl.pathname}`);
+    const normalizedPathname = normalizeImageIdentifier(parsedUrl.pathname);
+
+    if (normalizedPathname) {
+      identifiers.add(normalizedPathname);
+      identifiers.add(`${parsedUrl.origin}${normalizedPathname}`);
+    }
+
+    const imageFileName = extractImageFileName(parsedUrl.pathname);
+
+    if (imageFileName) {
+      identifiers.add(imageFileName);
+    }
   } catch {
-    const normalizedUrl = url.split("?")[0].split("#")[0].trim();
+    const normalizedUrl = normalizeImageIdentifier(url);
 
     if (normalizedUrl) {
       identifiers.add(normalizedUrl);
+
+      const imageFileName = extractImageFileName(normalizedUrl);
+
+      if (imageFileName) {
+        identifiers.add(imageFileName);
+      }
     }
   }
 
   return Array.from(identifiers);
+}
+
+function normalizeImageIdentifier(value?: string | null) {
+  if (!value) {
+    return "";
+  }
+
+  return decodeURIComponent(value.split("?")[0].split("#")[0].trim()).replace(/\/+$/, "");
+}
+
+function extractImageFileName(value: string) {
+  const normalizedValue = normalizeImageIdentifier(value);
+
+  if (!normalizedValue) {
+    return "";
+  }
+
+  const segments = normalizedValue.split("/").filter(Boolean);
+  return segments[segments.length - 1] ?? "";
 }
 
 function extractStorageObjectPath(parsedUrl: URL) {

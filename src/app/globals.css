@@ -135,3 +135,61 @@ h6 {
     opacity: 0;
   }
 }
+
+@keyframes receipt-slide {
+  0%,
+  12% {
+    transform: translate(-50%, -48px);
+  }
+
+  42%,
+  72% {
+    transform: translate(-50%, 0);
+  }
+
+  100% {
+    transform: translate(-50%, 10px);
+  }
+}
+
+@keyframes receipt-shine {
+  0% {
+    transform: translateX(-120%);
+    opacity: 0;
+  }
+
+  25% {
+    opacity: 0.95;
+  }
+
+  100% {
+    transform: translateX(220%);
+    opacity: 0;
+  }
+}
+
+@keyframes receipt-progress {
+  0%,
+  80%,
+  100% {
+    transform: scale(0.72);
+    opacity: 0.4;
+  }
+
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.receipt-printer-card {
+  animation: receipt-slide 1800ms cubic-bezier(0.22, 1, 0.36, 1) infinite alternate;
+}
+
+.receipt-shine {
+  animation: receipt-shine 1800ms ease-in-out infinite;
+}
+
+.receipt-progress-dot {
+  animation: receipt-progress 1100ms ease-in-out infinite;
+}

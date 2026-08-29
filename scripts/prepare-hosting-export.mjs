@@ -15,7 +15,6 @@ const routeCopies = [
   { from: join(nextAppDir, "owner.html"), to: join(outDir, "owner", "index.html") },
   { from: join(nextAppDir, "owner", "messages.html"), to: join(outDir, "owner", "messages", "index.html") },
   { from: join(nextAppDir, "product.html"), to: join(outDir, "product", "index.html") },
-  { from: join(nextAppDir, "robots.txt.body"), to: join(outDir, "robots.txt") },
   { from: join(nextAppDir, "sitemap.xml.body"), to: join(outDir, "sitemap.xml") },
   { from: join(nextPagesDir, "404.html"), to: join(outDir, "404.html") },
   { from: join(nextAppDir, "_not-found.html"), to: join(outDir, "404", "index.html") }

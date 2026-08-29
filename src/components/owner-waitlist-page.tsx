@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { User } from "firebase/auth";
 
+import { OwnerBackofficeNav } from "@/components/owner-backoffice-nav";
+import { OwnerSectionHero } from "@/components/owner-section-hero";
 import {
   isPrimaryOwnerEmail,
   normalizeEmail,
@@ -22,6 +25,7 @@ import { subscribeToWaitlistEntries } from "@/lib/waitlist";
 import type { WaitlistEntry } from "@/types/waitlist-entry";
 
 export function OwnerWaitlistPage() {
+  const router = useRouter();
   const [authLoading, setAuthLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [ownerAccounts, setOwnerAccounts] = useState<OwnerAccount[]>([]);
@@ -102,6 +106,7 @@ export function OwnerWaitlistPage() {
 
   async function handleSignOut() {
     await signOutOwner();
+    router.replace("/owner");
   }
 
   if (!firebaseReady) {
@@ -120,39 +125,26 @@ export function OwnerWaitlistPage() {
   return (
     <main className="min-h-screen bg-[#fbf4e8] px-6 py-12 text-[#4f5942] sm:px-10 lg:px-12">
       <div className="mx-auto max-w-6xl">
-        <section className="rounded-[2.2rem] bg-[#5a6851] p-8 text-[#f8ecd2] shadow-[0_30px_80px_rgba(79,89,66,0.18)]">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="brand-caption text-[0.68rem] font-semibold tracking-[0.22em] text-[#f3dfaa]">
-                OWNER WAITLIST
-              </p>
-              <h1 className="brand-copy mt-4 text-4xl leading-[1.05] text-[#f8ecd2] sm:text-5xl">
-                Back-in-stock requests
-              </h1>
-              <p className="mt-4 max-w-2xl text-sm leading-7 text-[#f8f1e3]/84 sm:text-[0.95rem]">
-                Review shoppers who asked to be notified when an out-of-stock saree becomes available again.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-              <Link
-                href="/owner/"
-                className="brand-caption inline-flex rounded-2xl border border-[#f8ecd2]/28 px-5 py-3 text-[0.62rem] font-semibold tracking-[0.08em] text-[#f8ecd2]"
+        <OwnerSectionHero
+          eyebrow="OWNER WAITLIST"
+          title="Back-in-stock requests"
+          description="Review shoppers who asked to be notified when an out-of-stock saree becomes available again."
+          action={
+            user ? (
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className="brand-caption rounded-2xl bg-[#f8ecd2] px-5 py-3 text-[0.62rem] font-semibold tracking-[0.08em] text-[#5a6851]"
               >
-                BACK TO DASHBOARD
-              </Link>
-              {user ? (
-                <button
-                  type="button"
-                  onClick={handleSignOut}
-                  className="brand-caption rounded-2xl bg-[#f8ecd2] px-5 py-3 text-[0.62rem] font-semibold tracking-[0.08em] text-[#5a6851]"
-                >
-                  SIGN OUT
-                </button>
-              ) : null}
-            </div>
-          </div>
-        </section>
+                SIGN OUT
+              </button>
+            ) : null
+          }
+        />
+
+        {ownerAuthorized ? (
+          <OwnerBackofficeNav className="mt-6" badges={{ "/owner/waitlist": entries.length }} />
+        ) : null}
 
         {authLoading || (user && !isPrimaryOwnerEmail(user?.email) && ownerAccountsLoading) ? (
           <div className="mt-10 rounded-[1.8rem] border border-[#e3d8c9] bg-[#f8f0e3] p-8 text-sm text-[#667056]">
@@ -214,7 +206,7 @@ export function OwnerWaitlistPage() {
               </span>
             </div>
 
-            <div className="mt-6 space-y-4">
+            <div className="mt-6">
               {entriesError ? <p className="text-sm text-[#9d4b45]">{entriesError}</p> : null}
               {entriesLoading ? (
                 <p className="text-sm text-[#667056]">Loading waitlist requests…</p>
@@ -223,44 +215,76 @@ export function OwnerWaitlistPage() {
                   No waitlist requests yet.
                 </div>
               ) : (
-                entries.map((entry) => (
-                  <article
-                    key={entry.id}
-                    className="rounded-[1.35rem] border border-[#e8dccd] bg-[#fbf4e8] p-5 shadow-[0_10px_25px_rgba(94,104,79,0.04)]"
-                  >
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="text-base font-semibold text-[#3f4738]">{entry.productName}</p>
-                          <span className="rounded-full bg-[#efe4c6] px-2.5 py-1 text-[0.68rem] font-semibold text-[#5e684f]">
-                            NEW
-                          </span>
-                        </div>
-                        <p className="mt-1 text-sm text-[#667056]">
-                          {entry.productSku} · {entry.productCategory}
-                        </p>
-                        <div className="mt-3 flex flex-wrap gap-3 text-sm text-[#4f5942]">
-                          {entry.email ? <span>{entry.email}</span> : null}
-                          {entry.phone ? <span>{entry.phone}</span> : null}
-                        </div>
-                      </div>
+                <div className="overflow-hidden rounded-[1.5rem] border border-[#e3d8c9] bg-[#fffaf1]">
+                  <div className="hidden grid-cols-[1.2fr_0.95fr_1fr_0.9fr_0.8fr] gap-4 border-b border-[#e8dccd] bg-[#f6edde] px-5 py-4 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-[#7d876f] lg:grid">
+                    <span>Product</span>
+                    <span>SKU</span>
+                    <span>Contact</span>
+                    <span>Received</span>
+                    <span>Action</span>
+                  </div>
 
-                      <div className="text-left text-xs text-[#667056] sm:text-right">
-                        <p>{entry.sourcePath || "/"}</p>
-                        <p className="mt-1">{formatTimestamp(entry.createdAt)}</p>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 flex flex-wrap gap-3">
-                      <Link
-                        href={buildProductDetailHref(entry.productSlug)}
-                        className="brand-caption inline-flex rounded-full bg-[#5e684f] px-4 py-2 text-[0.52rem] font-semibold tracking-[0.08em] text-[#fbf4e8]"
+                  <div className="divide-y divide-[#ece1d3]">
+                    {entries.map((entry) => (
+                      <article
+                        key={entry.id}
+                        className="grid gap-4 px-5 py-4 text-sm text-[#4f5942] lg:grid-cols-[1.2fr_0.95fr_1fr_0.9fr_0.8fr] lg:items-center"
                       >
-                        VIEW PRODUCT
-                      </Link>
-                    </div>
-                  </article>
-                ))
+                        <div className="min-w-0">
+                          <p className="text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-[#8a836f] lg:hidden">
+                            Product
+                          </p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="truncate font-semibold text-[#2b2a29]">{entry.productName}</p>
+                            <span className="rounded-full bg-[#efe4c6] px-2.5 py-1 text-[0.68rem] font-semibold text-[#5e684f]">
+                              NEW
+                            </span>
+                          </div>
+                          <p className="mt-1 truncate text-xs text-[#667056]">{entry.productCategory}</p>
+                        </div>
+
+                        <div>
+                          <p className="text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-[#8a836f] lg:hidden">
+                            SKU
+                          </p>
+                          <p>{entry.productSku}</p>
+                        </div>
+
+                        <div className="min-w-0">
+                          <p className="text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-[#8a836f] lg:hidden">
+                            Contact
+                          </p>
+                          <p className="truncate">{entry.email || entry.phone || "NA"}</p>
+                          {entry.email && entry.phone ? (
+                            <p className="mt-1 truncate text-xs text-[#667056]">{entry.phone}</p>
+                          ) : null}
+                        </div>
+
+                        <div>
+                          <p className="text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-[#8a836f] lg:hidden">
+                            Received
+                          </p>
+                          <p>{formatTimestamp(entry.createdAt)}</p>
+                        </div>
+
+                        <div>
+                          <p className="text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-[#8a836f] lg:hidden">
+                            Action
+                          </p>
+                          <Link
+                            href={buildProductDetailHref(entry.productSlug)}
+                            className="brand-caption inline-flex rounded-full bg-[#5e684f] px-4 py-2 text-[0.52rem] font-semibold tracking-[0.08em] text-[#fbf4e8]"
+                          >
+                            VIEW PRODUCT
+                          </Link>
+                          <p className="mt-2 truncate text-xs text-[#667056]">
+                            {formatWaitlistSourcePath(entry.sourcePath, entry.productSlug)}
+                          </p>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
           </section>
@@ -279,4 +303,20 @@ function formatTimestamp(value: unknown) {
     dateStyle: "medium",
     timeStyle: "short"
   }).format(value.toDate());
+}
+
+function formatWaitlistSourcePath(sourcePath: string, productSlug: string) {
+  const normalizedPath = sourcePath.trim();
+
+  if (
+    normalizedPath &&
+    normalizedPath !== "." &&
+    normalizedPath !== "/" &&
+    normalizedPath !== "/product" &&
+    normalizedPath !== "/product/"
+  ) {
+    return normalizedPath;
+  }
+
+  return buildProductDetailHref(productSlug);
 }

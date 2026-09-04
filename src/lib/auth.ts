@@ -1,6 +1,7 @@
 import {
   GoogleAuthProvider,
   onAuthStateChanged,
+  updateProfile,
   signInWithPopup,
   signOut,
   type User
@@ -63,4 +64,36 @@ export function isOwnerEmail(email?: string | null) {
 
 export function getOwnerEmail() {
   return OWNER_EMAIL;
+}
+
+export function getCustomerAuthDisplayLabel(user?: Pick<User, "displayName" | "phoneNumber" | "email"> | null) {
+  const displayName = user?.displayName?.trim();
+
+  if (displayName) {
+    return displayName;
+  }
+
+  const phoneNumber = user?.phoneNumber?.trim();
+
+  if (phoneNumber) {
+    return phoneNumber;
+  }
+
+  return user?.email?.trim() ?? "";
+}
+
+export async function syncCustomerDisplayName(fullName: string) {
+  const normalizedFullName = fullName.trim();
+
+  if (!auth?.currentUser || !normalizedFullName) {
+    return;
+  }
+
+  if (auth.currentUser.displayName === normalizedFullName) {
+    return;
+  }
+
+  await updateProfile(auth.currentUser, {
+    displayName: normalizedFullName
+  });
 }

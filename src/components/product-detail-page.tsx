@@ -11,7 +11,7 @@ import { NotifyWaitlistDialog } from "@/components/notify-waitlist-dialog";
 import { ProductCardCarousel } from "@/components/product-card-carousel";
 import { SiteFooter } from "@/components/site-footer";
 import { StorefrontHeader } from "@/components/storefront-header";
-import { getPurchasableQuantityLimit, isProductPurchasable } from "@/lib/inventory";
+import { compareProductsByAvailability, getPurchasableQuantityLimit, isProductPurchasable } from "@/lib/inventory";
 import { getProductDiscoveryTags } from "@/lib/product-discovery";
 import {
   defaultDryingTips,
@@ -29,9 +29,9 @@ import {
 import type { Saree } from "@/types/saree";
 
 export function ProductDetailPage() {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "/product";
   const searchParams = useSearchParams();
-  const searchSlug = searchParams.get("slug");
+  const searchSlug = (searchParams ?? new URLSearchParams()).get("slug");
   const { addItem, items, updateQuantity } = useCart();
   const [products, setProducts] = useState<Saree[]>([]);
   const [loading, setLoading] = useState(true);
@@ -163,7 +163,11 @@ export function ProductDetailPage() {
         item,
         score: getRelatedProductScore(product, item)
       }))
-      .sort((left, right) => right.score - left.score)
+      .sort(
+        (left, right) =>
+          compareProductsByAvailability(left.item, right.item) ||
+          right.score - left.score
+      )
       .map(({ item }) => item)
       .slice(0, 8);
   }, [product, visibleProducts]);

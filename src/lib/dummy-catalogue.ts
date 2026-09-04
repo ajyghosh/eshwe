@@ -117,7 +117,7 @@ function buildDummyProduct({
   const featured = index % 7 === 0;
   const occasionTags = OCCASION_ROTATIONS[index % OCCASION_ROTATIONS.length] ?? [];
   const seededDate = new Date(2026, (index * 3) % 12, (index % 28) + 1);
-  const name = `${color} ${category} Test Saree ${String(index + 1).padStart(3, "0")}`;
+  const name = `${color} ${category} ${String(index + 1).padStart(3, "0")}`;
 
   return {
     name,
@@ -183,4 +183,3 @@ function getOptionsByType<T extends readonly string[]>(
 
   return values.length > 0 ? Array.from(new Set(values)) : Array.from(fallback);
 }
-

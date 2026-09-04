@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { useCart } from "@/components/cart-provider";
 
 export function FloatingBagButton() {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "/";
   const { totalItems } = useCart();
   const normalizedPathname = pathname.endsWith("/") && pathname !== "/" ? pathname.slice(0, -1) : pathname;
 
@@ -14,6 +14,8 @@ export function FloatingBagButton() {
     totalItems <= 0 ||
     normalizedPathname === "/checkout" ||
     normalizedPathname === "/payment" ||
+    normalizedPathname === "/app" ||
+    normalizedPathname.startsWith("/app/") ||
     normalizedPathname === "/owner" ||
     normalizedPathname.startsWith("/owner/")
   ) {

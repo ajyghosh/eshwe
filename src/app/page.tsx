@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
 
 import { SiteFooter } from "@/components/site-footer";
 import { StorefrontHeader } from "@/components/storefront-header";
@@ -9,21 +8,7 @@ import { StorefrontHomeContent } from "@/components/storefront-home-content";
 import { StorefrontCatalogue } from "@/components/storefront-catalogue";
 
 export default function Home() {
-  const [homeReady, setHomeReady] = useState(false);
-
-  useEffect(() => {
-    setHomeReady(false);
-
-    const handleHomeReady = () => {
-      setHomeReady(true);
-    };
-
-    window.addEventListener("eshwe:home-hero-ready", handleHomeReady);
-
-    return () => {
-      window.removeEventListener("eshwe:home-hero-ready", handleHomeReady);
-    };
-  }, []);
+  const homeReady = true;
 
   const serviceHighlights = [
     {

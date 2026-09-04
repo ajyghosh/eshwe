@@ -26,12 +26,18 @@ type RazorpayEventResponse = {
 
 type RazorpayCheckoutOptions = {
   amount: number;
+  callback_url?: string;
   currency: string;
+  redirect?: boolean;
   description?: string;
   handler: (response: RazorpayHandlerResponse) => void | Promise<void>;
   image?: string;
   key: string;
   modal?: {
+    animation?: boolean;
+    backdropclose?: boolean;
+    confirm_close?: boolean;
+    escape?: boolean;
     ondismiss?: () => void;
   };
   name?: string;
@@ -41,6 +47,10 @@ type RazorpayCheckoutOptions = {
     contact?: string;
     email?: string;
     name?: string;
+  };
+  retry?: {
+    enabled?: boolean;
+    max_count?: number;
   };
   theme?: {
     color?: string;
@@ -59,7 +69,7 @@ const RAZORPAY_FUNCTIONS_ORIGIN = "https://asia-south1-eshwesareestudio.cloudfun
 const RAZORPAY_API_BASE_PATH = "/api/razorpay";
 
 export type { RazorpayCheckoutOptions, RazorpayEventResponse, RazorpayHandlerResponse, RazorpayInstance };
-export { getRazorpayApiUrl };
+export { getRazorpayApiUrl, getRazorpayCallbackUrl };
 
 export async function loadRazorpayCheckoutScript() {
   if (typeof window === "undefined") {
@@ -124,6 +134,20 @@ function getRazorpayApiUrl(path: "create-order" | "verify-payment" | "webhook") 
   }
 
   return `${RAZORPAY_FUNCTIONS_ORIGIN}/razorpayWebhook`;
+}
+
+function getRazorpayCallbackUrl(path: "app-callback") {
+  const endpointPath = path === "app-callback" ? "/api/razorpay/app-callback" : "/api/razorpay/app-callback";
+
+  if (typeof window !== "undefined" && isLocalDevelopmentHostname(window.location.hostname)) {
+    return `${RAZORPAY_FUNCTIONS_ORIGIN}/razorpayAppCallback`;
+  }
+
+  if (typeof window !== "undefined") {
+    return new URL(endpointPath, window.location.origin).toString();
+  }
+
+  return `https://eshwe.com${endpointPath}`;
 }
 
 function isLocalDevelopmentHostname(hostname: string) {

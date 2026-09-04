@@ -13,13 +13,16 @@ import { CategoryCarousel } from "@/components/category-carousel";
 import { SiteFooter } from "@/components/site-footer";
 import { StorefrontHeader } from "@/components/storefront-header";
 import { subscribeToCategoryCards } from "@/lib/homepage";
+import { compareProductsByAvailability } from "@/lib/inventory";
 import { matchesProductIntent, matchesProductSearch, SHOP_INTENT_TAGS } from "@/lib/product-discovery";
 import { subscribeToSarees } from "@/lib/sarees";
 import {
   buildShopHref,
   buildShopPath,
+  buildShopVisiblePath,
   matchesRouteIdentifier,
-  resolveShopLocation
+  resolveShopLocation,
+  resolveShopSearchQuery
 } from "@/lib/storefront-routes";
 import { useProgressiveProductGrid } from "@/lib/use-progressive-product-grid";
 import type { CategoryCard } from "@/types/homepage";
@@ -41,11 +44,12 @@ type BrowseOption = {
 };
 
 export function ShopCataloguePage() {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "/shop";
   const searchParams = useSearchParams();
-  const searchBrowse = searchParams.get("browse");
-  const searchFilter = searchParams.get("filter");
-  const searchQueryParam = searchParams.get("q") ?? "";
+  const currentSearchParams = searchParams ?? new URLSearchParams();
+  const searchBrowse = currentSearchParams.get("browse");
+  const searchFilter = currentSearchParams.get("filter");
+  const searchQueryParam = resolveShopSearchQuery(pathname, currentSearchParams.get("q"));
   const [products, setProducts] = useState<Saree[]>([]);
   const [categoryCards, setCategoryCards] = useState<CategoryCard[]>([]);
   const [loading, setLoading] = useState(true);
@@ -131,18 +135,14 @@ export function ShopCataloguePage() {
     if (routeState.browse === "new-arrivals") {
       setActiveBrowse(browseNewArrivalsLabel);
       setActiveCuratedFilter("");
-      if (searchBrowse || searchFilter || searchQueryParam) {
-        replaceVisibleShopUrl(buildShopPath({ browse: "new-arrivals" }), searchQueryParam);
-      }
+      replaceVisibleShopUrl(buildShopPath({ browse: "new-arrivals" }), searchQueryParam);
       return;
     }
 
     if (routeState.browse === "featured") {
       setActiveBrowse(browseFeaturedLabel);
       setActiveCuratedFilter("");
-      if (searchBrowse || searchFilter || searchQueryParam) {
-        replaceVisibleShopUrl(buildShopPath({ browse: "featured" }), searchQueryParam);
-      }
+      replaceVisibleShopUrl(buildShopPath({ browse: "featured" }), searchQueryParam);
       return;
     }
 
@@ -158,9 +158,7 @@ export function ShopCataloguePage() {
       if (matchingOption) {
         setActiveBrowse(matchingOption.title);
         setActiveCuratedFilter(matchingOption.shopFilter);
-        if (searchBrowse || searchFilter || searchQueryParam) {
-          replaceVisibleShopUrl(buildShopPath({ browse: "curated", filter: matchingOption.shopFilter }), searchQueryParam);
-        }
+        replaceVisibleShopUrl(buildShopPath({ browse: "curated", filter: matchingOption.shopFilter }), searchQueryParam);
         return;
       }
 
@@ -170,9 +168,7 @@ export function ShopCataloguePage() {
         setActiveBrowse(browseAllLabel);
         setActiveCuratedFilter("");
         setActiveIntent(matchingIntent);
-        if (searchBrowse || searchFilter || searchQueryParam) {
-          replaceVisibleShopUrl(buildShopPath({ browse: "curated", filter: matchingIntent }), searchQueryParam);
-        }
+        replaceVisibleShopUrl(buildShopPath({ browse: "curated", filter: matchingIntent }), searchQueryParam);
         return;
       }
 
@@ -183,9 +179,7 @@ export function ShopCataloguePage() {
         setActiveBrowse(browseAllLabel);
         setActiveCuratedFilter("");
         setActiveCategory(matchingCategory);
-        if (searchBrowse || searchFilter || searchQueryParam) {
-          replaceVisibleShopUrl(buildShopPath({ browse: "curated", filter: matchingCategory }), searchQueryParam);
-        }
+        replaceVisibleShopUrl(buildShopPath({ browse: "curated", filter: matchingCategory }), searchQueryParam);
         return;
       }
 
@@ -195,18 +189,14 @@ export function ShopCataloguePage() {
         setActiveBrowse(browseAllLabel);
         setActiveCuratedFilter("");
         setActiveFabric(matchingFabric);
-        if (searchBrowse || searchFilter || searchQueryParam) {
-          replaceVisibleShopUrl(buildShopPath({ browse: "curated", filter: matchingFabric }), searchQueryParam);
-        }
+        replaceVisibleShopUrl(buildShopPath({ browse: "curated", filter: matchingFabric }), searchQueryParam);
         return;
       }
     }
 
     setActiveBrowse(browseAllLabel);
     setActiveCuratedFilter("");
-    if (searchBrowse || searchFilter || searchQueryParam) {
-      replaceVisibleShopUrl(buildShopPath(), searchQueryParam);
-    }
+    replaceVisibleShopUrl(buildShopPath(), searchQueryParam);
   }, [browseOptions, categories, fabrics, pathname, searchBrowse, searchFilter, searchQueryParam]);
 
   const browseFilteredProducts = products.filter((product) => {
@@ -714,14 +704,40 @@ function replaceVisibleShopUrl(nextPath: string, searchQuery: string) {
     return;
   }
 
-  const params = new URLSearchParams();
+  const nextUrl = `${buildShopVisiblePath({ q: searchQuery, browse: resolveBrowseModeFromPath(nextPath), filter: resolveFilterFromPath(nextPath) })}${window.location.hash}`;
+  const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
 
-  if (searchQuery.trim()) {
-    params.set("q", searchQuery.trim());
+  if (currentUrl === nextUrl) {
+    return;
   }
 
-  const query = params.toString();
-  window.history.replaceState(window.history.state, "", `${nextPath}${query ? `?${query}` : ""}${window.location.hash}`);
+  window.history.replaceState(window.history.state, "", nextUrl);
+}
+
+function resolveBrowseModeFromPath(pathname: string) {
+  if (pathname.includes("/shop/new-arrivals/")) {
+    return "new-arrivals" as const;
+  }
+
+  if (pathname.includes("/shop/featured/")) {
+    return "featured" as const;
+  }
+
+  if (pathname.includes("/shop/category/")) {
+    return "curated" as const;
+  }
+
+  return "all" as const;
+}
+
+function resolveFilterFromPath(pathname: string) {
+  const segments = pathname.split("/").filter(Boolean);
+
+  if (segments[0] === "shop" && segments[1] === "category" && segments[2]) {
+    return decodeURIComponent(segments[2]);
+  }
+
+  return "";
 }
 
 function FilterSelect({
@@ -826,15 +842,20 @@ function sortProducts(products: Saree[], activeSort: string) {
   const sorted = [...products];
 
   if (activeSort === "Price: Low to High") {
-    return sorted.sort((left, right) => left.price - right.price);
+    return sorted.sort((left, right) => compareProductsByAvailability(left, right) || left.price - right.price);
   }
 
   if (activeSort === "Price: High to Low") {
-    return sorted.sort((left, right) => right.price - left.price);
+    return sorted.sort((left, right) => compareProductsByAvailability(left, right) || right.price - left.price);
   }
 
   if (activeSort === "Most Relevant") {
     return sorted.sort((left, right) => {
+      const availabilityDifference = compareProductsByAvailability(left, right);
+      if (availabilityDifference !== 0) {
+        return availabilityDifference;
+      }
+
       const leftScore = Number(left.featured) * 10 + Number(left.status === "active") * 5;
       const rightScore = Number(right.featured) * 10 + Number(right.status === "active") * 5;
 
@@ -842,7 +863,7 @@ function sortProducts(products: Saree[], activeSort: string) {
     });
   }
 
-  return sorted;
+  return sorted.sort((left, right) => compareProductsByAvailability(left, right));
 }
 
 function buildActiveFilters({

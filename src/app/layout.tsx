@@ -81,6 +81,11 @@ export default function RootLayout({
       <head>
         <link rel="preconnect" href="https://firebasestorage.googleapis.com" crossOrigin="" />
         <link rel="preconnect" href="https://storage.googleapis.com" crossOrigin="" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var path=window.location.pathname;if(path!=="/"){return;}var mobile=window.matchMedia("(max-width: 767px)").matches||/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);if(mobile){window.location.replace("/app/");}}catch(e){}})();`
+          }}
+        />
       </head>
       <body>
         <StorefrontShell>{children}</StorefrontShell>

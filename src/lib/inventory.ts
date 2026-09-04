@@ -47,3 +47,10 @@ export function isProductPurchasable(product: Pick<Saree, "status" | "availableS
 export function isCartItemUnavailable(item: Pick<CartItem, "status" | "availableStock">) {
   return item.status !== "active" || normalizeAvailableStock(item.availableStock) <= 0;
 }
+
+export function compareProductsByAvailability(
+  left: Pick<Saree, "status" | "availableStock">,
+  right: Pick<Saree, "status" | "availableStock">
+) {
+  return Number(!isProductPurchasable(left)) - Number(!isProductPurchasable(right));
+}

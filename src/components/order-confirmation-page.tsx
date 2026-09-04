@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { SiteFooter } from "@/components/site-footer";
 import { StorefrontHeader } from "@/components/storefront-header";
 import {
+  formatOrderConfirmationId,
   formatOrderConfirmationDate,
   formatOrderConfirmationDateOnly,
   formatOrderConfirmationPaymentStatus,
@@ -34,6 +35,7 @@ const CONFETTI_PIECES = Array.from({ length: 22 }, (_, index) => ({
 
 export function OrderConfirmationPage() {
   const [confirmation, setConfirmation] = useState<OrderConfirmationData | null>(null);
+  const displayOrderId = confirmation ? formatOrderConfirmationId(confirmation.internalOrderId) : "-";
 
   useEffect(() => {
     const savedConfirmation = readLatestOrderConfirmation();
@@ -125,12 +127,12 @@ export function OrderConfirmationPage() {
                   Thank you. Your order is confirmed.
                 </h1>
                 <p className="mt-4 max-w-2xl text-sm leading-7 text-[#667056]">
-                  We have captured your payment and saved the order details below. Open the receipt in a clean browser
+                  We have received your payment and saved the order details below. Open the receipt in a clean browser
                   view if you want to review it separately.
                 </p>
 
                 <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                  <InfoCard label="Order ID" value={confirmation.internalOrderId} />
+                  <InfoCard label="Order ID" value={displayOrderId} />
                   <InfoCard label="Payment ID" value={confirmation.razorpayPaymentId} />
                   <InfoCard label="Status" value={formatOrderConfirmationPaymentStatus(confirmation.paymentStatus)} />
                   <InfoCard label="Placed" value={formatOrderConfirmationDateOnly(confirmation.createdAtIso)} />

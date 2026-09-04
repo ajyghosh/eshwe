@@ -1,17 +1,19 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { useAuthSession } from "@/components/auth-provider";
 import { useCart } from "@/components/cart-provider";
 import { useFavorites } from "@/components/favorites-provider";
-import { isProductPurchasable } from "@/lib/inventory";
+import { getCustomerAuthDisplayLabel, syncCustomerDisplayName } from "@/lib/auth";
+import { getPurchasableQuantityLimit, isProductPurchasable } from "@/lib/inventory";
 import { openOrderReceiptPreview, type OrderConfirmationData } from "@/lib/order-confirmation";
 import { SiteFooter } from "@/components/site-footer";
 import { StorefrontHeader } from "@/components/storefront-header";
 import { getCustomerProfile, saveCustomerProfile } from "@/lib/customer-profiles";
-import { subscribeToCustomerOrders } from "@/lib/orders";
+import { buildReorderSelections, subscribeToCustomerOrders } from "@/lib/orders";
 import { subscribeToSarees } from "@/lib/sarees";
 import { buildProductDetailHref } from "@/lib/storefront-routes";
 import type { CustomerAddress } from "@/types/customer-profile";
@@ -41,9 +43,10 @@ const emptyAddressDialogForm: AddressDialogFormState = {
 };
 
 export function AccountPage() {
+  const router = useRouter();
   const { user, loading, signIn } = useAuthSession();
-  const { favoriteSkus, favoritesCount, removeFavoriteSkus } = useFavorites();
-  const { addItem, items } = useCart();
+  const { favoriteSkus, favoritesCount } = useFavorites();
+  const { addItem, items, removeItem, updateQuantity } = useCart();
   const [savedAddresses, setSavedAddresses] = useState<CustomerAddress[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState("");
   const [orders, setOrders] = useState<CheckoutOrder[]>([]);
@@ -55,6 +58,7 @@ export function AccountPage() {
   const [profileError, setProfileError] = useState<string | null>(null);
   const [profileMessage, setProfileMessage] = useState<string | null>(null);
   const [ordersError, setOrdersError] = useState<string | null>(null);
+  const [ordersMessage, setOrdersMessage] = useState<string | null>(null);
   const [addressDialogOpen, setAddressDialogOpen] = useState(false);
   const [editingAddressId, setEditingAddressId] = useState("");
   const [addressDialogForm, setAddressDialogForm] = useState<AddressDialogFormState>(emptyAddressDialogForm);
@@ -81,7 +85,9 @@ export function AccountPage() {
           return;
         }
 
-        const nextSavedAddresses = customerProfile?.addresses ?? [];
+        const nextSavedAddresses = (customerProfile?.addresses ?? []).map((address) =>
+          applyVerifiedPhoneToAddress(address, user?.phoneNumber)
+        );
         const nextSelectedAddressId = customerProfile?.selectedAddressId ?? nextSavedAddresses[0]?.id ?? "";
 
         setSavedAddresses(nextSavedAddresses);
@@ -168,6 +174,20 @@ export function AccountPage() {
     };
   }, [profileMessage]);
 
+  useEffect(() => {
+    if (!ordersMessage) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setOrdersMessage(null);
+    }, 2400);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [ordersMessage]);
+
   const favoriteProducts = useMemo(() => {
     if (favoriteSkus.length === 0 || catalogueProducts.length === 0) {
       return [];
@@ -181,20 +201,7 @@ export function AccountPage() {
   }, [catalogueProducts, favoriteSkus]);
 
   const unavailableFavoritesCount = Math.max(favoritesCount - favoriteProducts.length, 0);
-
-  useEffect(() => {
-    if (favoriteSkus.length === 0 || items.length === 0) {
-      return;
-    }
-
-    const favoriteSkusInBag = favoriteSkus.filter((sku) => items.some((item) => item.sku === sku && item.quantity > 0));
-
-    if (favoriteSkusInBag.length === 0) {
-      return;
-    }
-
-    removeFavoriteSkus(favoriteSkusInBag);
-  }, [favoriteSkus, items, removeFavoriteSkus]);
+  const customerAuthLabel = getCustomerAuthDisplayLabel(user);
 
   async function handleSignIn() {
     try {
@@ -208,13 +215,31 @@ export function AccountPage() {
     openOrderReceiptPreview(buildOrderConfirmation(order));
   }
 
+  function handleShopAgain(order: CheckoutOrder) {
+    const reorderSelections = buildReorderSelections(order, catalogueProducts);
+
+    if (reorderSelections.length === 0) {
+      setOrdersMessage(null);
+      setOrdersError("These items are no longer available to add back into the cart.");
+      return;
+    }
+
+    reorderSelections.forEach(({ product, quantity }) => {
+      addItem(product, quantity);
+    });
+
+    const totalAdded = reorderSelections.reduce((sum, selection) => sum + selection.quantity, 0);
+    setOrdersError(null);
+    setOrdersMessage(`${totalAdded} item${totalAdded === 1 ? "" : "s"} added to cart.`);
+    router.push("/shop");
+  }
+
   function handleAddFavoriteToBag(product: Saree) {
     if (!isProductPurchasable(product)) {
       return;
     }
 
     addItem(product, 1);
-    removeFavoriteSkus([product.sku]);
   }
 
   function handleAddressDialogFieldChange(field: keyof AddressDialogFormState, value: string) {
@@ -231,7 +256,7 @@ export function AccountPage() {
       label: "",
       fullName: user?.displayName || "",
       email: user?.email || "",
-      phone: "",
+      phone: resolveVerifiedPhone(user?.phoneNumber),
       address: "",
       city: "",
       state: "",
@@ -247,7 +272,7 @@ export function AccountPage() {
       label: address.label,
       fullName: address.fullName,
       email: address.email,
-      phone: address.phone,
+      phone: resolveVerifiedPhone(user?.phoneNumber, address.phone),
       address: address.address,
       city: address.city,
       state: address.state,
@@ -262,7 +287,12 @@ export function AccountPage() {
       return;
     }
 
-    const nextAddress = buildCustomerAddress(addressDialogForm, savedAddresses.length, editingAddressId);
+    const nextAddress = buildCustomerAddress(
+      addressDialogForm,
+      savedAddresses.length,
+      editingAddressId,
+      user.phoneNumber
+    );
 
     if (!nextAddress) {
       setProfileError("Complete all address details before saving.");
@@ -278,6 +308,7 @@ export function AccountPage() {
         : [...savedAddresses, nextAddress];
       const nextSelectedAddressId = selectedAddressId || nextSavedAddresses[0]?.id || nextAddress.id;
 
+      await syncCustomerDisplayName(nextAddress.fullName);
       await saveCustomerProfile(user.uid, buildProfilePayload(nextSavedAddresses, nextSelectedAddressId));
       setSavedAddresses(nextSavedAddresses);
       setSelectedAddressId(nextSelectedAddressId);
@@ -311,7 +342,7 @@ export function AccountPage() {
             </div>
             {user ? (
               <p className="brand-copy text-xl text-[#3f4738] sm:pb-1 sm:text-2xl">
-                {user.displayName || "Eshwe Customer"}
+                {user.displayName || customerAuthLabel || "Eshwe Customer"}
               </p>
             ) : null}
           </div>
@@ -325,14 +356,14 @@ export function AccountPage() {
               <div className="rounded-[2rem] border border-[#e3d8c9] bg-[#f8f0e3] p-8 shadow-[0_22px_60px_rgba(94,104,79,0.08)]">
                 <h2 className="brand-copy text-3xl text-[#2b2a29]">Sign in to view your profile</h2>
                 <p className="mt-4 max-w-xl text-sm leading-7 text-[#667056]">
-                  Use your account to view saved addresses, favorites, and orders linked to your checkout history.
+                  Use your mobile account to view saved addresses, favorites, and orders linked to your checkout history.
                 </p>
                 <button
                   type="button"
                   onClick={() => void handleSignIn()}
                   className="brand-caption mt-8 inline-flex rounded-2xl bg-[#5e684f] px-6 py-3 text-[0.66rem] font-semibold tracking-[0.08em] text-[#fbf4e8]"
                 >
-                  SIGN IN WITH GOOGLE
+                  CONTINUE WITH SMS
                 </button>
                 {profileError ? <p className="mt-4 text-sm text-[#9d4b45]">{profileError}</p> : null}
               </div>
@@ -458,6 +489,9 @@ export function AccountPage() {
                               product={product}
                               cartQuantity={items.find((item) => item.sku === product.sku)?.quantity ?? 0}
                               onAddToBag={handleAddFavoriteToBag}
+                              onDecreaseQuantity={() => updateQuantity(product.sku, (items.find((item) => item.sku === product.sku)?.quantity ?? 0) - 1)}
+                              onIncreaseQuantity={() => updateQuantity(product.sku, (items.find((item) => item.sku === product.sku)?.quantity ?? 0) + 1)}
+                              onRemoveFromBag={() => removeItem(product.sku)}
                             />
                           ))}
                         </div>
@@ -481,6 +515,7 @@ export function AccountPage() {
 
                   <div className="mt-6 space-y-4">
                     {ordersError ? <p className="text-sm text-[#9d4b45]">{ordersError}</p> : null}
+                    {ordersMessage ? <p className="text-sm text-[#5e684f]">{ordersMessage}</p> : null}
                     {ordersLoading ? (
                       <p className="text-sm text-[#667056]">Loading your orders...</p>
                     ) : orders.length === 0 ? (
@@ -490,13 +525,13 @@ export function AccountPage() {
                     ) : (
                       <>
                         <div className="overflow-hidden rounded-[1.5rem] border border-[#ddd1c0] bg-[#fbf7ef] shadow-[0_10px_25px_rgba(94,104,79,0.04)]">
-                          <div className="hidden grid-cols-[1.35fr_1.3fr_0.8fr_0.7fr_0.8fr_1fr] gap-4 border-b border-[#e4d8c8] bg-white/55 px-5 py-4 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-[#7d876f] md:grid">
+                          <div className="hidden grid-cols-[1.35fr_1.3fr_0.8fr_0.7fr_0.8fr_1.25fr] gap-4 border-b border-[#e4d8c8] bg-white/55 px-5 py-4 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-[#7d876f] md:grid">
                             <span>Order</span>
                             <span>Date</span>
                             <span>Total</span>
                             <span>Items</span>
                             <span>Status</span>
-                            <span>Receipt</span>
+                            <span>Actions</span>
                           </div>
 
                           {orders.map((order, index) => (
@@ -504,7 +539,7 @@ export function AccountPage() {
                               key={order.id}
                               className={`px-5 py-4 ${index !== orders.length - 1 ? "border-b border-[#eadfce]" : ""}`}
                             >
-                              <div className="grid gap-3 md:grid-cols-[1.35fr_1.3fr_0.8fr_0.7fr_0.8fr_1fr] md:items-center md:gap-4">
+                              <div className="grid gap-3 md:grid-cols-[1.35fr_1.3fr_0.8fr_0.7fr_0.8fr_1.25fr] md:items-center md:gap-4">
                                 <div>
                                   <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[#7d876f] md:hidden">
                                     Order
@@ -544,15 +579,24 @@ export function AccountPage() {
 
                                 <div>
                                   <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[#7d876f] md:hidden">
-                                    Details
+                                    Actions
                                   </p>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleOpenOrderReceipt(order)}
-                                    className="brand-caption inline-flex border-b border-[#7d876f] pb-0.5 text-[0.62rem] font-semibold tracking-[0.08em] text-[#4f5942]"
-                                  >
-                                    VIEW RECEIPT
-                                  </button>
+                                  <div className="flex flex-wrap gap-3 md:justify-end">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenOrderReceipt(order)}
+                                      className="brand-caption inline-flex border-b border-[#7d876f] pb-0.5 text-[0.62rem] font-semibold tracking-[0.08em] text-[#4f5942]"
+                                    >
+                                      VIEW RECEIPT
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleShopAgain(order)}
+                                      className="brand-caption inline-flex border-b border-[#7d876f] pb-0.5 text-[0.62rem] font-semibold tracking-[0.08em] text-[#4f5942]"
+                                    >
+                                      SHOP AGAIN
+                                    </button>
+                                  </div>
                                 </div>
                               </div>
                             </article>
@@ -573,6 +617,7 @@ export function AccountPage() {
         form={addressDialogForm}
         editing={Boolean(editingAddressId)}
         pending={profileSaving}
+        verifiedPhone={resolveVerifiedPhone(user?.phoneNumber, addressDialogForm.phone)}
         onClose={() => {
           setAddressDialogOpen(false);
           setEditingAddressId("");
@@ -591,6 +636,7 @@ function AddressDialog({
   form,
   editing,
   pending,
+  verifiedPhone,
   onClose,
   onFieldChange,
   onSave
@@ -599,6 +645,7 @@ function AddressDialog({
   form: AddressDialogFormState;
   editing: boolean;
   pending: boolean;
+  verifiedPhone: string;
   onClose: () => void;
   onFieldChange: (field: keyof AddressDialogFormState, value: string) => void;
   onSave: () => void;
@@ -641,8 +688,9 @@ function AddressDialog({
           <AccountInput
             label="Phone"
             type="tel"
-            value={form.phone}
-            onChange={(value) => onFieldChange("phone", value)}
+            value={verifiedPhone}
+            onChange={() => undefined}
+            readOnly
           />
           <AccountInput
             label="Pincode"
@@ -655,6 +703,9 @@ function AddressDialog({
             <AccountInput label="Address" value={form.address} onChange={(value) => onFieldChange("address", value)} />
           </div>
         </div>
+        <p className="mt-3 text-xs leading-6 text-[#7d876f]">
+          Mobile number is locked to the verified OTP account. To use a different number, sign in with that number first.
+        </p>
 
         <div className="mt-6 flex flex-wrap gap-3">
           <button
@@ -683,12 +734,14 @@ function AccountInput({
   label,
   value,
   onChange,
-  type = "text"
+  type = "text",
+  readOnly = false
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   type?: "text" | "email" | "tel";
+  readOnly?: boolean;
 }) {
   return (
     <label className="block">
@@ -697,17 +750,22 @@ function AccountInput({
         type={type}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-[52px] w-full rounded-[1rem] border border-[#d6ccb9] bg-[#fbf7ef] px-4 text-sm text-[#2b2a29] outline-none transition-colors duration-200 focus:border-[#5e684f]"
+        readOnly={readOnly}
+        className={`h-[52px] w-full rounded-[1rem] border border-[#d6ccb9] px-4 text-sm text-[#2b2a29] outline-none transition-colors duration-200 ${
+          readOnly ? "bg-[#f3eee4] text-[#6d725f]" : "bg-[#fbf7ef] focus:border-[#5e684f]"
+        }`}
       />
     </label>
   );
 }
 
-function buildDeliveryAddress(form: AddressDialogFormState) {
+function buildDeliveryAddress(form: AddressDialogFormState, verifiedPhone?: string | null) {
+  const lockedPhone = resolveVerifiedPhone(verifiedPhone, form.phone);
+
   if (
     !form.fullName.trim() ||
     !form.email.trim() ||
-    !form.phone.trim() ||
+    !lockedPhone ||
     !form.address.trim() ||
     !form.city.trim() ||
     !form.state.trim() ||
@@ -719,7 +777,7 @@ function buildDeliveryAddress(form: AddressDialogFormState) {
   return {
     fullName: form.fullName.trim(),
     email: form.email.trim(),
-    phone: form.phone.trim(),
+    phone: lockedPhone,
     address: form.address.trim(),
     city: form.city.trim(),
     state: form.state.trim(),
@@ -727,8 +785,13 @@ function buildDeliveryAddress(form: AddressDialogFormState) {
   };
 }
 
-function buildCustomerAddress(form: AddressDialogFormState, existingAddressCount: number, addressId?: string) {
-  const deliveryAddress = buildDeliveryAddress(form);
+function buildCustomerAddress(
+  form: AddressDialogFormState,
+  existingAddressCount: number,
+  addressId?: string,
+  verifiedPhone?: string | null
+) {
+  const deliveryAddress = buildDeliveryAddress(form, verifiedPhone);
 
   if (!deliveryAddress) {
     return null;
@@ -758,6 +821,29 @@ function buildProfilePayload(addresses: CustomerAddress[], selectedAddressId: st
     pincode: selectedAddress.pincode,
     selectedAddressId,
     addresses
+  };
+}
+
+function resolveVerifiedPhone(verifiedPhone: string | null | undefined, fallback = "") {
+  const normalizedVerifiedPhone = typeof verifiedPhone === "string" ? verifiedPhone.trim() : "";
+
+  if (normalizedVerifiedPhone) {
+    return normalizedVerifiedPhone;
+  }
+
+  return fallback.trim();
+}
+
+function applyVerifiedPhoneToAddress(address: CustomerAddress, verifiedPhone: string | null | undefined) {
+  const lockedPhone = resolveVerifiedPhone(verifiedPhone, address.phone);
+
+  if (lockedPhone === address.phone) {
+    return address;
+  }
+
+  return {
+    ...address,
+    phone: lockedPhone
   };
 }
 
@@ -800,14 +886,21 @@ function formatOrderStatus(order: CheckoutOrder) {
 function FavoriteRow({
   product,
   cartQuantity,
-  onAddToBag
+  onAddToBag,
+  onDecreaseQuantity,
+  onIncreaseQuantity,
+  onRemoveFromBag
 }: {
   product: Saree;
   cartQuantity: number;
   onAddToBag: (product: Saree) => void;
+  onDecreaseQuantity: () => void;
+  onIncreaseQuantity: () => void;
+  onRemoveFromBag: () => void;
 }) {
   const productHref = buildProductDetailHref(product.slug);
   const inBag = cartQuantity > 0;
+  const canIncreaseQuantity = cartQuantity < getPurchasableQuantityLimit(product.availableStock);
 
   return (
     <article className="flex flex-col gap-4 rounded-[1.2rem] border border-[#e4d8c8] bg-[#fffaf2] p-4 shadow-[0_10px_24px_rgba(94,104,79,0.04)] sm:flex-row sm:items-center sm:justify-between">
@@ -849,9 +942,35 @@ function FavoriteRow({
 
       <div className="flex flex-wrap items-center gap-3 sm:justify-end">
         {product.status === "out_of_stock" ? null : inBag ? (
-          <span className="rounded-full bg-[#eef2e7] px-3.5 py-2 text-[0.7rem] font-semibold text-[#5e684f]">
-            {cartQuantity} IN BAG
-          </span>
+          <>
+            <div className="inline-flex items-center rounded-full bg-[#5e684f] px-1.5 py-1 text-[#fbf4e8]">
+              <button
+                type="button"
+                onClick={onDecreaseQuantity}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-base leading-none"
+                aria-label="Decrease quantity"
+              >
+                -
+              </button>
+              <span className="min-w-[1.75rem] text-center text-[0.76rem] font-semibold">{cartQuantity}</span>
+              <button
+                type="button"
+                onClick={onIncreaseQuantity}
+                disabled={!canIncreaseQuantity}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-base leading-none disabled:opacity-45"
+                aria-label="Increase quantity"
+              >
+                +
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={onRemoveFromBag}
+              className="brand-caption inline-flex items-center justify-center rounded-full border border-[#d6ccb9] px-4 py-2.5 text-[0.58rem] font-semibold tracking-[0.08em] text-[#8d5c56]"
+            >
+              REMOVE FROM BAG
+            </button>
+          </>
         ) : (
           <button
             type="button"

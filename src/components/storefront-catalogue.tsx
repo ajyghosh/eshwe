@@ -9,6 +9,7 @@ import {
   ProductLoadingGrid
 } from "@/components/catalogue-product-card";
 import { ProductCardCarousel } from "@/components/product-card-carousel";
+import { compareProductsByAvailability } from "@/lib/inventory";
 import { subscribeToSarees } from "@/lib/sarees";
 import { buildShopHref } from "@/lib/storefront-routes";
 import { useProgressiveProductGrid } from "@/lib/use-progressive-product-grid";
@@ -30,8 +31,14 @@ export function StorefrontCatalogue() {
     );
   }, []);
 
-  const featuredProducts = products.filter((product) => product.featured);
-  const newArrivalRow = products;
+  const featuredProducts = useMemo(
+    () => [...products].filter((product) => product.featured).sort((left, right) => compareProductsByAvailability(left, right)),
+    [products]
+  );
+  const newArrivalRow = useMemo(
+    () => [...products].sort((left, right) => compareProductsByAvailability(left, right)),
+    [products]
+  );
   const showcaseProducts = activeShowcase === "featured" ? featuredProducts : newArrivalRow;
   const showcaseUsesCarousel = showcaseProducts.length > 4;
 
@@ -46,10 +53,14 @@ export function StorefrontCatalogue() {
     }
   }, [activeCategory, categories]);
 
-  const visibleProducts =
-    activeCategory === "ALL PRODUCTS"
-      ? products
-      : products.filter((product) => product.category === activeCategory);
+  const visibleProducts = useMemo(
+    () =>
+      (activeCategory === "ALL PRODUCTS"
+        ? products
+        : products.filter((product) => product.category === activeCategory)
+      ).slice().sort((left, right) => compareProductsByAvailability(left, right)),
+    [activeCategory, products]
+  );
   const { hasMore, loadMoreRef, visibleItemsCount: visibleProductsCount } = useProgressiveProductGrid(
     visibleProducts.length,
     activeCategory,

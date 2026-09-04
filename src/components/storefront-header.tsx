@@ -8,7 +8,9 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useAuthSession } from "@/components/auth-provider";
 import { useCart } from "@/components/cart-provider";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
-import { saveCustomerProfile } from "@/lib/customer-profiles";
+import { getCustomerAuthDisplayLabel, syncCustomerDisplayName } from "@/lib/auth";
+import { sendCustomerOtp, verifyCustomerOtp } from "@/lib/customer-auth";
+import { getCustomerProfile, saveCustomerProfile } from "@/lib/customer-profiles";
 import { createCustomerMessage } from "@/lib/customer-messages";
 import { subscribeToCategoryCards } from "@/lib/homepage";
 import { buildShopHref } from "@/lib/storefront-routes";
@@ -16,6 +18,7 @@ import type { CategoryCard } from "@/types/homepage";
 
 type CreateAccountFormState = {
   fullName: string;
+  email: string;
   phone: string;
   address: string;
   city: string;
@@ -30,7 +33,7 @@ export function StorefrontHeader({
   absolute?: boolean;
   contentVisible?: boolean;
 }) {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "/";
   const router = useRouter();
   const { user, loading, signIn, signOut } = useAuthSession();
   const { totalItems } = useCart();
@@ -52,8 +55,13 @@ export function StorefrontHeader({
   const [signOutDialogOpen, setSignOutDialogOpen] = useState(false);
   const [createAccountSubmitting, setCreateAccountSubmitting] = useState(false);
   const [createAccountError, setCreateAccountError] = useState<string | null>(null);
+  const [createAccountNotice, setCreateAccountNotice] = useState<string | null>(null);
+  const [createAccountOtp, setCreateAccountOtp] = useState("");
+  const [createAccountStep, setCreateAccountStep] = useState<"details" | "otp">("details");
+  const [customerProfileName, setCustomerProfileName] = useState("");
   const [createAccountForm, setCreateAccountForm] = useState<CreateAccountFormState>({
     fullName: "",
+    email: "",
     phone: "",
     address: "",
     city: "",
@@ -90,6 +98,9 @@ export function StorefrontHeader({
     setSignOutDialogOpen(false);
     setCreateAccountDialogOpen(false);
     setCreateAccountError(null);
+    setCreateAccountNotice(null);
+    setCreateAccountOtp("");
+    setCreateAccountStep("details");
   }, [pathname]);
 
   useEffect(() => {
@@ -119,6 +130,43 @@ export function StorefrontHeader({
       document.removeEventListener("touchstart", handlePointerDown);
     };
   }, [accountMenuOpen]);
+
+  useEffect(() => {
+    if (!user?.uid) {
+      setCustomerProfileName("");
+      return;
+    }
+
+    if (user.displayName?.trim()) {
+      setCustomerProfileName("");
+      return;
+    }
+
+    const userId = user.uid;
+    let cancelled = false;
+
+    async function loadCustomerProfileName() {
+      try {
+        const customerProfile = await getCustomerProfile(userId);
+
+        if (cancelled) {
+          return;
+        }
+
+        setCustomerProfileName(customerProfile?.fullName?.trim() ?? "");
+      } catch {
+        if (!cancelled) {
+          setCustomerProfileName("");
+        }
+      }
+    }
+
+    void loadCustomerProfileName();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.displayName, user?.uid]);
 
   async function handleContactSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -197,6 +245,7 @@ export function StorefrontHeader({
   function resetCreateAccountForm() {
     setCreateAccountForm({
       fullName: "",
+      email: "",
       phone: "",
       address: "",
       city: "",
@@ -204,12 +253,18 @@ export function StorefrontHeader({
       pincode: ""
     });
     setCreateAccountError(null);
+    setCreateAccountNotice(null);
+    setCreateAccountOtp("");
+    setCreateAccountStep("details");
   }
 
   function openCreateAccountDialog() {
     setAccountMenuOpen(false);
     setAuthError(null);
     setCreateAccountError(null);
+    setCreateAccountNotice(null);
+    setCreateAccountOtp("");
+    setCreateAccountStep("details");
     setCreateAccountDialogOpen(true);
   }
 
@@ -229,6 +284,7 @@ export function StorefrontHeader({
 
     const normalizedForm = {
       fullName: createAccountForm.fullName.trim(),
+      email: createAccountForm.email.trim(),
       phone: createAccountForm.phone.trim(),
       address: createAccountForm.address.trim(),
       city: createAccountForm.city.trim(),
@@ -250,15 +306,52 @@ export function StorefrontHeader({
 
     setCreateAccountSubmitting(true);
     setCreateAccountError(null);
+    setCreateAccountNotice(null);
     setAuthError(null);
 
     try {
-      const signedInUser = await signIn();
-      const addressId = `address-${Date.now()}`;
-      const email = signedInUser.email?.trim() ?? "";
+      await sendCustomerOtp(normalizedForm.phone);
+      setCreateAccountStep("otp");
+    } catch (error) {
+      setCreateAccountError(error instanceof Error ? error.message : "Creating account failed.");
+    } finally {
+      setCreateAccountSubmitting(false);
+    }
+  }
 
+  async function handleCreateAccountOtpVerification(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const normalizedForm = {
+      fullName: createAccountForm.fullName.trim(),
+      email: createAccountForm.email.trim(),
+      phone: createAccountForm.phone.trim(),
+      address: createAccountForm.address.trim(),
+      city: createAccountForm.city.trim(),
+      state: createAccountForm.state.trim(),
+      pincode: createAccountForm.pincode.trim()
+    };
+    const normalizedOtp = createAccountOtp.trim();
+
+    if (!normalizedOtp) {
+      setCreateAccountError("Enter the code sent to your mobile number.");
+      return;
+    }
+
+    setCreateAccountSubmitting(true);
+    setCreateAccountError(null);
+    setCreateAccountNotice(null);
+
+    try {
+      const signedInUser = await verifyCustomerOtp(normalizedForm.phone, normalizedOtp);
+      const addressId = `address-${Date.now()}`;
+      const email = normalizedForm.email;
+      const phone = signedInUser.phoneNumber?.trim() || normalizedForm.phone;
+
+      await syncCustomerDisplayName(normalizedForm.fullName);
       await saveCustomerProfile(signedInUser.uid, {
         ...normalizedForm,
+        phone,
         email,
         selectedAddressId: addressId,
         addresses: [
@@ -266,6 +359,7 @@ export function StorefrontHeader({
             id: addressId,
             label: "Primary Address",
             ...normalizedForm,
+            phone,
             email
           }
         ]
@@ -273,7 +367,28 @@ export function StorefrontHeader({
 
       closeCreateAccountDialog();
     } catch (error) {
-      setCreateAccountError(error instanceof Error ? error.message : "Creating account failed.");
+      setCreateAccountError(error instanceof Error ? error.message : "Code verification failed.");
+    } finally {
+      setCreateAccountSubmitting(false);
+    }
+  }
+
+  async function handleCreateAccountOtpResend() {
+    const phone = createAccountForm.phone.trim();
+
+    if (!phone) {
+      setCreateAccountError("Enter a phone number first.");
+      setCreateAccountStep("details");
+      return;
+    }
+
+    setCreateAccountSubmitting(true);
+    setCreateAccountError(null);
+
+    try {
+      await sendCustomerOtp(phone);
+    } catch (error) {
+      setCreateAccountError(error instanceof Error ? error.message : "Verification SMS could not be resent.");
     } finally {
       setCreateAccountSubmitting(false);
     }
@@ -289,6 +404,7 @@ export function StorefrontHeader({
       label: card.title
     }))
   ];
+  const customerAuthLabel = user?.displayName?.trim() || customerProfileName || getCustomerAuthDisplayLabel(user);
 
   return (
     <>
@@ -354,7 +470,7 @@ export function StorefrontHeader({
                     <div className="absolute right-0 top-[calc(100%+0.5rem)] min-w-[180px] rounded-[1.2rem] border border-[#ddd1c0] bg-[#fbf7ef] p-2 shadow-[0_20px_45px_rgba(63,71,56,0.16)]">
                       {user ? (
                         <>
-                          <p className="px-3 pb-2 pt-1 text-xs leading-5 text-[#7d876f]">{user.email}</p>
+                          <p className="px-3 pb-2 pt-1 text-xs leading-5 text-[#7d876f]">{customerAuthLabel || "Signed in"}</p>
                           <Link
                             href="/account/"
                             onClick={() => setAccountMenuOpen(false)}
@@ -379,7 +495,7 @@ export function StorefrontHeader({
                             disabled={authSubmitting}
                             className="w-full rounded-[0.95rem] px-3 py-2 text-left text-sm font-semibold text-[#4f5942] transition-colors duration-200 hover:bg-[#f1e8d8] disabled:opacity-60"
                           >
-                            {authSubmitting ? "Signing In" : "Sign In"}
+                            {authSubmitting ? "Signing In" : "Continue with SMS"}
                           </button>
                           <button
                             type="button"
@@ -537,110 +653,172 @@ export function StorefrontHeader({
 
       {createAccountDialogOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#3f4738]/36 px-4 py-6 sm:px-6 lg:px-8">
-          <div className="mx-auto w-full max-w-2xl rounded-[2rem] border border-[#dfd2c1] bg-[#fbf4e8] p-6 shadow-[0_30px_90px_rgba(63,71,56,0.22)] sm:p-7">
+          <div className="mx-auto flex max-h-[calc(100vh-2rem)] w-full max-w-4xl flex-col overflow-y-auto rounded-[2rem] border border-[#dfd2c1] bg-[#fbf4e8] p-5 shadow-[0_30px_90px_rgba(63,71,56,0.22)] sm:p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="brand-caption text-[0.58rem] font-semibold tracking-[0.18em] text-[#7d876f]">
                   CREATE ACCOUNT
                 </p>
-                <h2 className="brand-copy mt-3 text-2xl text-[#3f4738] sm:text-[2rem]">
+                <h2 className="brand-copy mt-2 text-[2rem] leading-[0.95] text-[#3f4738] sm:text-[2.7rem]">
                   Add your details and save your first address.
                 </h2>
-                <p className="mt-3 text-sm text-[#6f7861]">
-                  We will connect this to your Google sign-in and keep the address ready for checkout.
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-[#6f7861]">
+                  We will connect this to your mobile sign-in and keep the address ready for checkout.
                 </p>
               </div>
 
               <button
                 type="button"
                 onClick={closeCreateAccountDialog}
-                className="brand-caption rounded-full border border-[#d6ccb9] px-4 py-2 text-[0.52rem] font-semibold tracking-[0.08em] text-[#5e684f]"
+                className="brand-caption shrink-0 rounded-full border border-[#d6ccb9] px-4 py-2 text-[0.52rem] font-semibold tracking-[0.08em] text-[#5e684f]"
               >
                 CLOSE
               </button>
             </div>
 
-            <form className="mt-6 space-y-4" onSubmit={handleCreateAccount}>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-[#4f5942]">Full Name</span>
-                  <input
-                    value={createAccountForm.fullName}
-                    onChange={(event) => updateCreateAccountField("fullName", event.target.value)}
-                    type="text"
-                    className={contactInputClassName}
-                    placeholder="Your name"
-                  />
-                </label>
-                <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-[#4f5942]">Phone Number</span>
-                  <input
-                    value={createAccountForm.phone}
-                    onChange={(event) => updateCreateAccountField("phone", event.target.value)}
-                    type="tel"
-                    className={contactInputClassName}
-                    placeholder="+91 98765 43210"
-                  />
-                </label>
-              </div>
+            {createAccountStep === "details" ? (
+              <form className="mt-5 space-y-4" onSubmit={handleCreateAccount}>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="block">
+                    <span className="mb-2 block text-sm font-medium text-[#4f5942]">Full Name</span>
+                    <input
+                      value={createAccountForm.fullName}
+                      onChange={(event) => updateCreateAccountField("fullName", event.target.value)}
+                      type="text"
+                      className={contactInputClassName}
+                      placeholder="Your name"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="mb-2 block text-sm font-medium text-[#4f5942]">
+                      Email <span className="text-[#8b8b7d]">(optional)</span>
+                    </span>
+                    <input
+                      value={createAccountForm.email}
+                      onChange={(event) => updateCreateAccountField("email", event.target.value)}
+                      type="email"
+                      className={contactInputClassName}
+                      placeholder="you@example.com"
+                    />
+                  </label>
+                  <label className="block sm:col-span-2">
+                    <span className="mb-2 block text-sm font-medium text-[#4f5942]">Phone Number</span>
+                    <input
+                      value={createAccountForm.phone}
+                      onChange={(event) => updateCreateAccountField("phone", event.target.value)}
+                      type="tel"
+                      className={contactInputClassName}
+                      placeholder="+91 98765 43210"
+                    />
+                  </label>
+                </div>
 
-              <label className="block">
-                <span className="mb-2 block text-sm font-medium text-[#4f5942]">Address</span>
-                <textarea
-                  value={createAccountForm.address}
-                  onChange={(event) => updateCreateAccountField("address", event.target.value)}
-                  rows={4}
-                  className={`${contactInputClassName} h-auto resize-none py-3`}
-                  placeholder="House / street / area"
-                />
-              </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-[#4f5942]">Address</span>
+                  <textarea
+                    value={createAccountForm.address}
+                    onChange={(event) => updateCreateAccountField("address", event.target.value)}
+                    rows={3}
+                    className={`${contactInputClassName} h-auto resize-none py-3`}
+                    placeholder="House / street / area"
+                  />
+                </label>
 
-              <div className="grid gap-4 sm:grid-cols-3">
-                <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-[#4f5942]">City</span>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <label className="block">
+                    <span className="mb-2 block text-sm font-medium text-[#4f5942]">City</span>
+                    <input
+                      value={createAccountForm.city}
+                      onChange={(event) => updateCreateAccountField("city", event.target.value)}
+                      type="text"
+                      className={contactInputClassName}
+                      placeholder="City"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="mb-2 block text-sm font-medium text-[#4f5942]">State</span>
+                    <input
+                      value={createAccountForm.state}
+                      onChange={(event) => updateCreateAccountField("state", event.target.value)}
+                      type="text"
+                      className={contactInputClassName}
+                      placeholder="State"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="mb-2 block text-sm font-medium text-[#4f5942]">Pincode</span>
+                    <input
+                      value={createAccountForm.pincode}
+                      onChange={(event) => updateCreateAccountField("pincode", event.target.value)}
+                      type="text"
+                      inputMode="numeric"
+                      className={contactInputClassName}
+                      placeholder="Pincode"
+                    />
+                  </label>
+                </div>
+
+                {createAccountError ? <p className="text-sm text-[#9d4b45]">{createAccountError}</p> : null}
+
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    type="submit"
+                    disabled={createAccountSubmitting}
+                    className="brand-caption rounded-2xl bg-[#5e684f] px-5 py-3 text-[0.62rem] font-semibold tracking-[0.08em] text-[#fbf4e8] disabled:opacity-60"
+                  >
+                    {createAccountSubmitting ? "SENDING SMS..." : "CREATE ACCOUNT"}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <form className="mt-5 space-y-4" onSubmit={handleCreateAccountOtpVerification}>
+                <label className="block max-w-sm">
+                  <span className="mb-2 block text-sm font-medium text-[#4f5942]">OTP</span>
                   <input
-                    value={createAccountForm.city}
-                    onChange={(event) => updateCreateAccountField("city", event.target.value)}
-                    type="text"
-                    className={contactInputClassName}
-                    placeholder="City"
-                  />
-                </label>
-                <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-[#4f5942]">State</span>
-                  <input
-                    value={createAccountForm.state}
-                    onChange={(event) => updateCreateAccountField("state", event.target.value)}
-                    type="text"
-                    className={contactInputClassName}
-                    placeholder="State"
-                  />
-                </label>
-                <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-[#4f5942]">Pincode</span>
-                  <input
-                    value={createAccountForm.pincode}
-                    onChange={(event) => updateCreateAccountField("pincode", event.target.value)}
+                    value={createAccountOtp}
+                    onChange={(event) => setCreateAccountOtp(event.target.value)}
                     type="text"
                     inputMode="numeric"
+                    autoComplete="one-time-code"
                     className={contactInputClassName}
-                    placeholder="Pincode"
+                    placeholder="Enter OTP"
                   />
                 </label>
-              </div>
 
-              {createAccountError ? <p className="text-sm text-[#9d4b45]">{createAccountError}</p> : null}
+                {createAccountError ? <p className="text-sm text-[#9d4b45]">{createAccountError}</p> : null}
 
-              <div className="flex flex-wrap gap-3">
-                <button
-                  type="submit"
-                  disabled={createAccountSubmitting}
-                  className="brand-caption rounded-2xl bg-[#5e684f] px-5 py-3 text-[0.62rem] font-semibold tracking-[0.08em] text-[#fbf4e8] disabled:opacity-60"
-                >
-                  {createAccountSubmitting ? "CREATING..." : "CREATE ACCOUNT"}
-                </button>
-              </div>
-            </form>
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    type="submit"
+                    disabled={createAccountSubmitting}
+                    className="brand-caption rounded-2xl bg-[#5e684f] px-5 py-3 text-[0.62rem] font-semibold tracking-[0.08em] text-[#fbf4e8] disabled:opacity-60"
+                  >
+                    {createAccountSubmitting ? "VERIFYING..." : "VERIFY"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleCreateAccountOtpResend()}
+                    disabled={createAccountSubmitting}
+                    className="brand-caption rounded-2xl border border-[#d6ccb9] px-5 py-3 text-[0.62rem] font-semibold tracking-[0.08em] text-[#5e684f] disabled:opacity-60"
+                  >
+                    RESEND
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCreateAccountStep("details");
+                      setCreateAccountError(null);
+                      setCreateAccountNotice(null);
+                      setCreateAccountOtp("");
+                    }}
+                    disabled={createAccountSubmitting}
+                    className="brand-caption rounded-2xl border border-[#d6ccb9] px-5 py-3 text-[0.62rem] font-semibold tracking-[0.08em] text-[#5e684f] disabled:opacity-60"
+                  >
+                    EDIT
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       ) : null}

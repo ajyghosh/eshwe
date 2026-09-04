@@ -24,7 +24,7 @@ type OwnerBackofficeNavProps = {
 };
 
 export function OwnerBackofficeNav({ badges = {}, className = "" }: OwnerBackofficeNavProps) {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "/owner";
 
   return (
     <nav

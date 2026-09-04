@@ -126,6 +126,7 @@ export function CatalogueProductCard({
               VIEW DETAILS
             </Link>
           ) : null}
+
         </div>
       </div>
 

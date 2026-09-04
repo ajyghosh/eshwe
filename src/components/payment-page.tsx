@@ -11,6 +11,7 @@ import { useCart } from "@/components/cart-provider";
 import { CheckoutProgress } from "@/components/checkout-progress";
 import { SiteFooter } from "@/components/site-footer";
 import { StorefrontHeader } from "@/components/storefront-header";
+import { syncCustomerDisplayName } from "@/lib/auth";
 import { getCustomerProfile, saveCustomerProfile } from "@/lib/customer-profiles";
 import { isCartItemUnavailable } from "@/lib/inventory";
 import { saveLatestOrderConfirmation, type OrderConfirmationData } from "@/lib/order-confirmation";
@@ -57,16 +58,6 @@ type CreateOrderResponse = {
 
 type PaymentOverlayStep = "verifying" | null;
 
-const emptyGuestForm: PaymentFormState = {
-  fullName: "",
-  email: "",
-  phone: "",
-  address: "",
-  city: "",
-  state: "",
-  pincode: ""
-};
-
 const emptyAddressDialogForm: AddressDialogFormState = {
   label: "",
   fullName: "",
@@ -84,7 +75,6 @@ export function PaymentPage() {
   const router = useRouter();
   const [savedAddresses, setSavedAddresses] = useState<CustomerAddress[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState("");
-  const [guestForm, setGuestForm] = useState<PaymentFormState>(emptyGuestForm);
   const [orderNotes, setOrderNotes] = useState("");
   const [addressDialogOpen, setAddressDialogOpen] = useState(false);
   const [editingAddressId, setEditingAddressId] = useState("");
@@ -93,52 +83,40 @@ export function PaymentPage() {
   const [profileMessage, setProfileMessage] = useState<string | null>(null);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [profileResolvedUserId, setProfileResolvedUserId] = useState("");
   const [profileSaving, setProfileSaving] = useState(false);
   const [paymentSubmitting, setPaymentSubmitting] = useState(false);
   const [paymentOverlayStep, setPaymentOverlayStep] = useState<PaymentOverlayStep>(null);
+  const [signInPhone, setSignInPhone] = useState("");
   const orderConfirmationRedirectRef = useRef(false);
+  const autoPromptedAddressUserIdRef = useRef("");
   const checkoutProgressStep = paymentSubmitting || paymentOverlayStep ? "pay" : "address";
 
   const selectedAddress = savedAddresses.find((address) => address.id === selectedAddressId) ?? null;
-  const guestCanProceed =
-    items.length > 0 &&
-    Boolean(
-      guestForm.fullName.trim() &&
-        guestForm.email.trim() &&
-        guestForm.phone.trim() &&
-        guestForm.address.trim() &&
-        guestForm.city.trim() &&
-        guestForm.state.trim() &&
-        guestForm.pincode.trim()
-    );
   const hasUnavailableItems = items.some((item) => isCartItemUnavailable(item));
-  const canProceedToPayment = items.length > 0 && !hasUnavailableItems && (user ? Boolean(selectedAddress) : guestCanProceed);
+  const canProceedToPayment = items.length > 0 && !hasUnavailableItems && Boolean(user && selectedAddress);
   const itemCount = items.reduce((count, item) => count + item.quantity, 0);
   const subtotalLabel = `Subtotal${itemCount > 0 ? ` (${itemCount} item${itemCount === 1 ? "" : "s"})` : ""}`;
-
-  useEffect(() => {
-    setGuestForm((currentForm) => ({
-      ...currentForm,
-      fullName: currentForm.fullName || user?.displayName || "",
-      email: currentForm.email || user?.email || ""
-    }));
-  }, [user?.displayName, user?.email]);
 
   useEffect(() => {
     if (!user?.uid) {
       setSavedAddresses([]);
       setSelectedAddressId("");
       setProfileLoading(false);
+      setProfileResolvedUserId("");
+      autoPromptedAddressUserIdRef.current = "";
       return;
     }
 
     const activeUserId = user.uid;
     const userDisplayName = user.displayName ?? "";
     const userEmail = user.email ?? "";
+    const userPhone = user.phoneNumber ?? "";
     let isMounted = true;
 
     async function loadCustomerProfile() {
       setProfileLoading(true);
+      setProfileResolvedUserId("");
       setProfileError(null);
 
       try {
@@ -148,7 +126,9 @@ export function PaymentPage() {
           return;
         }
 
-        const nextSavedAddresses = customerProfile?.addresses ?? [];
+        const nextSavedAddresses = (customerProfile?.addresses ?? []).map((address) =>
+          applyVerifiedPhoneToAddress(address, userPhone)
+        );
         const nextSelectedAddressId = customerProfile?.selectedAddressId ?? nextSavedAddresses[0]?.id ?? "";
 
         setSavedAddresses(nextSavedAddresses);
@@ -156,7 +136,8 @@ export function PaymentPage() {
         setAddressDialogForm((currentForm) => ({
           ...currentForm,
           fullName: currentForm.fullName || userDisplayName,
-          email: currentForm.email || userEmail
+          email: currentForm.email || userEmail,
+          phone: resolveVerifiedPhone(userPhone, currentForm.phone)
         }));
 
       } catch (error) {
@@ -166,6 +147,7 @@ export function PaymentPage() {
       } finally {
         if (isMounted) {
           setProfileLoading(false);
+          setProfileResolvedUserId(activeUserId);
         }
       }
     }
@@ -175,7 +157,7 @@ export function PaymentPage() {
     return () => {
       isMounted = false;
     };
-  }, [user?.uid, user?.displayName, user?.email]);
+  }, [user?.uid, user?.displayName, user?.email, user?.phoneNumber]);
 
   useEffect(() => {
     if (!profileMessage) {
@@ -211,13 +193,6 @@ export function PaymentPage() {
     });
   }, [items.length]);
 
-  function handleGuestFieldChange(field: keyof PaymentFormState, value: string) {
-    setGuestForm((currentForm) => ({
-      ...currentForm,
-      [field]: value
-    }));
-  }
-
   function handleAddressDialogFieldChange(field: keyof AddressDialogFormState, value: string) {
     setAddressDialogForm((currentForm) => ({
       ...currentForm,
@@ -232,11 +207,11 @@ export function PaymentPage() {
       label: "",
       fullName: user?.displayName || selectedAddress?.fullName || "",
       email: user?.email || selectedAddress?.email || "",
-      phone: "",
-      address: "",
-      city: "",
-      state: "",
-      pincode: ""
+      phone: resolveVerifiedPhone(user?.phoneNumber, selectedAddress?.phone || ""),
+      address: selectedAddress?.address || "",
+      city: selectedAddress?.city || "",
+      state: selectedAddress?.state || "",
+      pincode: selectedAddress?.pincode || ""
     });
     setAddressDialogOpen(true);
   }
@@ -248,7 +223,7 @@ export function PaymentPage() {
       label: address.label,
       fullName: address.fullName,
       email: address.email,
-      phone: address.phone,
+      phone: resolveVerifiedPhone(user?.phoneNumber, address.phone),
       address: address.address,
       city: address.city,
       state: address.state,
@@ -263,10 +238,21 @@ export function PaymentPage() {
   }
 
   async function handleSignIn() {
+    const normalizedPhone = signInPhone.replace(/\D/g, "").slice(0, 10);
+
+    if (normalizedPhone.length !== 10) {
+      setProfileError("Enter your 10-digit mobile number.");
+      return;
+    }
+
     try {
-      await signIn();
-    } catch {
-      setProfileError("Sign in failed.");
+      setProfileError(null);
+      await signIn({
+        autoSend: true,
+        phone: normalizedPhone
+      });
+    } catch (error) {
+      setProfileError(error instanceof Error ? error.message : "Sign in failed.");
     }
   }
 
@@ -276,7 +262,12 @@ export function PaymentPage() {
       return;
     }
 
-    const nextAddress = buildCustomerAddress(addressDialogForm, savedAddresses.length, editingAddressId);
+    const nextAddress = buildCustomerAddress(
+      addressDialogForm,
+      savedAddresses.length,
+      editingAddressId,
+      user.phoneNumber
+    );
 
     if (!nextAddress) {
       setProfileError("Complete all address details before saving.");
@@ -290,6 +281,7 @@ export function PaymentPage() {
       const nextSavedAddresses = editingAddressId
         ? savedAddresses.map((address) => (address.id === editingAddressId ? nextAddress : address))
         : [...savedAddresses, nextAddress];
+      await syncCustomerDisplayName(nextAddress.fullName);
       await saveCustomerProfile(user.uid, buildProfilePayload(nextSavedAddresses, nextAddress.id));
       setSavedAddresses(nextSavedAddresses);
       setSelectedAddressId(nextAddress.id);
@@ -306,17 +298,26 @@ export function PaymentPage() {
   }
 
   async function handleProceedToPayment() {
+    if (!user) {
+      setProfileError("Continue with mobile verification to unlock your saved address and payment.");
+      try {
+        await signIn();
+      } catch (error) {
+        setProfileError(error instanceof Error ? error.message : "Sign in failed.");
+      }
+      return;
+    }
+
     if (hasUnavailableItems) {
       setProfileError("One or more sarees in your bag are no longer available. Remove them from the cart before paying.");
       return;
     }
 
-    const deliveryAddress = user ? selectedAddress : buildGuestDeliveryAddress(guestForm);
+    const deliveryAddress = selectedAddress;
 
     if (!deliveryAddress) {
-      setProfileError(
-        user ? "Select a saved address or add a new address before continuing." : "Complete the address form first."
-      );
+      setProfileError("Add your delivery address before continuing.");
+      handleOpenAddressDialog();
       return;
     }
 
@@ -413,6 +414,39 @@ export function PaymentPage() {
       setProfileError(error instanceof Error ? error.message : "Unable to start payment.");
     }
   }
+
+  useEffect(() => {
+    const currentUser = user;
+
+    if (
+      !currentUser?.uid ||
+      profileLoading ||
+      profileResolvedUserId !== currentUser.uid ||
+      selectedAddress ||
+      addressDialogOpen
+    ) {
+      return;
+    }
+
+    if (autoPromptedAddressUserIdRef.current === currentUser.uid) {
+      return;
+    }
+
+    autoPromptedAddressUserIdRef.current = currentUser.uid;
+    setProfileError(null);
+    setEditingAddressId("");
+    setAddressDialogForm({
+      label: "",
+      fullName: currentUser.displayName || "",
+      email: currentUser.email || "",
+      phone: currentUser.phoneNumber || "",
+      address: "",
+      city: "",
+      state: "",
+      pincode: ""
+    });
+    setAddressDialogOpen(true);
+  }, [addressDialogOpen, profileLoading, profileResolvedUserId, selectedAddress, user]);
 
   async function createOrder(deliveryAddress: PaymentFormState): Promise<CreateOrderResponse> {
     let response: Response;
@@ -531,7 +565,7 @@ export function PaymentPage() {
     <main className="min-h-screen bg-[#fbf4e8] text-[#4f5942]">
       {paymentOverlayStep ? (
         <ReceiptPreparingOverlay
-          customerName={(user ? selectedAddress?.fullName ?? "" : guestForm.fullName).trim() || "there"}
+          customerName={(selectedAddress?.fullName ?? "").trim() || "there"}
           itemCount={itemCount}
         />
       ) : null}
@@ -546,9 +580,6 @@ export function PaymentPage() {
             <h1 className="brand-copy mt-3 text-3xl leading-tight text-[#2b2a29] sm:text-[2.8rem]">
               Delivery address and secure checkout.
             </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-[#667056]">
-              Keep this step focused: sign in if you already have an account, otherwise add the address for this order and continue to Razorpay.
-            </p>
           </div>
 
           {items.length === 0 ? (
@@ -633,74 +664,33 @@ export function PaymentPage() {
                     </div>
                   </>
                 ) : (
-                  <div className="space-y-5">
-                    <div className="rounded-[1.5rem] border border-[#ddd1c0] bg-[#fffaf2] p-5">
-                      <p className="text-xs font-semibold tracking-[0.14em] text-[#7d876f]">SIGN IN</p>
-                      <p className="mt-4 max-w-xl text-sm leading-6 text-[#667056]">
-                        Existing customer? Sign in to use your saved address and checkout faster.
-                      </p>
+                  <div className="rounded-[1.5rem] border border-[#ddd1c0] bg-[#fffaf2] p-5">
+                    <p className="text-xs font-semibold tracking-[0.14em] text-[#7d876f]">VERIFY MOBILE</p>
+                    <div className="mt-4 max-w-xl">
+                      <label className="block">
+                        <span className="mb-2 block text-sm font-medium text-[#4f5942]">10-digit phone number</span>
+                        <input
+                          value={signInPhone}
+                          onChange={(event) => {
+                            setSignInPhone(event.target.value.replace(/\D/g, "").slice(0, 10));
+                            if (profileError) {
+                              setProfileError(null);
+                            }
+                          }}
+                          type="tel"
+                          inputMode="numeric"
+                          autoComplete="tel"
+                          placeholder="9876543210"
+                          className="h-12 w-full rounded-[1rem] border border-[#d9ccb8] bg-white px-4 text-[0.98rem] text-[#2b2a29] outline-none transition-colors duration-200 placeholder:text-[#948978] focus:border-[#5e684f]"
+                        />
+                      </label>
                       <button
                         type="button"
                         onClick={() => void handleSignIn()}
                         className="brand-caption mt-5 inline-flex rounded-2xl bg-[#5e684f] px-6 py-3 text-[0.66rem] font-semibold tracking-[0.08em] text-[#fbf4e8]"
                       >
-                        SIGN IN WITH GOOGLE
+                        PROCEED
                       </button>
-                    </div>
-
-                    <div className="rounded-[1.5rem] border border-[#ddd1c0] bg-[#fbf7ef] p-5">
-                      <p className="text-xs font-semibold tracking-[0.14em] text-[#7d876f]">DELIVERY ADDRESS</p>
-                      <p className="mt-3 text-sm leading-6 text-[#667056]">
-                        Add the address for this order and continue to payment.
-                      </p>
-                      <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                        <PaymentInput
-                          label="Full name"
-                          value={guestForm.fullName}
-                          onChange={(value) => handleGuestFieldChange("fullName", value)}
-                        />
-                        <PaymentInput
-                          label="Email"
-                          type="email"
-                          value={guestForm.email}
-                          onChange={(value) => handleGuestFieldChange("email", value)}
-                        />
-                        <PaymentInput
-                          label="Phone"
-                          type="tel"
-                          value={guestForm.phone}
-                          onChange={(value) => handleGuestFieldChange("phone", value)}
-                        />
-                        <PaymentInput
-                          label="Pincode"
-                          value={guestForm.pincode}
-                          onChange={(value) => handleGuestFieldChange("pincode", value)}
-                        />
-                        <div className="sm:col-span-2">
-                          <PaymentInput
-                            label="Address"
-                            value={guestForm.address}
-                            onChange={(value) => handleGuestFieldChange("address", value)}
-                          />
-                        </div>
-                        <PaymentInput
-                          label="City"
-                          value={guestForm.city}
-                          onChange={(value) => handleGuestFieldChange("city", value)}
-                        />
-                        <PaymentInput
-                          label="State"
-                          value={guestForm.state}
-                          onChange={(value) => handleGuestFieldChange("state", value)}
-                        />
-                        <div className="sm:col-span-2">
-                          <PaymentTextarea
-                            label="Order notes"
-                            value={orderNotes}
-                            onChange={setOrderNotes}
-                          />
-                        </div>
-                      </div>
                     </div>
                   </div>
                 )}
@@ -810,6 +800,7 @@ export function PaymentPage() {
         form={addressDialogForm}
         editing={Boolean(editingAddressId)}
         pending={profileSaving}
+        verifiedPhone={resolveVerifiedPhone(user?.phoneNumber, addressDialogForm.phone)}
         onClose={() => {
           setAddressDialogOpen(false);
           setEditingAddressId("");
@@ -887,7 +878,7 @@ function ReceiptPreparingOverlay({
 
             <div className="pt-48">
               <div className="grid grid-cols-3 gap-3">
-                <StatusPill label="Payment" value="Captured" />
+                <StatusPill label="Payment" value="Paid" />
                 <StatusPill label="Receipt" value="Printing" />
                 <StatusPill label="Next" value="Preview" />
               </div>
@@ -924,12 +915,14 @@ function PaymentInput({
   label,
   value,
   onChange,
-  type = "text"
+  type = "text",
+  readOnly = false
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   type?: string;
+  readOnly?: boolean;
 }) {
   return (
     <label className="block">
@@ -938,7 +931,10 @@ function PaymentInput({
         type={type}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-[52px] w-full rounded-[1rem] border border-[#d6ccb9] bg-[#fbf7ef] px-4 text-sm text-[#2b2a29] outline-none transition-colors duration-200 focus:border-[#5e684f]"
+        readOnly={readOnly}
+        className={`h-[52px] w-full rounded-[1rem] border border-[#d6ccb9] px-4 text-sm text-[#2b2a29] outline-none transition-colors duration-200 ${
+          readOnly ? "bg-[#f3eee4] text-[#6d725f]" : "bg-[#fbf7ef] focus:border-[#5e684f]"
+        }`}
       />
     </label>
   );
@@ -988,6 +984,7 @@ function AddressDialog({
   form,
   editing,
   pending,
+  verifiedPhone,
   onClose,
   onFieldChange,
   onSave
@@ -996,6 +993,7 @@ function AddressDialog({
   form: AddressDialogFormState;
   editing: boolean;
   pending: boolean;
+  verifiedPhone: string;
   onClose: () => void;
   onFieldChange: (field: keyof AddressDialogFormState, value: string) => void;
   onSave: () => void;
@@ -1046,8 +1044,9 @@ function AddressDialog({
           <PaymentInput
             label="Phone"
             type="tel"
-            value={form.phone}
-            onChange={(value) => onFieldChange("phone", value)}
+            value={verifiedPhone}
+            onChange={() => undefined}
+            readOnly
           />
           <PaymentInput
             label="Pincode"
@@ -1072,6 +1071,9 @@ function AddressDialog({
             />
           </div>
         </div>
+        <p className="mt-3 text-xs leading-6 text-[#7d876f]">
+          Mobile number is locked to the verified OTP account. To use a different number, sign in with that number first.
+        </p>
 
         <div className="mt-6 flex flex-wrap gap-3">
           <button
@@ -1096,11 +1098,13 @@ function AddressDialog({
   );
 }
 
-function buildGuestDeliveryAddress(form: PaymentFormState) {
+function buildGuestDeliveryAddress(form: PaymentFormState, verifiedPhone?: string | null) {
+  const lockedPhone = resolveVerifiedPhone(verifiedPhone, form.phone);
+
   if (
     !form.fullName.trim() ||
     !form.email.trim() ||
-    !form.phone.trim() ||
+    !lockedPhone ||
     !form.address.trim() ||
     !form.city.trim() ||
     !form.state.trim() ||
@@ -1112,7 +1116,7 @@ function buildGuestDeliveryAddress(form: PaymentFormState) {
   return {
     fullName: form.fullName.trim(),
     email: form.email.trim(),
-    phone: form.phone.trim(),
+    phone: lockedPhone,
     address: form.address.trim(),
     city: form.city.trim(),
     state: form.state.trim(),
@@ -1120,8 +1124,13 @@ function buildGuestDeliveryAddress(form: PaymentFormState) {
   };
 }
 
-function buildCustomerAddress(form: AddressDialogFormState, existingAddressCount: number, addressId?: string) {
-  const deliveryAddress = buildGuestDeliveryAddress(form);
+function buildCustomerAddress(
+  form: AddressDialogFormState,
+  existingAddressCount: number,
+  addressId?: string,
+  verifiedPhone?: string | null
+) {
+  const deliveryAddress = buildGuestDeliveryAddress(form, verifiedPhone);
 
   if (!deliveryAddress) {
     return null;
@@ -1157,4 +1166,27 @@ function buildProfilePayload(addresses: CustomerAddress[], selectedAddressId: st
 function getPaymentFailureMessage(response: RazorpayEventResponse) {
   const reason = response.error?.description || response.error?.reason;
   return reason ? `Payment failed: ${reason}` : "Payment failed. Please try again.";
+}
+
+function resolveVerifiedPhone(verifiedPhone: string | null | undefined, fallback = "") {
+  const normalizedVerifiedPhone = typeof verifiedPhone === "string" ? verifiedPhone.trim() : "";
+
+  if (normalizedVerifiedPhone) {
+    return normalizedVerifiedPhone;
+  }
+
+  return fallback.trim();
+}
+
+function applyVerifiedPhoneToAddress(address: CustomerAddress, verifiedPhone: string | null | undefined) {
+  const lockedPhone = resolveVerifiedPhone(verifiedPhone, address.phone);
+
+  if (lockedPhone === address.phone) {
+    return address;
+  }
+
+  return {
+    ...address,
+    phone: lockedPhone
+  };
 }

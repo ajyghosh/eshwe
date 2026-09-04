@@ -661,7 +661,6 @@ export function ShopCataloguePage() {
                     key={product.id ?? product.sku}
                     product={product}
                     buttonLabel="ADD TO BAG"
-                    showDetailButton={false}
                   />
                 ))}
               </div>

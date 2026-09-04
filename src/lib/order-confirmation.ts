@@ -155,10 +155,24 @@ function buildOrderReceiptHtml(
   const paymentStatus = formatOrderConfirmationPaymentStatus(confirmation.paymentStatus.trim() || "pending");
   const itemCount = String(confirmation.items.length);
   const shareText = [
-    `Eshwe receipt ${displayOrderId}`,
+    "Eshwe order receipt",
+    `Order ID: ${displayOrderId}`,
+    `Razorpay order ID: ${confirmation.razorpayOrderId || "-"}`,
+    `Payment ID: ${confirmation.razorpayPaymentId || "-"}`,
     `Placed: ${placedAt}`,
-    `Status: ${formatOrderConfirmationPaymentStatus(confirmation.paymentStatus)}`,
-    `Total: ${formatCurrency(confirmation.summary.total, confirmation.summary.currency)}`
+    `Payment status: ${paymentStatus}`,
+    "",
+    "Items:",
+    ...confirmation.items.map((item) => {
+      const lineTotal = typeof item.unitPrice === "number" ? item.unitPrice * item.quantity : null;
+      return `• ${item.name} (${item.sku}) × ${item.quantity}${lineTotal === null ? "" : ` — ${formatCurrency(lineTotal, confirmation.summary.currency)}`}`;
+    }),
+    "",
+    `Subtotal: ${formatCurrency(confirmation.summary.subtotal, confirmation.summary.currency)}`,
+    `Shipping: ${formatCurrency(confirmation.summary.shippingFee, confirmation.summary.currency)}`,
+    `Packaging: ${formatCurrency(confirmation.summary.packagingFee, confirmation.summary.currency)}`,
+    `Savings: -${formatCurrency(confirmation.summary.savings, confirmation.summary.currency)}`,
+    `Total paid: ${formatCurrency(confirmation.summary.total, confirmation.summary.currency)}`
   ].join("\n");
   const itemsMarkup = confirmation.items
     .map((item) => {
@@ -466,14 +480,14 @@ function buildOrderReceiptHtml(
 
           <div class="footer">
             ${isAppPath
-              ? "Save or share this receipt directly from your phone. A print-style save dialog opens only if sharing is not available."
+              ? "Share a complete PDF copy of this receipt directly from your phone."
               : "Keep this receipt for your records. You can print this file directly from your browser."}
           </div>
 
           <div class="receipt-actions">
             ${isAppPath
               ? `
-            <button class="toolbar-button" type="button" onclick="shareReceipt()">Share / Save</button>`
+            <button class="toolbar-button" type="button" onclick="shareReceipt()">Share</button>`
               : `
             <button class="toolbar-button" type="button" onclick="window.print()">Print receipt</button>`}
             <button class="toolbar-button primary" type="button" onclick="goBackToStore()">${escapeHtml(returnLabel)}</button>
@@ -487,7 +501,6 @@ function buildOrderReceiptHtml(
           title: ${JSON.stringify(`Eshwe Receipt ${displayOrderId}`)},
           text: ${JSON.stringify(shareText)}
         };
-
         try {
           if (navigator.share) {
             await navigator.share(shareData);
@@ -502,7 +515,7 @@ function buildOrderReceiptHtml(
         try {
           if (navigator.clipboard && navigator.clipboard.writeText) {
             await navigator.clipboard.writeText(shareData.text);
-            window.alert("Receipt details copied. You can paste and forward them now.");
+            window.alert("Receipt details copied. You can paste and share them now.");
             return;
           }
         } catch (error) {}

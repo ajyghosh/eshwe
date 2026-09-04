@@ -128,11 +128,27 @@ function MobileFloatingCartButton() {
   const pathname = usePathname();
   const { totalItems } = useCart();
   const normalizedPathname = normalizePathname(pathname);
+  const isHomeScreen = normalizedPathname === "/app";
+  const [hasScrolledPastHomeHeader, setHasScrolledPastHomeHeader] = useState(false);
+
+  useEffect(() => {
+    if (!isHomeScreen) {
+      setHasScrolledPastHomeHeader(false);
+      return;
+    }
+
+    const updateVisibility = () => setHasScrolledPastHomeHeader(window.scrollY > 160);
+    updateVisibility();
+    window.addEventListener("scroll", updateVisibility, { passive: true });
+
+    return () => window.removeEventListener("scroll", updateVisibility);
+  }, [isHomeScreen]);
 
   if (
     totalItems <= 0 ||
     normalizedPathname === "/app/checkout" ||
-    normalizedPathname === "/app/order-confirmation"
+    normalizedPathname === "/app/order-confirmation" ||
+    (isHomeScreen && !hasScrolledPastHomeHeader)
   ) {
     return null;
   }
@@ -143,9 +159,9 @@ function MobileFloatingCartButton() {
         <Link
           href={buildAppCheckoutHref()}
           aria-label={`View bag with ${totalItems} item${totalItems === 1 ? "" : "s"}`}
-          className="pointer-events-auto absolute right-4 inline-flex h-12 w-12 items-center justify-center text-[#68735b] transition-transform duration-200 hover:-translate-y-0.5"
+          className="pointer-events-auto absolute right-4 inline-flex h-12 w-12 items-center justify-center text-[#5e684f] transition-transform duration-200 hover:-translate-y-0.5 active:scale-95"
         >
-          <span className="absolute -top-1 left-1/2 inline-flex h-7 min-w-7 -translate-x-[12%] items-center justify-center rounded-full bg-[#a8574d] px-2 text-sm font-semibold leading-none text-[#fbf4e8] shadow-[0_10px_20px_rgba(89,45,36,0.18)]">
+          <span className="absolute -right-1.5 -top-1.5 inline-flex h-7 min-w-7 items-center justify-center rounded-full border-2 border-[#fffaf2] bg-[#a8574d] px-2 text-sm font-semibold leading-none text-[#fbf4e8] shadow-[0_10px_20px_rgba(89,45,36,0.18)]">
             {totalItems}
           </span>
           <CartIcon />

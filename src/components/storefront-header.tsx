@@ -478,6 +478,20 @@ export function StorefrontHeader({
                           >
                             My Profile
                           </Link>
+                          <Link
+                            href="/saved/"
+                            onClick={() => setAccountMenuOpen(false)}
+                            className="block w-full rounded-[0.95rem] px-3 py-2 text-left text-sm font-semibold text-[#4f5942] transition-colors duration-200 hover:bg-[#f1e8d8]"
+                          >
+                            Saved Pieces
+                          </Link>
+                          <Link
+                            href="/orders/"
+                            onClick={() => setAccountMenuOpen(false)}
+                            className="block w-full rounded-[0.95rem] px-3 py-2 text-left text-sm font-semibold text-[#4f5942] transition-colors duration-200 hover:bg-[#f1e8d8]"
+                          >
+                            My Orders
+                          </Link>
                           <button
                             type="button"
                             onClick={openSignOutDialog}

@@ -12,12 +12,10 @@ import type { Saree } from "@/types/saree";
 
 export function CatalogueProductCard({
   product,
-  buttonLabel,
-  showDetailButton = true
+  buttonLabel
 }: {
   product: Saree;
   buttonLabel?: string;
-  showDetailButton?: boolean;
 }) {
   const { addItem, items, updateQuantity } = useCart();
   const [waitlistDialogOpen, setWaitlistDialogOpen] = useState(false);
@@ -117,15 +115,6 @@ export function CatalogueProductCard({
               {buttonLabel ?? "ADD TO CART"}
             </button>
           )}
-
-          {showDetailButton ? (
-            <Link
-              href={buildProductDetailHref(product.slug)}
-              className="brand-caption inline-flex rounded-2xl border border-[#d6ccb9] px-5 py-2.5 text-[0.52rem] font-semibold tracking-[0.05em] text-[#5e684f] sm:text-[0.58rem]"
-            >
-              VIEW DETAILS
-            </Link>
-          ) : null}
 
         </div>
       </div>

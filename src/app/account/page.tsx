@@ -4,7 +4,7 @@ import { AccountPage } from "@/components/account-page";
 
 export const metadata: Metadata = {
   title: "My Account",
-  description: "View your saved addresses and recent orders at eshwe.",
+  description: "Manage your profile and saved addresses at eshwe.",
   alternates: {
     canonical: "/account/"
   },

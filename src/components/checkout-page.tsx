@@ -255,7 +255,6 @@ export function CheckoutPage() {
                     buttonLabel="ADD"
                     maxWidthClassName="max-w-none"
                     cardClassName="w-[220px] shrink-0 snap-start sm:w-[250px] lg:w-[280px] xl:w-[calc((100%-10rem)/6)]"
-                    showDetailButton={false}
                   />
                 ) : (
                   <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-4">
@@ -264,7 +263,6 @@ export function CheckoutPage() {
                         key={product.id ?? product.sku}
                         product={product}
                         buttonLabel="ADD"
-                        showDetailButton={false}
                       />
                     ))}
                   </div>

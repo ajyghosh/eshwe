@@ -4,8 +4,10 @@ const crypto = require("node:crypto");
 
 const admin = require("firebase-admin");
 const { onRequest } = require("firebase-functions/v2/https");
+const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const logger = require("firebase-functions/logger");
 const { defineSecret } = require("firebase-functions/params");
+const nodemailer = require("nodemailer");
 const Razorpay = require("razorpay");
 
 const CUSTOM_TOKEN_SIGNER_SERVICE_ACCOUNT =
@@ -35,6 +37,10 @@ const OTP_EXPIRY_MINUTES = normalizePositiveInteger(process.env.MSG91_OTP_EXPIRY
 const OTP_COOLDOWN_SECONDS = normalizePositiveInteger(process.env.MSG91_OTP_COOLDOWN_SECONDS, 45);
 const OTP_MAX_REQUESTS_PER_HOUR = normalizePositiveInteger(process.env.MSG91_OTP_MAX_REQUESTS_PER_HOUR, 12);
 const OTP_MAX_VERIFY_ATTEMPTS = normalizePositiveInteger(process.env.MSG91_OTP_MAX_VERIFY_ATTEMPTS, 5);
+const CONTACT_SMTP_HOST = "mail.nohello.in";
+const CONTACT_SMTP_PORT = 465;
+const CONTACT_SMTP_USER = "hello@nohello.in";
+const CONTACT_NOTIFICATION_TO = CONTACT_SMTP_USER;
 const ALLOWED_ORIGINS = new Set([
   "http://localhost:3000",
   "http://127.0.0.1:3000",
@@ -48,6 +54,58 @@ const razorpayKeySecretSecret = defineSecret("RAZORPAY_KEY_SECRET");
 const razorpayWebhookSecret = defineSecret("RAZORPAY_WEBHOOK_SECRET");
 const msg91AuthKeySecret = defineSecret("MSG91_AUTH_KEY");
 const msg91SmsTemplateIdSecret = defineSecret("MSG91_OTP_TEMPLATE_ID");
+const contactSmtpPasswordSecret = defineSecret("CONTACT_SMTP_PASSWORD");
+
+exports.sendContactEmailNotification = onDocumentCreated(
+  {
+    document: "customerMessages/{messageId}",
+    region: REGION,
+    secrets: [contactSmtpPasswordSecret]
+  },
+  async (event) => {
+    const contactMessage = event.data?.data();
+
+    if (!contactMessage) {
+      logger.warn("Contact email notification skipped because the message data was unavailable.", {
+        messageId: event.params.messageId
+      });
+      return;
+    }
+
+    const smtpPassword = contactSmtpPasswordSecret.value();
+
+    if (!smtpPassword) {
+      logger.error("Contact email notification skipped because CONTACT_SMTP_PASSWORD is not configured.", {
+        messageId: event.params.messageId
+      });
+      return;
+    }
+
+    const customerEmail = getContactEmail(contactMessage.email);
+    const transporter = nodemailer.createTransport({
+      auth: {
+        pass: smtpPassword,
+        user: CONTACT_SMTP_USER
+      },
+      host: CONTACT_SMTP_HOST,
+      port: CONTACT_SMTP_PORT,
+      secure: true
+    });
+
+    try {
+      await transporter.sendMail({
+        from: `eshwe Contact <${CONTACT_SMTP_USER}>`,
+        replyTo: customerEmail || undefined,
+        subject: "New Contact Us message | eshwe",
+        text: buildContactEmailText(contactMessage, event.params.messageId),
+        to: CONTACT_NOTIFICATION_TO
+      });
+      logger.info("Contact email notification sent.", { messageId: event.params.messageId });
+    } finally {
+      transporter.close();
+    }
+  }
+);
 
 exports.sendCustomerOtp = onRequest(
   {
@@ -1356,6 +1414,34 @@ function readMsg91Error(payload, fallbackMessage) {
   }
 
   return fallbackMessage;
+}
+
+function buildContactEmailText(contactMessage, messageId) {
+  const email = getContactEmail(contactMessage.email) || "Not provided";
+  const phone = readContactField(contactMessage.phone) || "Not provided";
+  const message = readContactField(contactMessage.message) || "Not provided";
+  const sourcePath = readContactField(contactMessage.sourcePath) || "/";
+
+  return [
+    "A new Contact Us message was submitted on eshwe.",
+    "",
+    `Message ID: ${messageId}`,
+    `Email: ${email}`,
+    `Phone: ${phone}`,
+    `Source: ${sourcePath}`,
+    "",
+    "Message:",
+    message
+  ].join("\n");
+}
+
+function getContactEmail(value) {
+  const email = readContactField(value).toLowerCase();
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : "";
+}
+
+function readContactField(value) {
+  return typeof value === "string" ? value.trim() : "";
 }
 
 function getRequestIpAddress(request) {

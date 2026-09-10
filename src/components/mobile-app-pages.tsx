@@ -450,6 +450,8 @@ export function MobileAppSearchPage({ categoryFirst = false }: { categoryFirst?:
     return sortProducts(visibleProducts, activeSort, activeQuery);
   }, [activeCategory, activeFabric, activeIntent, activeQuery, activeSort, products]);
 
+  const activeFilterCount = [activeCategory, activeFabric, activeIntent].filter(Boolean).length;
+  const hasActiveSearchState = Boolean(activeQuery || activeFilterCount > 0);
   const categoryOptions = useMemo(() => uniqueOptions(products.map((product) => product.category)), [products]);
   const fabricOptions = useMemo(() => uniqueOptions(products.map((product) => product.fabric)), [products]);
   const emptyStateTitle = activeCategory
@@ -517,44 +519,57 @@ export function MobileAppSearchPage({ categoryFirst = false }: { categoryFirst?:
       }))
       .slice(0, 6);
   }, [activeCategory, activeFabric, categoryCards, categoryOptions, fabricOptions, products]);
-  const emptyStateProductSuggestions = useMemo(() => {
-    const suggestionLabels = emptyStateCategorySuggestions.map((suggestion) => suggestion.label);
-    const fallbackProducts = products.filter((product) => {
-      if (activeCategory && matchesIdentifier(product.category, activeCategory)) {
+  const youMayAlsoLikeProducts = useMemo(() => {
+    if (!hasActiveSearchState) {
+      return [];
+    }
+
+    const displayedKeys = new Set(filteredProducts.map((product) => product.id ?? product.sku));
+    const activeFilterHasResults = filteredProducts.length > 0;
+    const candidates = products.filter((product) => {
+      if (displayedKeys.has(product.id ?? product.sku)) {
         return false;
       }
 
-      if (activeFabric && matchesIdentifier(product.fabric, activeFabric)) {
-        return false;
-      }
+      if (!activeFilterHasResults) {
+        if (activeCategory && matchesIdentifier(product.category, activeCategory)) {
+          return false;
+        }
 
-      if (activeQuery && matchesProductSearch(product, activeQuery)) {
-        return false;
-      }
-
-      if (activeIntent && !matchesProductIntent(product, activeIntent)) {
-        return false;
+        if (activeFabric && matchesIdentifier(product.fabric, activeFabric)) {
+          return false;
+        }
       }
 
       return true;
     });
 
-    return sortProducts(fallbackProducts, "relevance", "").sort((left, right) => {
-      const leftMatchesSuggestion = suggestionLabels.some(
-        (label) => matchesIdentifier(left.category, label) || matchesIdentifier(left.fabric, label)
-      );
-      const rightMatchesSuggestion = suggestionLabels.some(
-        (label) => matchesIdentifier(right.category, label) || matchesIdentifier(right.fabric, label)
-      );
-
-      return Number(rightMatchesSuggestion) - Number(leftMatchesSuggestion);
-    }).slice(0, 4);
-  }, [activeCategory, activeFabric, activeIntent, activeQuery, emptyStateCategorySuggestions, products]);
-  const shouldShowEmptyStateAlternates = !activeCategory && !activeFabric;
+    return candidates
+      .map((product) => ({
+        product,
+        score:
+          getRecommendationMatchScore(product, {
+            category: activeCategory,
+            fabric: activeFabric,
+            intent: activeIntent,
+            query: activeQuery
+          }) +
+          (product.featured ? 3 : 0)
+      }))
+      .sort(
+        (left, right) =>
+          compareProductsByAvailability(left.product, right.product) ||
+          right.score - left.score ||
+          productSortByNewest(left.product, right.product)
+      )
+      .slice(0, 4)
+      .map((entry) => entry.product);
+  }, [activeCategory, activeFabric, activeIntent, activeQuery, filteredProducts, hasActiveSearchState, products]);
+  const showPopularSearches = !activeQuery && activeFilterCount === 0;
+  const shouldShowEmptyStateAlternates = showPopularSearches;
   const emptyStateDescription = shouldShowEmptyStateAlternates
     ? "Try another category or open the full collection."
     : "Clear this filter or open the full collection.";
-  const activeFilterCount = [activeCategory, activeFabric, activeIntent].filter(Boolean).length;
   const resultsCountLabel = `${filteredProducts.length} result${filteredProducts.length === 1 ? "" : "s"}`;
 
   function applySearch(params: {
@@ -648,7 +663,9 @@ export function MobileAppSearchPage({ categoryFirst = false }: { categoryFirst?:
 
         <section className="mt-5">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-[0.92rem] font-semibold text-[#2f342d]">Popular searches</p>
+            <p className="text-[0.92rem] font-semibold text-[#2f342d]">
+              {showPopularSearches ? "Popular searches" : "Results"}
+            </p>
             <div className="text-right">
               <p className="text-[0.86rem] font-semibold text-[#2f342d]">{resultsCountLabel}</p>
               {(activeQuery || activeFilterCount > 0) ? (
@@ -660,19 +677,21 @@ export function MobileAppSearchPage({ categoryFirst = false }: { categoryFirst?:
               ) : null}
             </div>
           </div>
-          <div className="mt-4 flex gap-2.5 overflow-x-auto pb-1 hide-scrollbar">
-            {POPULAR_SEARCHES.map((chip) => (
-              <button
-                key={chip}
-                type="button"
-                onClick={() => applySearch({ q: chip, category: activeCategory, fabric: activeFabric, intent: activeIntent, sort: activeSort })}
-                className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border border-[#e4dacb] bg-white/72 px-3 py-2 text-[0.82rem] font-medium text-[#3a4337]"
-              >
-                <SearchIcon small />
-                <span>{chip}</span>
-              </button>
-            ))}
-          </div>
+          {showPopularSearches ? (
+            <div className="mt-4 flex gap-2.5 overflow-x-auto pb-1 hide-scrollbar">
+              {POPULAR_SEARCHES.map((chip) => (
+                <button
+                  key={chip}
+                  type="button"
+                  onClick={() => applySearch({ q: chip, sort: activeSort })}
+                  className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border border-[#e4dacb] bg-white/72 px-3 py-2 text-[0.82rem] font-medium text-[#3a4337]"
+                >
+                  <SearchIcon small />
+                  <span>{chip}</span>
+                </button>
+              ))}
+            </div>
+          ) : null}
         </section>
 
         {(activeCategory || activeFabric || activeIntent || activeQuery) ? (
@@ -690,53 +709,49 @@ export function MobileAppSearchPage({ categoryFirst = false }: { categoryFirst?:
           ))}
         </div>
 
+        {filteredProducts.length > 0 && youMayAlsoLikeProducts.length > 0 ? (
+          <YouMayAlsoLikeSection products={youMayAlsoLikeProducts} />
+        ) : null}
+
         {filteredProducts.length === 0 ? (
-          <section className="mt-6 rounded-2xl border border-dashed border-[#dccfb9] bg-[#fffaf2] px-5 py-8 text-center">
-            <p className="brand-copy text-[1.28rem] leading-tight text-[#2f342d]">{emptyStateTitle}</p>
-            <p className="mt-2 text-[0.9rem] leading-6 text-[#68735e]">
-              {emptyStateDescription}
-            </p>
+          <>
+            <section className="mt-6 rounded-2xl border border-dashed border-[#dccfb9] bg-[#fffaf2] px-5 py-8 text-center">
+              <p className="brand-copy text-[1.28rem] leading-tight text-[#2f342d]">{emptyStateTitle}</p>
+              <p className="mt-2 text-[0.9rem] leading-6 text-[#68735e]">
+                {emptyStateDescription}
+              </p>
 
-            {shouldShowEmptyStateAlternates && emptyStateCategorySuggestions.length > 0 ? (
-              <div className="mt-5">
-                <p className="brand-caption text-[0.66rem] font-semibold tracking-[0.22em] text-[#7a846f]">
-                  EXPLORE OTHER CATEGORIES
-                </p>
-                <div className="mt-3 grid grid-cols-2 gap-2.5 text-left">
-                  {emptyStateCategorySuggestions.map((suggestion) => (
-                    <Link
-                      key={suggestion.href}
-                      href={suggestion.href}
-                      className="rounded-[1.2rem] border border-[#e5d9c8] bg-white/88 px-3 py-3 text-[0.88rem] font-medium text-[#394234] shadow-none"
-                    >
-                      {suggestion.label}
-                    </Link>
-                  ))}
+              {shouldShowEmptyStateAlternates && emptyStateCategorySuggestions.length > 0 ? (
+                <div className="mt-5">
+                  <p className="brand-caption text-[0.66rem] font-semibold tracking-[0.22em] text-[#7a846f]">
+                    EXPLORE OTHER CATEGORIES
+                  </p>
+                  <div className="mt-3 grid grid-cols-2 gap-2.5 text-left">
+                    {emptyStateCategorySuggestions.map((suggestion) => (
+                      <Link
+                        key={suggestion.href}
+                        href={suggestion.href}
+                        className="rounded-[1.2rem] border border-[#e5d9c8] bg-white/88 px-3 py-3 text-[0.88rem] font-medium text-[#394234] shadow-none"
+                      >
+                        {suggestion.label}
+                      </Link>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ) : null}
+              ) : null}
 
-            {shouldShowEmptyStateAlternates && emptyStateProductSuggestions.length > 0 ? (
-              <div className="mt-5 text-left">
-                <div className="mt-3 grid grid-cols-2 gap-3">
-                  {emptyStateProductSuggestions.map((product) => (
-                    <MobileProductCard
-                      key={`${product.id ?? product.sku}-empty-state`}
-                      product={product}
-                      compact
-                    />
-                  ))}
-                </div>
-              </div>
-            ) : null}
+              <Link
+                href={buildAppSearchHref()}
+                className="brand-caption mt-5 inline-flex min-h-11 items-center justify-center rounded-full bg-[#5e684f] px-5 text-[0.7rem] font-semibold tracking-[0.16em] text-[#fbf4e8]"
+              >
+                VIEW ALL SAREES
+              </Link>
+            </section>
 
-            <Link
-              href={buildAppSearchHref()}
-              className="brand-caption mt-5 inline-flex min-h-11 items-center justify-center rounded-full bg-[#5e684f] px-5 text-[0.7rem] font-semibold tracking-[0.16em] text-[#fbf4e8]"
-            >
-              VIEW ALL SAREES
-            </Link>
-          </section>
+            {!shouldShowEmptyStateAlternates && youMayAlsoLikeProducts.length > 0 ? (
+              <YouMayAlsoLikeSection products={youMayAlsoLikeProducts} />
+            ) : null}
+          </>
         ) : null}
       </div>
 
@@ -755,7 +770,7 @@ export function MobileAppSearchPage({ categoryFirst = false }: { categoryFirst?:
         onChangeFabric={setDraftFabric}
         onChangeIntent={setDraftIntent}
         onChangeSort={setDraftSort}
-      onApply={() => {
+        onApply={() => {
           applySearch({
             q: searchValue.trim(),
             category: draftCategory,
@@ -765,7 +780,7 @@ export function MobileAppSearchPage({ categoryFirst = false }: { categoryFirst?:
           });
           setFilterSheetOpen(false);
         }}
-      onClear={() => {
+        onClear={() => {
           setSearchValue("");
           setDraftCategory("");
           setDraftFabric("");
@@ -3070,6 +3085,29 @@ function MobileProductPreviewGrid({
   );
 }
 
+function YouMayAlsoLikeSection({ products }: { products: Saree[] }) {
+  if (products.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="mt-7">
+      <div className="flex items-center gap-3">
+        <span className="h-px flex-1 bg-[#dccfb9]" />
+        <h2 className="brand-caption text-center text-[0.66rem] font-semibold tracking-[0.22em] text-[#7a846f]">
+          YOU MAY ALSO LIKE
+        </h2>
+        <span className="h-px flex-1 bg-[#dccfb9]" />
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        {products.map((product) => (
+          <MobileProductCard key={`${product.id ?? product.sku}-you-may-like`} product={product} compact />
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function BenefitTile({
   title,
   description,
@@ -3942,6 +3980,36 @@ function countSearchMatches(product: Saree, query: string) {
     const normalizedValue = String(value).toLowerCase();
     return score + (normalizedValue.includes(normalizedQuery) ? 1 : 0);
   }, 0);
+}
+
+function getRecommendationMatchScore(
+  product: Saree,
+  activeState: {
+    category: string;
+    fabric: string;
+    intent: string;
+    query: string;
+  }
+) {
+  let score = 0;
+
+  if (activeState.query && matchesProductSearch(product, activeState.query)) {
+    score += 20;
+  }
+
+  if (activeState.intent && matchesProductIntent(product, activeState.intent)) {
+    score += 12;
+  }
+
+  if (activeState.category && matchesIdentifier(product.category, activeState.category)) {
+    score += 8;
+  }
+
+  if (activeState.fabric && matchesIdentifier(product.fabric, activeState.fabric)) {
+    score += 8;
+  }
+
+  return score;
 }
 
 function uniqueOptions(values: string[]) {

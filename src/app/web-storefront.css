@@ -1,0 +1,325 @@
+/* Storefront presentation only. Installed PWA and owner screens have separate roots. */
+.web-header-bag-label {
+  display: none;
+}
+
+.web-storefront {
+  --web-muted: #626e58;
+}
+
+.web-storefront :is(a, button, input, select, textarea):focus-visible {
+  outline: 2px solid #5e684f;
+  outline-offset: 4px;
+}
+
+.web-storefront :is(button, a).brand-caption {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.web-storefront :is(button, a).brand-caption.inline-flex,
+.web-storefront button.brand-caption {
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+}
+
+.web-storefront :is(p, span, label).brand-caption:not(.sr-only) {
+  font-size: 0.6875rem;
+  letter-spacing: 0.1em;
+}
+
+.web-storefront .text-\[\#7d876f\],
+.web-storefront .text-\[\#8d8b87\],
+.web-storefront .text-\[\#9a9a93\] {
+  color: var(--web-muted);
+}
+
+.web-storefront .web-surface {
+  border-radius: 20px;
+  background: #fffaf2;
+  box-shadow: 0 4px 18px rgb(63 71 56 / 3%);
+}
+
+.web-storefront .web-filter-toolbar > * {
+  min-width: 0;
+}
+
+.web-storefront .web-filter-toolbar :is(input, select, button) {
+  height: 44px;
+  border-radius: 10px;
+  font-size: 0.8125rem;
+}
+
+.web-storefront .web-filter-toolbar button {
+  padding-inline: 16px;
+}
+
+.web-storefront .web-filter-toolbar label {
+  font-size: 0.75rem;
+  letter-spacing: 0.03em;
+}
+
+.web-storefront .web-product-grid {
+  column-gap: 24px;
+  row-gap: 36px;
+}
+
+.web-storefront .web-product-card-info {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  padding-top: 16px;
+}
+
+.web-storefront .web-product-card-info h3 {
+  font-size: 1.125rem;
+  line-height: 1.4;
+}
+
+.web-storefront .web-product-card-info > a {
+  min-height: 72px;
+}
+
+.web-storefront .web-product-card-actions {
+  margin-top: auto;
+  padding-top: 16px;
+}
+
+.web-storefront .web-product-card-actions > :is(button, div) {
+  width: 144px;
+  min-height: 44px;
+  border-radius: 12px;
+}
+
+.web-storefront .web-product-card-actions > div {
+  grid-template-columns: 34px 1fr 34px;
+}
+
+.web-storefront .web-product-card-actions > div button {
+  height: 34px;
+  width: 34px;
+}
+
+.web-storefront :is(.web-product-media, .web-product-gallery) {
+  border-radius: 16px;
+  box-shadow: none;
+}
+
+.web-storefront .web-product-info {
+  min-height: 0;
+}
+
+.web-storefront .web-product-trust-grid {
+  border-block: 1px solid #e3d8c9;
+  padding-block: 16px;
+  gap: 16px 24px;
+}
+
+.web-storefront .web-product-trust {
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.web-storefront .web-product-trust p + p {
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+
+.web-storefront.web-checkout h1,
+.web-storefront.web-account-page h1 {
+  font-size: clamp(1.75rem, 3vw, 2.125rem);
+  line-height: 1.2;
+}
+
+.web-storefront .web-checkout-grid {
+  align-items: start;
+}
+
+.web-storefront .web-account-intro h2 {
+  font-size: 1.75rem;
+}
+
+.web-storefront .web-account-intro aside {
+  background: transparent;
+  box-shadow: none;
+}
+
+.web-storefront .web-footer {
+  padding-block: 40px 28px;
+}
+
+.web-storefront .web-footer h2 {
+  font-size: 1.75rem;
+  line-height: 1.25;
+}
+
+.web-storefront .web-footer-columns {
+  padding-bottom: 28px;
+  gap: 32px;
+}
+
+.web-storefront .web-footer-links {
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.web-storefront .web-footer a:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+/* These shared dialogs render outside the page root. */
+body:has(.web-storefront) :is(.customer-otp-panel, .customer-waitlist-panel) {
+  max-height: calc(100dvh - 48px);
+  overflow-y: auto;
+  border-radius: 20px;
+  background: #fffaf2;
+}
+
+body:has(.web-storefront) :is(.customer-otp-panel, .customer-waitlist-panel) button {
+  min-height: 44px;
+  font-size: 0.8125rem;
+  letter-spacing: 0.04em;
+}
+
+body:has(.web-storefront) :is(.customer-otp-panel, .customer-waitlist-panel) .text-\[\#7d876f\] {
+  color: #626e58;
+}
+
+body:has(.web-storefront) :is(.customer-otp-panel, .customer-waitlist-panel) :is(button, input):focus-visible {
+  outline: 2px solid #5e684f;
+  outline-offset: 3px;
+}
+
+@media (min-width: 640px) {
+  .web-storefront .web-filter-toolbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .web-storefront :is(.web-home-categories, .web-home-showcase, .web-home-collections, .web-home-benefits) {
+    padding-block: 48px;
+  }
+
+  .web-storefront .web-showcase-content {
+    margin-top: 28px;
+    padding: 0;
+  }
+
+  .web-storefront .web-collection-content {
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+  }
+
+  .web-storefront .web-hero-copy {
+    background: rgb(48 62 40 / 78%);
+    border-radius: 20px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .web-storefront .web-header-logo {
+    border-color: transparent;
+    box-shadow: none;
+    background: transparent;
+  }
+
+  .web-storefront .web-header-logo img {
+    width: 56px;
+  }
+
+  .web-storefront .web-header-spacer {
+    height: 80px;
+  }
+
+  .web-storefront .web-header-categories {
+    gap: 20px;
+  }
+
+  .web-storefront .web-filter-toolbar {
+    grid-template-columns: minmax(180px, 1.5fr) repeat(2, minmax(0, 1fr));
+  }
+
+  .web-storefront .web-product-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .web-storefront .web-checkout-grid {
+    grid-template-columns: minmax(0, 1fr) 340px;
+    gap: 28px;
+  }
+
+  .web-storefront .web-footer-columns {
+    grid-template-columns: 1.1fr 1fr 0.9fr;
+  }
+
+  .web-storefront .web-footer-links {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-content: start;
+    gap: 12px 20px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .web-storefront .web-header-action,
+  .web-storefront .web-header-bag {
+    width: auto;
+    min-height: 44px;
+    gap: 8px;
+    padding-inline: 10px;
+    font-size: 0.875rem;
+  }
+
+  .web-storefront .web-header-action-label {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    clip-path: none;
+    white-space: nowrap;
+  }
+
+  .web-storefront .web-header-bag-label {
+    display: inline;
+  }
+
+  .web-storefront .web-filter-toolbar {
+    grid-template-columns: minmax(200px, 1.7fr) repeat(4, minmax(115px, 1fr)) auto;
+    gap: 12px;
+  }
+
+  .web-storefront .web-product-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .web-storefront .web-checkout-grid {
+    grid-template-columns: minmax(0, 1fr) 390px;
+  }
+}
+
+@media (min-width: 1024px) and (min-height: 800px) {
+  .web-storefront .web-order-summary {
+    position: sticky;
+    top: 100px;
+    max-height: calc(100dvh - 124px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .web-storefront *,
+  .web-storefront *::before,
+  .web-storefront *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

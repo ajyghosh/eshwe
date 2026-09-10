@@ -7,7 +7,8 @@
     "build": "next build",
     "build:hosting": "next build && node scripts/prepare-hosting-export.mjs",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:owner": "node --test tests/owner-reporting.test.cjs"
   },
   "dependencies": {
     "firebase": "^12.0.0",

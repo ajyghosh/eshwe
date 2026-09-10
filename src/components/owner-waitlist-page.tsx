@@ -127,8 +127,8 @@ export function OwnerWaitlistPage() {
       <div className="mx-auto max-w-6xl">
         <OwnerSectionHero
           eyebrow="OWNER WAITLIST"
-          title="Back-in-stock requests"
-          description="Review shoppers who asked to be notified when an out-of-stock saree becomes available again."
+          title="Waitlist"
+          description="Review customers waiting for a restock."
           action={
             user ? (
               <button

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import type { User } from "firebase/auth";
 
 import { signOutCurrentUser, subscribeToAuth } from "@/lib/auth";
@@ -22,6 +22,10 @@ type PendingSignInState = {
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+
+function normalizePhoneInput(value: string) {
+  return value.replace(/\D/g, "").slice(0, 10);
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -185,11 +189,7 @@ function CustomerOtpDialog({
     };
   }, [cooldownSeconds, open]);
 
-  function normalizePhoneInput(value: string) {
-    return value.replace(/\D/g, "").slice(0, 10);
-  }
-
-  async function sendOtpForPhone(nextPhone: string) {
+  const sendOtpForPhone = useCallback(async (nextPhone: string) => {
     const normalizedPhone = normalizePhoneInput(nextPhone);
 
     if (normalizedPhone.length !== 10) {
@@ -226,7 +226,7 @@ function CustomerOtpDialog({
     } finally {
       setSending(false);
     }
-  }
+  }, []);
 
   async function handleSendOtp() {
     await sendOtpForPhone(phone);
@@ -267,15 +267,15 @@ function CustomerOtpDialog({
     setPhone(normalizedPhone);
     setStep("otp");
     void sendOtpForPhone(normalizedPhone);
-  }, [autoSend, initialPhone, open]);
+  }, [autoSend, initialPhone, open, sendOtpForPhone]);
 
   if (!open) {
     return null;
   }
 
   return (
-    <div className="fixed inset-0 z-[90] flex items-end justify-center bg-[#354233]/36 px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-6 sm:items-center sm:px-4 sm:py-6">
-      <div className="max-h-[calc(100dvh-1rem)] w-full max-w-md overflow-y-auto rounded-[1.9rem] border border-[#ddd1c0] bg-[#fbf4e8] p-5 shadow-[0_24px_60px_rgba(47,52,45,0.2)] sm:rounded-[2rem] sm:p-6">
+    <div className="customer-otp-overlay fixed inset-0 z-[90] flex items-end justify-center bg-[#354233]/36 px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-6 sm:items-center sm:px-4 sm:py-6">
+      <div className="customer-otp-panel max-h-[calc(100dvh-1rem)] w-full max-w-md overflow-y-auto rounded-[1.9rem] border border-[#ddd1c0] bg-[#fbf4e8] p-5 shadow-[0_24px_60px_rgba(47,52,45,0.2)] sm:rounded-[2rem] sm:p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-[#7d876f]">Sign in</p>

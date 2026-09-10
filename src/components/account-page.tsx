@@ -91,7 +91,7 @@ export function AccountPage() {
     return () => {
       isMounted = false;
     };
-  }, [user?.uid]);
+  }, [user?.phoneNumber, user?.uid]);
 
   useEffect(() => {
     if (!profileMessage) {
@@ -200,7 +200,7 @@ export function AccountPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#fbf4e8] text-[#4f5942]">
+    <main className="web-storefront web-account-page min-h-screen bg-[#fbf4e8] text-[#4f5942]">
       <StorefrontHeader />
 
       <section className="px-6 py-10 sm:px-10 lg:px-12">
@@ -223,12 +223,12 @@ export function AccountPage() {
           </div>
 
           {loading ? (
-            <section className="rounded-[2rem] border border-[#e3d8c9] bg-[#f8f0e3] p-8 text-sm text-[#667056] shadow-[0_22px_60px_rgba(94,104,79,0.08)]">
+            <section className="web-surface rounded-[2rem] border border-[#e3d8c9] bg-[#f8f0e3] p-8 text-sm text-[#667056] shadow-[0_22px_60px_rgba(94,104,79,0.08)]">
               Checking your account...
             </section>
           ) : !user ? (
-            <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-              <div className="rounded-[2rem] border border-[#e3d8c9] bg-[#f8f0e3] p-8 shadow-[0_22px_60px_rgba(94,104,79,0.08)]">
+            <section className="web-account-intro grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+              <div className="web-surface rounded-[2rem] border border-[#e3d8c9] bg-[#f8f0e3] p-8 shadow-[0_22px_60px_rgba(94,104,79,0.08)]">
                 <h2 className="brand-copy text-3xl text-[#2b2a29]">Sign in to view your profile</h2>
                 <p className="mt-4 max-w-xl text-sm leading-7 text-[#667056]">
                   Use your mobile account to view and manage your saved addresses.
@@ -243,7 +243,7 @@ export function AccountPage() {
                 {profileError ? <p className="mt-4 text-sm text-[#9d4b45]">{profileError}</p> : null}
               </div>
 
-              <aside className="rounded-[2rem] border border-[#e3d8c9] bg-white/72 p-8">
+              <aside className="web-surface rounded-[2rem] border border-[#e3d8c9] bg-white/72 p-8">
                 <h3 className="brand-copy text-2xl text-[#2b2a29]">What you will see</h3>
                 <ul className="mt-5 space-y-3 text-sm leading-7 text-[#667056]">
                   <li>Saved delivery addresses from checkout.</li>
@@ -254,7 +254,7 @@ export function AccountPage() {
           ) : (
             <div className="max-w-xl">
               <div>
-                <section className="rounded-[2rem] border border-[#e3d8c9] bg-[#f8f0e3] p-6 shadow-[0_22px_60px_rgba(94,104,79,0.08)] sm:p-7">
+                <section className="web-surface rounded-[2rem] border border-[#e3d8c9] bg-[#f8f0e3] p-6 shadow-[0_22px_60px_rgba(94,104,79,0.08)] sm:p-7">
                   <div className="flex items-center justify-between gap-4">
                     <div>
                       <p className="brand-caption text-[0.62rem] font-semibold tracking-[0.18em] text-[#7d876f]">

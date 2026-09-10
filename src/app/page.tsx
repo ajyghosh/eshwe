@@ -56,7 +56,7 @@ export default function Home() {
   ];
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#fbf4e8] text-[#4f5942]">
+    <main className="web-storefront relative min-h-screen overflow-hidden bg-[#fbf4e8] text-[#4f5942]">
       <StorefrontHeader absolute contentVisible={homeReady} />
 
       <StorefrontHomeContent homeReady={homeReady} />
@@ -88,7 +88,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="relative z-10 bg-[#fbf4e8] px-6 py-18 sm:px-10 sm:py-20 lg:px-12">
+        <section className="web-home-benefits relative z-10 bg-[#fbf4e8] px-6 py-18 sm:px-10 sm:py-20 lg:px-12">
           <div className="mx-auto max-w-7xl">
             <div className="text-center">
               <h2 className="brand-copy text-2xl leading-tight text-[#3f4738] sm:text-3xl">

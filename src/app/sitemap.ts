@@ -12,24 +12,30 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
     {
       url: "https://eshwe.com/shop/",
-      lastModified: "2026-08-21",
+      lastModified: "2026-09-10",
       changeFrequency: "weekly",
       priority: 0.9
     },
     {
-      url: "https://eshwe.com/terms-and-conditions",
+      url: "https://eshwe.com/contact/",
+      lastModified: "2026-09-10",
+      changeFrequency: "monthly",
+      priority: 0.7
+    },
+    {
+      url: "https://eshwe.com/terms-and-conditions/",
       lastModified: "2026-08-29",
       changeFrequency: "yearly",
       priority: 0.5
     },
     {
-      url: "https://eshwe.com/privacy-policy",
+      url: "https://eshwe.com/privacy-policy/",
       lastModified: "2026-08-29",
       changeFrequency: "yearly",
       priority: 0.5
     },
     {
-      url: "https://eshwe.com/return-policy",
+      url: "https://eshwe.com/return-policy/",
       lastModified: "2026-08-29",
       changeFrequency: "yearly",
       priority: 0.5

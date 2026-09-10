@@ -87,7 +87,7 @@ export function CustomerOrdersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#fbf4e8] text-[#2b2a29]">
+    <div className="web-storefront min-h-screen bg-[#fbf4e8] text-[#2b2a29]">
       <StorefrontHeader />
 
       <main className="px-6 py-10 sm:px-10 lg:px-12">

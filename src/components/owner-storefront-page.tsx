@@ -47,8 +47,8 @@ export function OwnerStorefrontPage() {
       <div className="mx-auto max-w-7xl">
         <OwnerSectionHero
           eyebrow="OWNER STOREFRONT"
-          title="Homepage, categories, and catalogue master data in one operational lane."
-          description="Keep storefront structure separate from order operations. Use this page for content, category systems, and product setup data."
+          title="Storefront"
+          description="Update homepage content, categories, and product options."
           action={
             user ? (
               <button
@@ -113,10 +113,16 @@ export function OwnerStorefrontPage() {
           </div>
         ) : (
           <div className="mt-8 space-y-8">
-            <OwnerHomepageManager />
-            <OwnerCategoryManager />
-            <OwnerProductGroupManager />
-            <OwnerProductMasterManager />
+            <nav className="owner-settings-nav" aria-label="Storefront settings sections">
+              <a href="#homepage-settings">Homepage</a>
+              <a href="#category-settings">Category cards</a>
+              <a href="#group-settings">Product groups</a>
+              <a href="#option-settings">Fabrics, colours &amp; labels</a>
+            </nav>
+            <div id="homepage-settings" className="owner-settings-section"><OwnerHomepageManager /></div>
+            <div id="category-settings" className="owner-settings-section"><OwnerCategoryManager /></div>
+            <div id="group-settings" className="owner-settings-section"><OwnerProductGroupManager /></div>
+            <div id="option-settings" className="owner-settings-section"><OwnerProductMasterManager /></div>
           </div>
         )}
       </div>

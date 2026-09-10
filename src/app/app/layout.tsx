@@ -3,6 +3,8 @@ import type { Metadata, Viewport } from "next";
 import { MobileAppPwaRegistration } from "@/components/mobile-app-pwa-registration";
 import { MobileAppViewportBackground } from "@/components/mobile-app-viewport-background";
 
+import "./mobile-app.css";
+
 export const metadata: Metadata = {
   title: {
     default: "eshwe | Premium Saree Studio",
@@ -12,6 +14,10 @@ export const metadata: Metadata = {
   description: "A mobile-first Eshwe storefront designed to feel like a native saree shopping app.",
   alternates: {
     canonical: "/app/"
+  },
+  robots: {
+    index: false,
+    follow: true
   },
   appleWebApp: {
     capable: true,

@@ -137,8 +137,8 @@ export function NotifyWaitlistDialog({
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-[95] flex items-center justify-center bg-[#3f4738]/36 px-4 py-6 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-xl rounded-[2rem] border border-[#dfd2c1] bg-[#fbf4e8] p-6 shadow-[0_30px_90px_rgba(63,71,56,0.22)] sm:p-7">
+    <div className="customer-waitlist-overlay fixed inset-0 z-[95] flex items-center justify-center bg-[#3f4738]/36 px-4 py-6 sm:px-6 lg:px-8">
+      <div className="customer-waitlist-panel mx-auto max-w-xl rounded-[2rem] border border-[#dfd2c1] bg-[#fbf4e8] p-6 shadow-[0_30px_90px_rgba(63,71,56,0.22)] sm:p-7">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="brand-caption text-[0.58rem] font-semibold tracking-[0.18em] text-[#7d876f]">

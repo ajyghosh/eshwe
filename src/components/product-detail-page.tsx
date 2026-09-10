@@ -249,7 +249,7 @@ export function ProductDetailPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#fbf4e8] text-[#4f5942]">
+    <main className="web-storefront web-product-page min-h-screen bg-[#fbf4e8] text-[#4f5942]">
       <StorefrontHeader />
 
       <section className="px-6 py-10 sm:px-10 lg:px-12">
@@ -303,7 +303,7 @@ export function ProductDetailPage() {
 
               <div className="grid gap-10 lg:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)] lg:items-start lg:gap-10">
                 <section>
-                  <div className="relative overflow-hidden rounded-[2rem] bg-[#efe5d7] shadow-[0_24px_60px_rgba(94,104,79,0.08)]">
+                  <div className="web-product-gallery relative overflow-hidden rounded-[2rem] bg-[#efe5d7] shadow-[0_24px_60px_rgba(94,104,79,0.08)]">
                     <div
                       className="aspect-[0.86] w-full"
                       style={{
@@ -379,7 +379,7 @@ export function ProductDetailPage() {
 
                 </section>
 
-                <section className="space-y-4 lg:flex lg:min-h-[760px] lg:flex-col">
+                <section className="web-product-info space-y-4 lg:flex lg:min-h-[760px] lg:flex-col">
                   <div>
                     <p className="brand-caption text-[0.62rem] font-semibold tracking-[0.18em] text-[#7d876f]">
                       {product.collectionLabel || product.category.toUpperCase()}
@@ -458,7 +458,7 @@ export function ProductDetailPage() {
                       </Link>
                     </div>
 
-                    <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                    <div className="web-product-trust-grid mt-5 grid gap-3 sm:grid-cols-2">
                       <TrustPill
                         title={product.status === "active" ? "Ready to ship" : "Back soon"}
                         description={
@@ -785,7 +785,7 @@ function TrustPill({
   description: string;
 }) {
   return (
-    <div className="rounded-[1.15rem] border border-[#ddd1c0] bg-[#fffaf2] px-4 py-3">
+    <div className="web-product-trust rounded-[1.15rem] border border-[#ddd1c0] bg-[#fffaf2] px-4 py-3">
       <p className="text-sm font-semibold text-[#2b2a29]">{title}</p>
       <p className="mt-1 text-sm leading-6 text-[#667056]">{description}</p>
     </div>

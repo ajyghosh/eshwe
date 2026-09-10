@@ -12,12 +12,12 @@ export function SiteFooter({
   return (
     <footer
       id={contactId}
-      className="relative overflow-hidden bg-[#5a6851] px-6 py-14 text-[#f8ecd2] sm:px-10 sm:py-16 lg:px-12"
+      className="web-footer relative overflow-hidden bg-[#5a6851] px-6 py-14 text-[#f8ecd2] sm:px-10 sm:py-16 lg:px-12"
     >
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,245,222,0.12),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(251,244,232,0.08),transparent_24%)]" />
 
       <div className="relative z-10 mx-auto max-w-7xl">
-        <div className="grid gap-10 border-b border-[#f3dfaa]/20 pb-10 lg:grid-cols-[1.3fr_0.8fr_0.9fr] lg:gap-14">
+        <div className="web-footer-columns grid gap-10 border-b border-[#f3dfaa]/20 pb-10 lg:grid-cols-[1.3fr_0.8fr_0.9fr] lg:gap-14">
           <div>
             <p className="brand-caption text-[0.64rem] font-semibold tracking-[0.22em] text-[#f3dfaa]">
               ESHWE SAREE STUDIO
@@ -33,7 +33,7 @@ export function SiteFooter({
 
           <div>
             <h3 className="brand-copy text-xl text-[#f8ecd2]">Explore</h3>
-            <nav className="mt-5 flex flex-col gap-3 text-sm text-[#f8f1e3]/82">
+            <nav className="web-footer-links mt-5 flex flex-col gap-3 text-sm text-[#f8f1e3]/82">
               <Link href={homeHref} className="transition-colors duration-300 hover:text-[#f3dfaa]">
                 Home
               </Link>

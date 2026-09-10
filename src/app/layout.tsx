@@ -3,16 +3,17 @@ import type { Metadata } from "next";
 import { StorefrontShell } from "@/components/storefront-shell";
 
 import "./globals.css";
+import "./web-storefront.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://eshwe.com"),
   title: {
-    default: "eshwe | Premium Saree Studio",
+    default: "eshwe Saree Studio | Premium Sarees Online",
     template: "%s | eshwe"
   },
   applicationName: "eshwe",
   description:
-    "eshwe Saree Studio is preparing a premium launch of curated sarees rooted in timeless craftsmanship and contemporary elegance.",
+    "Shop curated sarees from eshwe Saree Studio, including elegant cotton, silk, tissue, and occasion-ready drapes selected for comfort, quality, and timeless style.",
   keywords: [
     "eshwe",
     "eshwe saree studio",
@@ -41,9 +42,9 @@ export const metadata: Metadata = {
     telephone: false
   },
   openGraph: {
-    title: "eshwe | Premium Saree Studio",
+    title: "eshwe Saree Studio | Premium Sarees Online",
     description:
-      "Launching soon: a refined saree studio bringing heirloom craftsmanship and modern elegance together.",
+      "Shop curated sarees from eshwe Saree Studio, including elegant cotton, silk, tissue, and occasion-ready drapes.",
     url: "https://eshwe.com/",
     siteName: "eshwe",
     locale: "en_IN",
@@ -59,9 +60,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary",
-    title: "eshwe | Premium Saree Studio",
+    title: "eshwe Saree Studio | Premium Sarees Online",
     description:
-      "Launching soon: a refined saree studio bringing heirloom craftsmanship and modern elegance together.",
+      "Shop curated sarees from eshwe Saree Studio, including elegant cotton, silk, tissue, and occasion-ready drapes.",
     images: ["/eshwelogo.png"]
   },
   appleWebApp: {
@@ -76,11 +77,45 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://eshwe.com/#organization",
+        name: "eshwe",
+        alternateName: "eshwe Saree Studio",
+        url: "https://eshwe.com/",
+        logo: "https://eshwe.com/eshwelogo.png"
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://eshwe.com/#website",
+        url: "https://eshwe.com/",
+        name: "eshwe",
+        description:
+          "eshwe Saree Studio curates premium sarees with timeless craftsmanship and contemporary elegance.",
+        publisher: {
+          "@id": "https://eshwe.com/#organization"
+        },
+        potentialAction: {
+          "@type": "SearchAction",
+          target: "https://eshwe.com/shop/?q={search_term_string}",
+          "query-input": "required name=search_term_string"
+        }
+      }
+    ]
+  };
+
   return (
     <html lang="en">
       <head>
         <link rel="preconnect" href="https://firebasestorage.googleapis.com" crossOrigin="" />
         <link rel="preconnect" href="https://storage.googleapis.com" crossOrigin="" />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        />
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var path=window.location.pathname;if(path!=="/"){return;}var mobile=window.matchMedia("(max-width: 767px)").matches||/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);if(mobile){window.location.replace("/app/");}}catch(e){}})();`

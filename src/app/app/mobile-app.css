@@ -1,0 +1,335 @@
+/* PWA presentation only. All rules are scoped to the mobile storefront. */
+.mobile-app {
+  --app-line: #e8e3d9;
+  --app-olive: #3f513b;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.mobile-app-frame {
+  min-height: 100dvh;
+}
+
+.mobile-app .mobile-app-page-enter {
+  /* A persistent opacity layer would trap sheets underneath the tab bar. */
+  animation: mobile-page-enter 180ms ease-out;
+  will-change: auto;
+}
+
+.mobile-app :is(button, a, input, select, textarea) {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-app :is(button, a):focus-visible {
+  outline: 2px solid var(--app-olive);
+  outline-offset: 3px;
+}
+
+.mobile-app :is(input, select, textarea):focus-visible {
+  outline: 2px solid #849578;
+  outline-offset: 2px;
+}
+
+.mobile-app :is(button, a).brand-caption {
+  min-height: 44px;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.025em;
+  line-height: 1.35;
+  border-radius: 12px;
+}
+
+.mobile-app button:not(:disabled):active {
+  filter: brightness(0.94);
+}
+
+.mobile-app :is(.mobile-app-page-heading, .mobile-app-checkout-heading) h1,
+.mobile-app .mobile-app-ui-title {
+  font-family: inherit;
+}
+
+.mobile-app .mobile-app-home-header img {
+  width: 56px;
+  height: 56px;
+}
+
+.mobile-app-home-header :is(button, a[aria-label]) {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.mobile-app-hero > div:first-child {
+  display: grid;
+}
+
+.mobile-app-hero-media {
+  grid-area: 1 / 1;
+  aspect-ratio: 0.72;
+  min-height: 400px;
+  transition-duration: 320ms;
+}
+
+.mobile-app-hero-overlay {
+  position: relative;
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+
+.mobile-app-hero-copy {
+  background: linear-gradient(180deg, transparent, rgb(24 34 23 / 78%) 35%, rgb(24 34 23 / 92%));
+}
+
+.mobile-app-carousel-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 44px;
+}
+
+.mobile-app-carousel-dot::after {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #c4c8bb;
+}
+
+.mobile-app-carousel-dot-active::after {
+  width: 20px;
+  background: var(--app-olive);
+}
+
+.mobile-app-search-header {
+  background: #fffaf2;
+  border-bottom: 1px solid var(--app-line);
+}
+
+.mobile-app-search-header svg {
+  flex-shrink: 0;
+}
+
+.mobile-app-product-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.mobile-app-product-info {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.mobile-app-product-info > div:last-child {
+  margin-top: auto;
+  padding-top: 12px;
+}
+
+.mobile-app .mobile-app-product-name {
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.mobile-app-product-card :is(button, a).brand-caption {
+  font-size: 0.75rem;
+  padding-inline: 8px;
+}
+
+.mobile-app-product-card button[aria-pressed] {
+  background: rgb(255 253 248 / 94%);
+  border: 0;
+  box-shadow: 0 2px 6px rgb(36 49 36 / 8%);
+}
+
+.mobile-app button[aria-label*="quantity"] {
+  min-width: 36px;
+  min-height: 44px;
+  font-size: 1rem;
+}
+
+.mobile-app-product-card div:has(> button[aria-label*="quantity"]) {
+  height: auto;
+  min-height: 44px;
+  grid-template-columns: 36px minmax(0, 1fr) 36px;
+  padding: 0 2px;
+  border-radius: 12px;
+}
+
+.mobile-app-product-gallery {
+  box-shadow: none;
+}
+
+.mobile-app-product-gallery + div button {
+  border-radius: 10px;
+}
+
+.mobile-app-tabs,
+.mobile-app-action-bar {
+  margin-inline: auto;
+  max-width: 440px;
+  border-top: 1px solid var(--app-line);
+  background: #fffdf8;
+  box-shadow: 0 -4px 20px rgb(36 49 36 / 3%);
+}
+
+.mobile-app-tab-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 28px;
+  border-radius: 999px;
+}
+
+.mobile-app-tab-icon-active {
+  background: #e9eedf;
+}
+
+.mobile-app-floating-bag {
+  box-shadow: 0 4px 16px rgb(36 49 36 / 12%);
+}
+
+.mobile-app-action-bar {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.mobile-app-action-bar :is(button, a).brand-caption {
+  min-height: 50px;
+  font-size: 0.875rem;
+}
+
+.mobile-app-sheet {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - env(safe-area-inset-top) - 16px);
+  padding-bottom: calc(20px + env(safe-area-inset-bottom));
+  border: 1px solid var(--app-line);
+  border-bottom: 0;
+  border-radius: 24px 24px 0 0;
+  background: #fffdf8;
+  box-shadow: 0 -12px 48px rgb(36 49 36 / 12%);
+}
+
+.mobile-app-sheet > :not(.mobile-app-sheet-content) {
+  flex-shrink: 0;
+}
+
+.mobile-app-sheet-content {
+  min-height: 0;
+  padding: 3px;
+  margin-inline: -3px;
+}
+
+.mobile-app-contact-sheet {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.mobile-app-wishlist-item > div:last-child > div:first-child {
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.mobile-app-wishlist-item button,
+.mobile-app-wishlist-actions a {
+  white-space: normal;
+}
+
+.mobile-app-wishlist-item button:not(.brand-caption) {
+  min-height: 44px;
+}
+
+.mobile-app-checkout-item > div:last-child {
+  min-width: 0;
+}
+
+.mobile-app-checkout-item > div:last-child > div {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mobile-app-checkout-item .brand-copy {
+  font-family: inherit;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+/* These shared dialogs render outside main; only restyle them on PWA screens. */
+body:has(.mobile-app) :is(.customer-otp-overlay, .customer-waitlist-overlay) {
+  align-items: flex-end;
+  padding: 16px 0 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+body:has(.mobile-app) :is(.customer-otp-panel, .customer-waitlist-panel) {
+  width: 100%;
+  max-width: 440px;
+  max-height: calc(100dvh - env(safe-area-inset-top) - 16px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-radius: 24px 24px 0 0;
+  background: #fffdf8;
+  padding: 24px 20px calc(24px + env(safe-area-inset-bottom));
+}
+
+body:has(.mobile-app) :is(.customer-otp-panel, .customer-waitlist-panel) h2 {
+  font-family: inherit;
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+body:has(.mobile-app) :is(.customer-otp-panel, .customer-waitlist-panel) button {
+  min-height: 44px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.025em;
+}
+
+body:has(.mobile-app) :is(.customer-otp-panel, .customer-waitlist-panel) input {
+  font-size: 16px;
+}
+
+body:has(.mobile-app) :is(.customer-otp-panel, .customer-waitlist-panel) :is(button, input):focus-visible {
+  outline: 2px solid #849578;
+  outline-offset: 2px;
+}
+
+@media (max-width: 379px) {
+  .mobile-app-wishlist-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mobile-app-hero-copy {
+    padding-inline: 16px;
+  }
+
+  .mobile-app-hero-copy h1 {
+    font-size: 1.6rem;
+  }
+}
+
+@media (min-width: 441px) {
+  .mobile-app-frame {
+    border-inline: 1px solid var(--app-line);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-app *,
+  .mobile-app *::before,
+  .mobile-app *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

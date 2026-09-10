@@ -61,7 +61,7 @@ export function SavedPiecesPage() {
   return (
     <div className="min-h-screen bg-[#fbf4e8] text-[#2b2a29]">
       <StorefrontHeader />
-      <main className="px-6 py-10 sm:px-10 lg:px-12">
+      <main className="web-storefront px-6 py-10 sm:px-10 lg:px-12">
         <div className="mx-auto max-w-7xl">
           <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -73,9 +73,9 @@ export function SavedPiecesPage() {
           </div>
 
           {loading ? (
-            <section className="rounded-[2rem] border border-[#e3d8c9] bg-[#f8f0e3] p-8 text-sm text-[#667056] shadow-[0_22px_60px_rgba(94,104,79,0.08)]">Checking your account...</section>
+            <section className="web-surface rounded-[2rem] border border-[#e3d8c9] bg-[#f8f0e3] p-8 text-sm text-[#667056] shadow-[0_22px_60px_rgba(94,104,79,0.08)]">Checking your account...</section>
           ) : !user ? (
-            <section className="rounded-[2rem] border border-[#e3d8c9] bg-[#f8f0e3] p-8 shadow-[0_22px_60px_rgba(94,104,79,0.08)]">
+            <section className="web-surface rounded-[2rem] border border-[#e3d8c9] bg-[#f8f0e3] p-8 shadow-[0_22px_60px_rgba(94,104,79,0.08)]">
               <h2 className="brand-copy text-3xl text-[#2b2a29]">Sign in to view saved pieces</h2>
               <p className="mt-4 text-sm leading-7 text-[#667056]">Use your account to revisit sarees you saved while browsing.</p>
               <button type="button" onClick={() => void handleSignIn()} className="brand-caption mt-8 inline-flex rounded-2xl bg-[#5e684f] px-6 py-3 text-[0.66rem] font-semibold tracking-[0.08em] text-[#fbf4e8]">CONTINUE WITH SMS</button>

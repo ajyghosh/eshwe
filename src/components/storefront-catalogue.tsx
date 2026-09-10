@@ -96,7 +96,7 @@ export function StorefrontCatalogue() {
 
   return (
     <>
-      <section id="featured" className="relative z-10 bg-[#f5ecdd] px-6 py-20 sm:px-10 lg:px-12">
+      <section id="featured" className="web-home-showcase relative z-10 bg-[#f5ecdd] px-6 py-20 sm:px-10 lg:px-12">
         <div className="mx-auto max-w-7xl">
           <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
             <button
@@ -123,7 +123,7 @@ export function StorefrontCatalogue() {
             </button>
           </div>
 
-          <div className="mt-10 rounded-[1.75rem] p-7 sm:p-10">
+          <div className="web-showcase-content mt-10 rounded-[1.75rem] p-7 sm:p-10">
             {loading ? (
               <ProductLoadingGrid />
             ) : showcaseProducts.length === 0 ? (
@@ -137,7 +137,7 @@ export function StorefrontCatalogue() {
                 {showcaseUsesCarousel ? (
                   <ProductCardCarousel products={showcaseProducts} />
                 ) : (
-                  <div className="grid gap-10 md:grid-cols-2 xl:grid-cols-4">
+                  <div className="web-product-grid grid gap-10 md:grid-cols-2 xl:grid-cols-4">
                     {showcaseProducts.map((product) => (
                       <CatalogueProductCard key={product.id ?? product.sku} product={product} />
                     ))}
@@ -164,7 +164,7 @@ export function StorefrontCatalogue() {
 
       <section
         id="collections"
-        className="relative z-10 overflow-hidden bg-[#fbf4e8] px-6 py-16 sm:px-10 sm:py-18 lg:px-12"
+        className="web-home-collections relative z-10 overflow-hidden bg-[#fbf4e8] px-6 py-16 sm:px-10 sm:py-18 lg:px-12"
       >
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.72),transparent_36%),radial-gradient(circle_at_bottom_right,rgba(120,130,92,0.08),transparent_26%)]" />
         <div className="mx-auto max-w-7xl">
@@ -187,7 +187,7 @@ export function StorefrontCatalogue() {
             ))}
           </div>
 
-          <div className="relative mt-8 rounded-[2rem] border border-[#e3d8c9] bg-[#f8f0e3] p-5 shadow-[0_24px_60px_rgba(94,104,79,0.08)] sm:p-6 lg:p-7">
+          <div className="web-collection-content relative mt-8 rounded-[2rem] border border-[#e3d8c9] bg-[#f8f0e3] p-5 shadow-[0_24px_60px_rgba(94,104,79,0.08)] sm:p-6 lg:p-7">
             {loading ? (
               <ProductLoadingGrid />
             ) : visibleProducts.length === 0 ? (
@@ -198,7 +198,7 @@ export function StorefrontCatalogue() {
               />
             ) : (
               <>
-                <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-4">
+                <div className="web-product-grid grid gap-8 md:grid-cols-2 xl:grid-cols-4">
                   {visibleCollectionProducts.map((product) => (
                     <CatalogueProductCard key={product.id ?? product.sku} product={product} />
                   ))}

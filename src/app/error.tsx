@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 
 type ErrorPageProps = {
   error: Error & { digest?: string };
@@ -35,7 +36,7 @@ export default function ErrorPage({ reset }: ErrorPageProps) {
           textAlign: "center"
         }}
       >
-        <img
+        <Image
           src="/eshwelogo-transparent.png"
           alt="eshwe"
           width={96}

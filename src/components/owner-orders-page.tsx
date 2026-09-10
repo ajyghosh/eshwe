@@ -250,8 +250,8 @@ export function OwnerOrdersPage() {
       <div className="mx-auto max-w-7xl print:max-w-none">
         <OwnerSectionHero
           eyebrow="OWNER ORDERS"
-          title="Successful orders and print slips"
-          description="Open confirmed orders, print the order slip or address label, and mark dispatched orders complete."
+          title="Orders"
+          description="Review paid orders, print slips and address labels, and manage dispatch."
           className="print:hidden"
           action={
             user ? (

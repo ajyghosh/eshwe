@@ -1,5 +1,6 @@
 import type { NextPageContext } from "next";
 import Link from "next/link";
+import Image from "next/image";
 
 type ErrorPageProps = {
   statusCode?: number;
@@ -33,7 +34,7 @@ export default function StaticErrorPage({ statusCode }: ErrorPageProps) {
           textAlign: "center"
         }}
       >
-        <img
+        <Image
           src="/eshwelogo-transparent.png"
           alt="eshwe"
           width={96}

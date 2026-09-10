@@ -3,7 +3,7 @@ import {
   doc,
   limit,
   onSnapshot,
-  orderBy,
+  or,
   query,
   serverTimestamp,
   updateDoc,
@@ -76,7 +76,16 @@ export function subscribeToSuccessfulOrders(
     return () => undefined;
   }
 
-  const ordersQuery = query(collection(db, ORDER_COLLECTION), orderBy("createdAt", "desc"), limit(100));
+  // Owner totals and dispatch queues need the full paid history, including
+  // legacy orders that use either of the older payment flags.
+  const ordersQuery = query(
+    collection(db, ORDER_COLLECTION),
+    or(
+      where("paymentStatus", "==", "captured"),
+      where("status", "==", "paid"),
+      where("paymentCaptured", "==", true)
+    )
+  );
 
   return onSnapshot(
     ordersQuery,

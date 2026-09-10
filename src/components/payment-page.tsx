@@ -562,7 +562,7 @@ export function PaymentPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#fbf4e8] text-[#4f5942]">
+    <main className="web-storefront web-checkout min-h-screen bg-[#fbf4e8] text-[#4f5942]">
       {paymentOverlayStep ? (
         <ReceiptPreparingOverlay
           customerName={(selectedAddress?.fullName ?? "").trim() || "there"}
@@ -583,12 +583,12 @@ export function PaymentPage() {
           </div>
 
           {items.length === 0 ? (
-            <section className="rounded-[2rem] border border-[#e3d8c9] bg-[#f8f0e3] p-8 text-center shadow-[0_22px_60px_rgba(94,104,79,0.08)]">
+            <section className="web-surface rounded-[2rem] border border-[#e3d8c9] bg-[#f8f0e3] p-8 text-center shadow-[0_22px_60px_rgba(94,104,79,0.08)]">
               <p className="brand-copy text-2xl text-[#2b2a29]">Getting your checkout ready...</p>
             </section>
           ) : (
-            <div className="grid gap-8 xl:grid-cols-[minmax(0,1.15fr)_390px]">
-              <section className="space-y-6 rounded-[2rem] border border-[#e3d8c9] bg-[#f8f0e3] p-6 shadow-[0_22px_60px_rgba(94,104,79,0.08)] sm:p-8">
+            <div className="web-checkout-grid grid gap-8 xl:grid-cols-[minmax(0,1.15fr)_390px]">
+              <section className="web-surface space-y-6 rounded-[2rem] border border-[#e3d8c9] bg-[#f8f0e3] p-6 shadow-[0_22px_60px_rgba(94,104,79,0.08)] sm:p-8">
                 {profileMessage ? <p className="text-sm text-[#5e684f]">{profileMessage}</p> : null}
                 {profileError ? <p className="text-sm text-[#9d4b45]">{profileError}</p> : null}
                 {hasUnavailableItems ? (
@@ -696,8 +696,8 @@ export function PaymentPage() {
                 )}
               </section>
 
-              <aside className="space-y-6">
-                <section className="rounded-[2rem] border border-[#dfd4c5] bg-[#fffdf8] p-5 shadow-[0_24px_60px_rgba(94,104,79,0.08)] sm:p-6">
+              <aside className="web-order-summary space-y-6">
+                <section className="web-surface rounded-[2rem] border border-[#dfd4c5] bg-[#fffdf8] p-5 shadow-[0_24px_60px_rgba(94,104,79,0.08)] sm:p-6">
                   <p className="brand-caption text-[0.62rem] font-semibold tracking-[0.18em] text-[#2b2a29]">
                     RAZORPAY CHECKOUT
                   </p>

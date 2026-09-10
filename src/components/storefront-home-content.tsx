@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import Link from "next/link";
@@ -114,7 +115,7 @@ export function StorefrontHomeContent({ homeReady }: { homeReady: boolean }) {
           }`}
         >
           <div
-            className="w-full rounded-[1.6rem] border border-[#f3dfaa]/40 bg-[rgba(67,79,57,0.56)] px-5 py-4 text-[#fbf4e8] shadow-[0_18px_40px_rgba(43,42,41,0.16)] backdrop-blur-[3px] sm:px-6 sm:py-5"
+            className="web-hero-copy w-full rounded-[1.6rem] border border-[#f3dfaa]/40 bg-[rgba(67,79,57,0.56)] px-5 py-4 text-[#fbf4e8] shadow-[0_18px_40px_rgba(43,42,41,0.16)] backdrop-blur-[3px] sm:px-6 sm:py-5"
             style={{ maxWidth: `${launchCardMaxWidth}px` }}
           >
             <div
@@ -202,7 +203,7 @@ export function StorefrontHomeContent({ homeReady }: { homeReady: boolean }) {
       {activeCategoryCards.length > 0 ? (
         <section
           id="categories"
-          className={`relative z-10 bg-[#fbf4e8] px-6 py-20 transition-[opacity,transform] duration-700 ease-out sm:px-10 lg:px-12 ${
+          className={`web-home-categories relative z-10 bg-[#fbf4e8] px-6 py-20 transition-[opacity,transform] duration-700 ease-out sm:px-10 lg:px-12 ${
             homeReady ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-6 opacity-0"
           }`}
         >

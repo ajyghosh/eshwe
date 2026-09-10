@@ -408,9 +408,9 @@ export function StorefrontHeader({
 
   return (
     <>
-      {absolute ? null : <div aria-hidden="true" className="h-[92px] sm:h-[68px]" />}
+      {absolute ? null : <div aria-hidden="true" className="web-header-spacer h-[92px] sm:h-[68px]" />}
 
-      <header className={headerClassName}>
+      <header className={`web-header ${headerClassName}`}>
         <div
           className={`mx-auto w-full max-w-7xl transition-opacity duration-700 ease-out ${
             contentVisible ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
@@ -421,7 +421,7 @@ export function StorefrontHeader({
               <div className="flex min-w-0 items-center gap-5">
                 <Link
                   href="/"
-                  className="flex w-fit shrink-0 items-center rounded-full border border-[#5e684f]/38 bg-[#fbf4e8] p-1 ring-1 ring-[#5e684f]/12"
+                  className="web-header-logo flex w-fit shrink-0 items-center rounded-full border border-[#5e684f]/38 bg-[#fbf4e8] p-1 ring-1 ring-[#5e684f]/12"
                 >
                   <Image
                     src="/eshwelogo-transparent.png"
@@ -434,7 +434,7 @@ export function StorefrontHeader({
                 </Link>
 
                 {headerCategories.length > 0 ? (
-                  <div className="hidden min-w-0 items-center gap-6 overflow-x-auto text-[0.9rem] text-[#2b2a29] lg:flex">
+                  <div className="web-header-categories hidden min-w-0 items-center gap-6 overflow-x-auto text-[0.9rem] text-[#2b2a29] lg:flex">
                     {headerCategories.map((category) => (
                       <Link
                         key={category.label}
@@ -528,9 +528,10 @@ export function StorefrontHeader({
                 <Link
                   href="/checkout"
                   aria-label={`View bag with ${totalItems} item${totalItems === 1 ? "" : "s"}`}
-                  className="relative inline-flex h-10 w-10 items-center justify-center text-[#768068] transition-colors duration-200 hover:text-[#5e684f]"
+                  className="web-header-bag relative inline-flex h-10 w-10 items-center justify-center text-[#768068] transition-colors duration-200 hover:text-[#5e684f]"
                 >
                   <HeaderCartIcon />
+                  <span className="web-header-bag-label" aria-hidden="true">Bag</span>
                   <span className="absolute -right-1.5 -top-2 inline-flex min-w-6 items-center justify-center rounded-full bg-[#a8574d] px-1.5 py-1 text-[0.66rem] font-medium leading-none text-[#fbf4e8]">
                     {totalItems}
                   </span>
@@ -861,7 +862,7 @@ function HeaderActionButton({
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
-      className={`inline-flex items-center justify-center transition-colors duration-200 disabled:opacity-60 ${
+      className={`web-header-action inline-flex items-center justify-center transition-colors duration-200 disabled:opacity-60 ${
         iconOnly ? "h-10 w-10" : "h-10 gap-2 rounded-full border px-4 text-sm font-medium"
       } ${
         active
@@ -876,7 +877,7 @@ function HeaderActionButton({
       <span aria-hidden="true" className={iconOnly ? "" : "text-[#5e684f]"}>
         {icon}
       </span>
-      {iconOnly ? <span className="sr-only">{label}</span> : <span>{label}</span>}
+      {iconOnly ? <span className="web-header-action-label sr-only">{label}</span> : <span>{label}</span>}
     </button>
   );
 }

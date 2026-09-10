@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 export default function Static404Page() {
   return (
@@ -28,7 +29,7 @@ export default function Static404Page() {
           textAlign: "center"
         }}
       >
-        <img
+        <Image
           src="/eshwelogo-transparent.png"
           alt="eshwe"
           width={96}

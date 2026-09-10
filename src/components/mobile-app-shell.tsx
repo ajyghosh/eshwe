@@ -65,17 +65,11 @@ export function MobileAppShell({
   const pathname = usePathname();
 
   return (
-    <main className="relative min-h-screen overflow-x-hidden bg-[#fffaf2] text-[#243124]">
-      <div aria-hidden className="pointer-events-none absolute inset-0">
-        <div className="absolute left-[-6rem] top-24 h-56 w-56 rounded-full bg-[rgba(255,255,255,0.16)] blur-3xl" />
-        <div className="absolute right-[-5rem] top-40 h-52 w-52 rounded-full bg-[rgba(213,196,164,0.1)] blur-3xl" />
-        <div className="absolute bottom-12 left-1/2 h-44 w-44 -translate-x-1/2 rounded-full bg-[rgba(94,104,79,0.08)] blur-3xl" />
-      </div>
-
-      <div className="relative mx-auto min-h-screen max-w-[440px] border-x border-[rgba(214,203,185,0.45)] bg-[#fffaf2] shadow-[0_30px_120px_rgba(94,104,79,0.14)]">
+    <main className="mobile-app relative min-h-screen bg-[#fffaf2] text-[#243124]">
+      <div className="mobile-app-frame relative mx-auto min-h-screen max-w-[440px] bg-[#fffaf2]">
         <div
           key={pathname ?? "/app"}
-          className={`mobile-app-page-enter ${showBottomNav ? "pb-[calc(5.6rem+env(safe-area-inset-bottom))]" : ""}`}
+          className={`mobile-app-page-enter ${showBottomNav ? "pb-[calc(5.6rem+env(safe-area-inset-bottom))]" : "pb-[calc(6.8rem+env(safe-area-inset-bottom))]"}`}
         >
           {children}
           {showFooter ? <MobileAppFooter /> : null}
@@ -91,7 +85,7 @@ function MobileBottomNav({ activeTab }: { activeTab?: MobileAppTab }) {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-[rgba(214,203,185,0.72)] bg-[rgba(255,252,246,0.98)]">
+    <nav aria-label="Main navigation" className="mobile-app-tabs fixed inset-x-0 bottom-0 z-40">
       <div className="mx-auto max-w-[440px] px-3 pb-[calc(0.45rem+env(safe-area-inset-bottom))] pt-1.5">
         <div className="grid grid-cols-4 gap-1">
           {tabItems.map((item) => {
@@ -103,11 +97,14 @@ function MobileBottomNav({ activeTab }: { activeTab?: MobileAppTab }) {
               <Link
                 key={item.key}
                 href={item.href}
-                className={`flex flex-col items-center justify-center gap-1 rounded-[1rem] px-1 py-2 text-[0.68rem] transition-all duration-200 ${
-                  active ? "bg-[#f1f5eb] text-[#5e684f]" : "text-[#2b2a29]"
+                aria-current={active ? "page" : undefined}
+                className={`mobile-app-tab flex flex-col items-center justify-center gap-1 rounded-[1rem] px-1 py-2 text-[0.75rem] transition-colors duration-200 ${
+                  active ? "text-[#3f513b]" : "text-[#73796d]"
                 }`}
               >
-                {item.icon(active)}
+                <span className={`mobile-app-tab-icon ${active ? "mobile-app-tab-icon-active" : ""}`}>
+                  {item.icon(active)}
+                </span>
                 <span className={active ? "font-semibold" : "font-medium"}>{item.label}</span>
               </Link>
             );
@@ -155,11 +152,11 @@ function MobileFloatingCartButton() {
 
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-[calc(6.2rem+env(safe-area-inset-bottom))] z-50">
-      <div className="mx-auto max-w-[440px]">
+      <div className="relative mx-auto max-w-[440px]">
         <Link
           href={buildAppCheckoutHref()}
           aria-label={`View bag with ${totalItems} item${totalItems === 1 ? "" : "s"}`}
-          className="pointer-events-auto absolute right-4 inline-flex h-12 w-12 items-center justify-center text-[#5e684f] transition-transform duration-200 hover:-translate-y-0.5 active:scale-95"
+          className="mobile-app-floating-bag pointer-events-auto absolute bottom-0 right-4 inline-flex h-12 w-12 items-center justify-center rounded-full border border-[#e4dfd4] bg-[#fffdf8] text-[#5e684f] transition-transform duration-200 active:scale-95"
         >
           <span className="absolute -right-1.5 -top-1.5 inline-flex h-7 min-w-7 items-center justify-center rounded-full border-2 border-[#fffaf2] bg-[#a8574d] px-2 text-sm font-semibold leading-none text-[#fbf4e8] shadow-[0_10px_20px_rgba(89,45,36,0.18)]">
             {totalItems}
@@ -229,35 +226,28 @@ function MobileAppFooter() {
 
   return (
     <>
-      <footer className="px-4 pb-5 pt-5">
-        <div className="relative overflow-hidden rounded-[1.9rem] border border-[#708065] bg-[#5a6851] px-5 py-5 text-[#f8ecd2] shadow-[0_16px_34px_rgba(58,67,50,0.18)]">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,245,222,0.12),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(251,244,232,0.08),transparent_28%)]" />
-
-          <div className="relative z-10">
-            <p className="brand-copy text-[1.2rem] text-[#f8ecd2]">eshwe</p>
-            <p className="mt-2 text-[0.9rem] leading-6 text-[#f8f1e3]/82">Policies, support, and store information in one place.</p>
-
-            <div className="mt-4 grid grid-cols-2 gap-2 text-[0.86rem] font-medium text-[#f8ecd2]">
-              <button
-                type="button"
-                onClick={() => setContactOpen(true)}
-                className="rounded-[0.95rem] bg-[#66735c] px-3 py-3 text-left transition-colors duration-200 hover:bg-[#718065]"
-              >
-                Contact
-              </button>
-              <Link href={buildAppTermsHref()} className="rounded-[0.95rem] bg-[#66735c] px-3 py-3 transition-colors duration-200 hover:bg-[#718065]">
-                Terms
-              </Link>
-              <Link href={buildAppPrivacyHref()} className="rounded-[0.95rem] bg-[#66735c] px-3 py-3 transition-colors duration-200 hover:bg-[#718065]">
-                Privacy
-              </Link>
-              <Link href={buildAppReturnPolicyHref()} className="rounded-[0.95rem] bg-[#66735c] px-3 py-3 transition-colors duration-200 hover:bg-[#718065]">
-                Shipping & Returns
-              </Link>
-            </div>
-
-            <p className="mt-4 text-[0.76rem] text-[#f8f1e3]/68">© 2026 eshwe Saree Studio</p>
+      <footer className="mobile-app-footer px-4 pb-4 pt-6">
+        <div className="border-t border-[#e8e3d9] pt-3">
+          <div className="grid grid-cols-2 gap-x-3 text-[0.8rem] font-medium text-[#626e5b]">
+            <button
+              type="button"
+              onClick={() => setContactOpen(true)}
+              className="min-h-11 rounded-lg px-2 py-3 text-left transition-colors duration-200 hover:bg-[#f1eee5]"
+            >
+              Contact
+            </button>
+            <Link href={buildAppTermsHref()} className="min-h-11 rounded-lg px-2 py-3 transition-colors duration-200 hover:bg-[#f1eee5]">
+              Terms
+            </Link>
+            <Link href={buildAppPrivacyHref()} className="min-h-11 rounded-lg px-2 py-3 transition-colors duration-200 hover:bg-[#f1eee5]">
+              Privacy
+            </Link>
+            <Link href={buildAppReturnPolicyHref()} className="min-h-11 rounded-lg px-2 py-3 transition-colors duration-200 hover:bg-[#f1eee5]">
+              Shipping & Returns
+            </Link>
           </div>
+
+          <p className="mt-3 px-2 text-[0.72rem] text-[#74786c]">© 2026 eshwe Saree Studio</p>
         </div>
       </footer>
 
@@ -266,9 +256,9 @@ function MobileAppFooter() {
           className="fixed inset-0 z-[90] bg-[rgba(36,49,36,0.3)] backdrop-blur-sm"
           onClick={() => setContactOpen(false)}
         >
-          <div className="absolute inset-x-0 bottom-0 px-3 pb-[calc(0.9rem+env(safe-area-inset-bottom))]">
+          <div className="mobile-app-sheet-position absolute inset-x-0 bottom-0">
             <div
-              className="mx-auto max-w-[430px] rounded-[2rem] border border-[#eadfce] bg-[linear-gradient(180deg,#fffaf2_0%,#f8f0e4_100%)] px-5 pb-5 pt-3 shadow-[0_-18px_48px_rgba(47,40,32,0.18)]"
+              className="mobile-app-sheet mobile-app-contact-sheet mx-auto max-w-[440px] px-5 pt-3"
               onClick={(event) => event.stopPropagation()}
             >
               <div className="mx-auto h-1.5 w-16 rounded-full bg-[#d8ccb8]" />

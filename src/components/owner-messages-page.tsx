@@ -172,8 +172,8 @@ export function OwnerMessagesPage() {
       <div className="mx-auto max-w-7xl">
         <OwnerSectionHero
           eyebrow="OWNER MESSAGES"
-          title="Customer message inbox"
-          description="View storefront contact submissions in a clean queue and open the full note when you need it."
+          title="Messages"
+          description="Read customer enquiries and review unread messages."
           action={
             user ? (
               <button

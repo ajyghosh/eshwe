@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { ConfirmationDialog } from "@/components/confirmation-dialog";
+import { ConfirmationDialog } from "@/components/owner-confirmation-dialog";
 import { OwnerBackofficeNav } from "@/components/owner-backoffice-nav";
 import { OwnerSectionHero } from "@/components/owner-section-hero";
 import { firebaseReady } from "@/lib/firebase";
@@ -125,8 +125,8 @@ export function OwnerAccessPage() {
       <div className="mx-auto max-w-7xl">
         <OwnerSectionHero
           eyebrow="OWNER ACCESS"
-          title="Control which authorized Gmail accounts can enter the admin area."
-          description="Keep access management out of the catalogue workspace. This page is only for owner authorization and account-level admin control."
+          title="Owner access"
+          description="Manage the Google accounts authorized to run your store."
           action={
             user ? (
               <button

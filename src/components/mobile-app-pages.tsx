@@ -217,10 +217,10 @@ export function MobileAppHomePage() {
       <div className="px-4 pb-5 pt-[calc(env(safe-area-inset-top)+0.9rem)]">
         <MobileHomeHeader totalItems={totalItems} onOpenMenu={() => setMenuOpen(true)} />
 
-        <section className="-mx-4 mt-5">
-          <div className="relative overflow-hidden">
+        <section className="mobile-app-hero mt-3">
+          <div className="relative overflow-hidden rounded-2xl bg-[#e8dcc8]">
             <div
-              className="flex aspect-[0.93] transition-transform duration-700 ease-out"
+              className="mobile-app-hero-media flex transition-transform duration-700 ease-out"
               style={{ transform: `translateX(-${currentMobileHeroIndex * 100}%)` }}
             >
               {resolvedMobileHeroSlides.map((slide, index) => (
@@ -228,28 +228,28 @@ export function MobileAppHomePage() {
                   key={`${slide.imageUrl}-${index}`}
                   className="h-full w-full shrink-0 bg-[#e8dcc8]"
                   style={{
-                    ...buildImageBackgroundStyle(slide.imageUrl),
-                    backgroundPosition: slide.position || "center"
+                    ...buildImageBackgroundStyle(slide.imageUrl, { backgroundSize: "cover" }),
+                    backgroundPosition: "center top"
                   }}
                 />
               ))}
             </div>
 
-            <div className="absolute inset-0 flex items-end p-5 pb-7">
-              <div className="max-w-[16.25rem] rounded-[1.5rem] border border-[rgba(243,223,170,0.38)] bg-[linear-gradient(135deg,rgba(255,250,242,0.78)_0%,rgba(251,244,232,0.52)_100%)] px-4 py-4 text-[#354233] shadow-[0_16px_36px_rgba(47,40,32,0.14)] backdrop-blur-[5px]">
-                <div className="mb-3 flex items-center gap-3 text-[0.54rem] font-semibold uppercase tracking-[0.22em] text-[#9b885f]">
+            <div className="mobile-app-hero-overlay absolute inset-0 flex items-end">
+              <div className="mobile-app-hero-copy w-full px-5 pb-5 pt-14 text-[#fffaf2]">
+                <div className="mb-2 flex items-center gap-3 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-[#eee5d0]">
                   <span>{mobileLaunchEyebrow}</span>
                   <span className="h-px flex-1 bg-[#d7c4a2]" />
                 </div>
-                <h1 className="brand-copy text-[1.92rem] leading-[1.04] text-[#354233]">
+                <h1 className="brand-copy max-w-[19rem] text-[1.8rem] leading-[1.08] text-[#fffaf2]">
                   {mobileLaunchHeading}
                 </h1>
-                <p className="mt-3 text-[0.88rem] leading-6 text-[#61705d]">
+                <p className="mt-2 max-w-[22rem] text-[0.85rem] leading-5 text-[#f5f0e5]">
                   {mobileLaunchBody}
                 </p>
                 <Link
                   href={mobileLaunchButtonHref}
-                  className="brand-caption mt-5 inline-flex items-center justify-center rounded-[0.95rem] bg-[#5e684f] px-4.5 py-3 text-[0.62rem] font-semibold tracking-[0.16em] !text-[#fbf4e8] shadow-[0_12px_26px_rgba(94,104,79,0.2)]"
+                  className="brand-caption mt-4 inline-flex items-center justify-center rounded-xl bg-[#fffaf2] px-5 py-3 font-semibold !text-[#354233]"
                 >
                   {mobileLaunchButtonLabel}
                 </Link>
@@ -257,15 +257,15 @@ export function MobileAppHomePage() {
             </div>
           </div>
 
-          <div className="flex items-center justify-center gap-2 px-4 pb-1 pt-4">
+          <div className="flex items-center justify-center px-4">
             {resolvedMobileHeroSlides.map((_, index) => (
               <button
                 key={`mobile-hero-dot-${index}`}
                 type="button"
                 aria-label={`View slide ${index + 1}`}
                 onClick={() => setCurrentMobileHeroIndex(index)}
-                className={`h-2.5 rounded-full transition-all duration-200 ${
-                  index === currentMobileHeroIndex ? "w-6 bg-[#5e684f]" : "w-2.5 bg-[#d6ccb9]"
+                className={`mobile-app-carousel-dot ${
+                  index === currentMobileHeroIndex ? "mobile-app-carousel-dot-active" : ""
                 }`}
               />
             ))}
@@ -323,26 +323,26 @@ export function MobileAppHomePage() {
         ) : null}
 
         {promiseProduct ? (
-          <section className="mt-6 overflow-hidden rounded-[2rem] border border-[#eadfce] bg-[linear-gradient(135deg,#fff9ef_0%,#f7efe1_100%)] shadow-[0_18px_38px_rgba(94,104,79,0.08)]">
-            <div className="grid grid-cols-[1fr_0.95fr] items-center gap-4 p-5">
+          <section className="mt-6 overflow-hidden rounded-[2rem] border border-[#eadfce] bg-[linear-gradient(135deg,#fff9ef_0%,#f7efe1_100%)] shadow-none">
+            <div className="grid grid-cols-[1fr_0.95fr] items-center gap-4 p-4">
               <div>
                 <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-[#f0e6d8] text-[#758060]">
                   <LeafIcon />
                 </span>
-                <h2 className="brand-copy mt-4 text-[1.85rem] leading-tight text-[#2f342d]">Our promise</h2>
-                <p className="mt-3 text-[0.98rem] leading-7 text-[#657260]">
+                <h2 className="brand-copy mt-3 text-[1.45rem] leading-tight text-[#2f342d]">Our promise</h2>
+                <p className="mt-2 text-[0.88rem] leading-6 text-[#657260]">
                   Every saree is chosen for exceptional quality, soft comfort, and timeless beauty.
                 </p>
               </div>
               <div
-                className="aspect-[0.96] rounded-[1.5rem] bg-[#e8dcc8]"
+                className="aspect-[0.96] rounded-2xl bg-[#e8dcc8]"
                 style={buildImageBackgroundStyle(promiseProduct.primaryImageUrl)}
               />
             </div>
           </section>
         ) : null}
 
-        <section className="mt-6 rounded-[1.35rem] border border-[#eadfce] bg-white/84 px-2 py-2 shadow-[0_8px_18px_rgba(94,104,79,0.04)]">
+        <section className="mt-6 rounded-2xl border border-[#eadfce] bg-white/84 px-2 py-2 shadow-none">
           <div className="grid grid-cols-3 gap-1.5">
             <SimpleTrustPill title="Free Shipping" icon={<TruckIcon />} />
             <SimpleTrustPill title="Secure Payments" icon={<ShieldIcon />} />
@@ -360,18 +360,17 @@ export function MobileAppSearchPage({ categoryFirst = false }: { categoryFirst?:
   const router = useRouter();
   const pathname = usePathname() ?? "/app/search";
   const searchParams = useSearchParams();
-  const currentSearchParams = searchParams ?? new URLSearchParams();
-  const resolvedSearchState = useMemo(
-    () =>
-      resolveAppSearchState(pathname, {
-        category: currentSearchParams.get("category") ?? "",
-        fabric: currentSearchParams.get("fabric") ?? "",
-        intent: currentSearchParams.get("intent") ?? "",
-        q: currentSearchParams.get("q") ?? "",
-        sort: currentSearchParams.get("sort") ?? ""
-      }),
-    [currentSearchParams, pathname]
-  );
+  const resolvedSearchState = useMemo(() => {
+    const currentSearchParams = searchParams ?? new URLSearchParams();
+
+    return resolveAppSearchState(pathname, {
+      category: currentSearchParams.get("category") ?? "",
+      fabric: currentSearchParams.get("fabric") ?? "",
+      intent: currentSearchParams.get("intent") ?? "",
+      q: currentSearchParams.get("q") ?? "",
+      sort: currentSearchParams.get("sort") ?? ""
+    });
+  }, [pathname, searchParams]);
   const [products, setProducts] = useState<Saree[]>([]);
   const [categoryCards, setCategoryCards] = useState<CategoryCard[]>([]);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
@@ -551,6 +550,10 @@ export function MobileAppSearchPage({ categoryFirst = false }: { categoryFirst?:
       return Number(rightMatchesSuggestion) - Number(leftMatchesSuggestion);
     }).slice(0, 4);
   }, [activeCategory, activeFabric, activeIntent, activeQuery, emptyStateCategorySuggestions, products]);
+  const shouldShowEmptyStateAlternates = !activeCategory && !activeFabric;
+  const emptyStateDescription = shouldShowEmptyStateAlternates
+    ? "Try another category or open the full collection."
+    : "Clear this filter or open the full collection.";
   const activeFilterCount = [activeCategory, activeFabric, activeIntent].filter(Boolean).length;
   const resultsCountLabel = `${filteredProducts.length} result${filteredProducts.length === 1 ? "" : "s"}`;
 
@@ -586,23 +589,23 @@ export function MobileAppSearchPage({ categoryFirst = false }: { categoryFirst?:
   return (
     <MobileAppShell activeTab="categories">
       <div className="px-4 pb-4 pt-[calc(env(safe-area-inset-top)+0.85rem)]">
-        <div className="sticky top-[calc(env(safe-area-inset-top)+0.2rem)] z-20 -mx-1 rounded-[2rem] border border-[rgba(231,220,205,0.82)] bg-[rgba(255,251,245,0.82)] px-3 py-3 shadow-[0_18px_38px_rgba(94,104,79,0.08)] backdrop-blur-xl">
-          <div className="flex items-center gap-3">
+        <div className="mobile-app-search-header sticky top-0 z-20 -mx-4 px-4 pb-3 pt-[env(safe-area-inset-top)]">
+          <div className="grid grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-2">
             <Link
               href={buildAppHomeHref()}
-              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#e3d8c8] bg-white/80 text-[#2f342d] shadow-[0_8px_20px_rgba(94,104,79,0.06)]"
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#e3d8c8] bg-white/80 text-[#2f342d] shadow-none"
               aria-label="Back to home"
             >
               <ArrowLeftIcon />
             </Link>
 
             <form onSubmit={handleSearchSubmit} className="min-w-0 flex-1">
-              <div className="flex h-14 items-center gap-3 rounded-full border border-[#e3d8c8] bg-white/90 px-4 shadow-[0_10px_24px_rgba(94,104,79,0.06)]">
+              <div className="flex h-12 items-center gap-2 rounded-xl border border-[#e4dfd4] bg-[#f1eee6] px-3">
                 <SearchIcon />
                 <input
                   value={searchValue}
                   onChange={(event) => setSearchValue(event.target.value)}
-                  placeholder="Search for sarees, fabrics..."
+                  placeholder="Search sarees, fabrics…"
                   className="h-full min-w-0 flex-1 border-none bg-transparent text-[16px] text-[#2f342d] outline-none placeholder:text-[#8f938b]"
                 />
                 {searchValue ? (
@@ -630,12 +633,12 @@ export function MobileAppSearchPage({ categoryFirst = false }: { categoryFirst?:
             <button
               type="button"
               onClick={() => setFilterSheetOpen(true)}
-              className="relative inline-flex h-14 shrink-0 items-center gap-2 rounded-full border border-[#e3d8c8] bg-white/90 px-4 text-[0.88rem] font-medium text-[#4f5942] shadow-[0_10px_24px_rgba(94,104,79,0.06)]"
+              aria-label={activeFilterCount > 0 ? `Filters, ${activeFilterCount} applied` : "Filter and sort"}
+              className="relative inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[#e4dfd4] bg-[#fffdf8] text-[#4f5942]"
             >
               <FilterIcon />
-              <span>{activeFilterCount > 0 ? "Filters" : "Filter"}</span>
               {activeFilterCount > 0 ? (
-                <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-[#5e684f] px-2 text-[0.78rem] font-semibold text-[#fbf4e8]">
+                <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#5e684f] px-1 text-[0.7rem] font-semibold text-[#fbf4e8]">
                   {activeFilterCount}
                 </span>
               ) : null}
@@ -663,7 +666,7 @@ export function MobileAppSearchPage({ categoryFirst = false }: { categoryFirst?:
                 key={chip}
                 type="button"
                 onClick={() => applySearch({ q: chip, category: activeCategory, fabric: activeFabric, intent: activeIntent, sort: activeSort })}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#e4dacb] bg-white/72 px-3 py-1.5 text-[0.8rem] font-medium text-[#3a4337]"
+                className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border border-[#e4dacb] bg-white/72 px-3 py-2 text-[0.82rem] font-medium text-[#3a4337]"
               >
                 <SearchIcon small />
                 <span>{chip}</span>
@@ -688,13 +691,13 @@ export function MobileAppSearchPage({ categoryFirst = false }: { categoryFirst?:
         </div>
 
         {filteredProducts.length === 0 ? (
-          <section className="mt-6 rounded-[1.7rem] border border-dashed border-[#dccfb9] bg-[#fffaf2] px-5 py-8 text-center">
+          <section className="mt-6 rounded-2xl border border-dashed border-[#dccfb9] bg-[#fffaf2] px-5 py-8 text-center">
             <p className="brand-copy text-[1.28rem] leading-tight text-[#2f342d]">{emptyStateTitle}</p>
             <p className="mt-2 text-[0.9rem] leading-6 text-[#68735e]">
-              Try another category or open the full collection.
+              {emptyStateDescription}
             </p>
 
-            {emptyStateCategorySuggestions.length > 0 ? (
+            {shouldShowEmptyStateAlternates && emptyStateCategorySuggestions.length > 0 ? (
               <div className="mt-5">
                 <p className="brand-caption text-[0.66rem] font-semibold tracking-[0.22em] text-[#7a846f]">
                   EXPLORE OTHER CATEGORIES
@@ -704,7 +707,7 @@ export function MobileAppSearchPage({ categoryFirst = false }: { categoryFirst?:
                     <Link
                       key={suggestion.href}
                       href={suggestion.href}
-                      className="rounded-[1.2rem] border border-[#e5d9c8] bg-white/88 px-3 py-3 text-[0.88rem] font-medium text-[#394234] shadow-[0_8px_18px_rgba(94,104,79,0.05)]"
+                      className="rounded-[1.2rem] border border-[#e5d9c8] bg-white/88 px-3 py-3 text-[0.88rem] font-medium text-[#394234] shadow-none"
                     >
                       {suggestion.label}
                     </Link>
@@ -713,7 +716,7 @@ export function MobileAppSearchPage({ categoryFirst = false }: { categoryFirst?:
               </div>
             ) : null}
 
-            {emptyStateProductSuggestions.length > 0 ? (
+            {shouldShowEmptyStateAlternates && emptyStateProductSuggestions.length > 0 ? (
               <div className="mt-5 text-left">
                 <div className="mt-3 grid grid-cols-2 gap-3">
                   {emptyStateProductSuggestions.map((product) => (
@@ -817,7 +820,7 @@ export function MobileAppFavoritesPage() {
               return (
                 <article
                   key={product.id ?? product.sku}
-                  className="grid grid-cols-[5rem_minmax(0,1fr)] gap-3 rounded-[1.55rem] border border-[#eadfce] bg-white/85 p-3 shadow-[0_10px_24px_rgba(94,104,79,0.06)]"
+                  className="mobile-app-wishlist-item grid grid-cols-[4rem_minmax(0,1fr)] gap-3 rounded-2xl border border-[#e8e3d9] bg-[#fffdf8] p-3"
                 >
                   <div
                     className="aspect-square rounded-[1.15rem] bg-[#efe5d7]"
@@ -848,7 +851,7 @@ export function MobileAppFavoritesPage() {
                         ) : null}
                       </div>
 
-                      <div className="mt-2.5 grid grid-cols-2 gap-2">
+                      <div className="mobile-app-wishlist-actions mt-2.5 grid grid-cols-2 gap-2">
                         {quantityInBag > 0 ? (
                           <div className="grid grid-cols-[2.2rem_1fr_2.2rem] items-center rounded-full bg-[#5e684f] px-1 py-1 text-[#fbf4e8]">
                             <QuantityButton
@@ -1015,7 +1018,7 @@ export function MobileAppOrdersPage() {
               return (
                 <article
                   key={order.id}
-                  className="rounded-[1.55rem] border border-[#eadfce] bg-white/88 p-4 shadow-[0_10px_24px_rgba(94,104,79,0.06)]"
+                  className="rounded-2xl border border-[#eadfce] bg-white/88 p-4 shadow-none"
                 >
                   <button
                     type="button"
@@ -1260,7 +1263,7 @@ export function MobileAppAccountPage() {
           />
         ) : (
           <>
-            <section className="mt-4 rounded-[1.8rem] border border-[#eadfce] bg-white/88 p-5 shadow-[0_12px_28px_rgba(94,104,79,0.06)]">
+            <section className="mt-4 rounded-2xl border border-[#eadfce] bg-white/88 p-5 shadow-none">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-[0.74rem] font-semibold uppercase tracking-[0.22em] text-[#7d876f]">Saved address</p>
@@ -1282,7 +1285,7 @@ export function MobileAppAccountPage() {
               {profileLoading ? (
                 <p className="mt-4 text-[0.94rem] text-[#68735e]">Loading address...</p>
               ) : selectedAddress ? (
-                <div className="mt-4 rounded-[1.35rem] bg-[#faf6ef] px-4 py-4 text-[0.96rem] leading-7 text-[#54604c]">
+                <div className="mt-4 rounded-2xl bg-[#faf6ef] px-4 py-4 text-[0.96rem] leading-7 text-[#54604c]">
                   <p className="brand-copy text-[1.3rem] leading-tight text-[#2f342d]">{selectedAddress.fullName}</p>
                   <p className="mt-2">{selectedAddress.address}</p>
                   <p>
@@ -1295,7 +1298,7 @@ export function MobileAppAccountPage() {
               )}
             </section>
 
-            <section className="mt-4 rounded-[1.8rem] border border-[#eadfce] bg-white/88 p-5 shadow-[0_12px_28px_rgba(94,104,79,0.06)]">
+            <section className="mt-4 rounded-2xl border border-[#eadfce] bg-white/88 p-5 shadow-none">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-[0.74rem] font-semibold uppercase tracking-[0.22em] text-[#7d876f]">Recent orders</p>
@@ -1350,7 +1353,7 @@ export function MobileAppAccountPage() {
             </section>
 
             <div className="mt-5">
-              <section className="rounded-[1.8rem] border border-[#eadfce] bg-white/88 p-5 shadow-[0_12px_28px_rgba(94,104,79,0.06)]">
+              <section className="rounded-2xl border border-[#eadfce] bg-white/88 p-5 shadow-none">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-[0.74rem] font-semibold uppercase tracking-[0.22em] text-[#7d876f]">
@@ -1421,16 +1424,16 @@ export function MobileAppProductPage() {
   const router = useRouter();
   const pathname = usePathname() ?? "/app/product";
   const searchParams = useSearchParams();
-  const currentSearchParams = searchParams ?? new URLSearchParams();
   const { addItem, items, updateQuantity, totalItems } = useCart();
   const [products, setProducts] = useState<Saree[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [waitlistDialogOpen, setWaitlistDialogOpen] = useState(false);
   const galleryRef = useRef<HTMLDivElement | null>(null);
-  const slug = useMemo(
-    () => resolveAppProductSlug(pathname, currentSearchParams.get("slug")),
-    [currentSearchParams, pathname]
-  );
+  const slug = useMemo(() => {
+    const currentSearchParams = searchParams ?? new URLSearchParams();
+
+    return resolveAppProductSlug(pathname, currentSearchParams.get("slug"));
+  }, [pathname, searchParams]);
 
   useEffect(() => {
     return subscribeToSarees(
@@ -1510,13 +1513,13 @@ export function MobileAppProductPage() {
           <button
             type="button"
             onClick={() => router.back()}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#e3d8c8] bg-white/80 text-[#2f342d] shadow-[0_8px_20px_rgba(94,104,79,0.06)]"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#e3d8c8] bg-white/80 text-[#2f342d] shadow-none"
             aria-label="Back"
           >
             <ArrowLeftIcon />
           </button>
           <Image src="/eshwelogo-transparent.png" alt="eshwe" width={72} height={72} className="h-16 w-16 object-contain" />
-          <Link href={buildAppCheckoutHref()} className="relative inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#e3d8c8] bg-white/80 text-[#5e684f] shadow-[0_8px_20px_rgba(94,104,79,0.06)]">
+          <Link href={buildAppCheckoutHref()} className="relative inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#e3d8c8] bg-white/80 text-[#5e684f] shadow-none">
             <BagOutlineIcon />
             {totalItems > 0 ? (
               <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#a8574d] px-1 text-[0.68rem] font-semibold text-[#fbf4e8]">
@@ -1527,7 +1530,7 @@ export function MobileAppProductPage() {
         </div>
 
         <section className="mt-5">
-          <div className="relative overflow-hidden rounded-[2rem] border border-[#eadfce] bg-[#efe5d7] shadow-[0_18px_48px_rgba(94,104,79,0.12)]">
+          <div className="mobile-app-product-gallery relative overflow-hidden rounded-2xl bg-[#efe5d7]">
             <div
               ref={galleryRef}
               className="flex snap-x snap-mandatory overflow-x-auto hide-scrollbar"
@@ -1568,7 +1571,7 @@ export function MobileAppProductPage() {
                   type="button"
                   onClick={() => scrollToGalleryImage(index)}
                   className={`relative h-20 w-16 shrink-0 overflow-hidden rounded-[1rem] border ${
-                    index === currentImageIndex ? "border-[#5e684f] shadow-[0_10px_24px_rgba(94,104,79,0.14)]" : "border-[#eadfce]"
+                    index === currentImageIndex ? "border-[#5e684f] shadow-none" : "border-[#eadfce]"
                   }`}
                 >
                   <span className="absolute inset-0" style={buildImageBackgroundStyle(imageUrl)} />
@@ -1577,7 +1580,7 @@ export function MobileAppProductPage() {
             </div>
           ) : null}
 
-          <div className="mt-5 rounded-[1.85rem] border border-[#eadfce] bg-white/88 p-5 shadow-[0_12px_28px_rgba(94,104,79,0.06)]">
+          <div className="mt-5 border-t border-[#e8e3d9] pt-5">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-[0.74rem] font-semibold uppercase tracking-[0.22em] text-[#7d876f]">{product.category}</p>
@@ -1609,7 +1612,7 @@ export function MobileAppProductPage() {
               <MiniTrustTile title="Fast support" subtitle="Order help" />
             </div>
 
-            <div className="mt-5 rounded-[1.35rem] bg-[#faf6ef] px-4 py-4 text-[0.95rem] leading-7 text-[#667056]">
+            <div className="mt-5 rounded-2xl bg-[#faf6ef] px-4 py-4 text-[0.95rem] leading-7 text-[#667056]">
               {product.description}
             </div>
 
@@ -1653,8 +1656,8 @@ export function MobileAppProductPage() {
         ) : null}
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-40 px-3 pb-[calc(0.95rem+env(safe-area-inset-bottom))]">
-        <div className="mx-auto flex max-w-[430px] items-center gap-2.5 rounded-[1.7rem] border border-[rgba(214,203,185,0.82)] bg-[rgba(255,251,245,0.94)] px-3 py-2.5 shadow-[0_20px_42px_rgba(47,40,32,0.14)] backdrop-blur-xl">
+      <div className="mobile-app-action-bar fixed inset-x-0 bottom-0 z-40">
+        <div className="mx-auto flex max-w-[440px] items-center gap-3 px-4 py-3">
           {cartQuantity > 0 ? (
             <div className="grid w-full grid-cols-[3rem_1fr_3rem] items-center rounded-[1rem] bg-[#5e684f] px-1.5 py-1.5 text-[#fbf4e8]">
               <QuantityButton label="Decrease quantity" onClick={() => updateQuantity(product.sku, cartQuantity - 1)}>
@@ -2177,7 +2180,7 @@ export function MobileAppCheckoutPage() {
           <button
             type="button"
             onClick={() => router.back()}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#e3d8c8] bg-white/80 text-[#2f342d] shadow-[0_8px_20px_rgba(94,104,79,0.06)]"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#e3d8c8] bg-white/80 text-[#2f342d] shadow-none"
             aria-label="Back"
           >
             <ArrowLeftIcon />
@@ -2188,13 +2191,13 @@ export function MobileAppCheckoutPage() {
           <span className="h-11 w-11" />
         </div>
 
-        <section className="mt-5 overflow-hidden rounded-[2rem] border border-[#eadfce] bg-[linear-gradient(135deg,rgba(255,250,242,0.97)_0%,rgba(247,237,224,0.94)_100%)] p-5 shadow-[0_18px_36px_rgba(94,104,79,0.08)]">
+        <section className="mobile-app-checkout-heading mt-3 border-b border-[#e8e3d9] pb-5">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-[0.74rem] font-semibold uppercase tracking-[0.22em] text-[#7d876f]">Review & pay</p>
-              <h1 className="brand-copy mt-3 text-[1.9rem] leading-tight text-[#2f342d]">Complete your order</h1>
+              <h1 className="mt-1 text-[1.35rem] font-semibold leading-tight text-[#2f342d]">Complete your order</h1>
             </div>
-            <div className="rounded-[1.2rem] bg-white/75 px-4 py-3 text-right shadow-[inset_0_0_0_1px_rgba(234,223,206,0.9)]">
+            <div className="shrink-0 text-right">
               <p className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[#7d876f]">Total due</p>
               <p className="mt-1 text-[1.25rem] font-semibold text-[#2b2a29]">{formatCurrency(total)}</p>
             </div>
@@ -2226,13 +2229,13 @@ export function MobileAppCheckoutPage() {
         </section>
 
         {checkoutStep === "bag" ? (
-          <section className="mt-4 rounded-[1.85rem] border border-[#cbbb9e] bg-white/88 p-5 shadow-[0_16px_34px_rgba(94,104,79,0.1)]">
+          <section className="mt-4 rounded-2xl border border-[#e8e3d9] bg-[#fffdf8] p-4">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-[0.74rem] font-semibold uppercase tracking-[0.22em] text-[#7d876f]">Shopping bag</p>
-                <h1 className="brand-copy mt-3 text-[1.8rem] leading-tight text-[#2f342d]">
+                <h2 className="mobile-app-ui-title mt-2 text-[1.1rem] font-semibold leading-tight text-[#2f342d]">
                   Review your order
-                </h1>
+                </h2>
               </div>
               <Link
                 href={buildAppSearchHref()}
@@ -2266,7 +2269,7 @@ export function MobileAppCheckoutPage() {
           <>
             <section
               ref={deliverySectionRef}
-              className="mt-4 rounded-[1.85rem] border border-[#cbbb9e] bg-white/88 p-5 shadow-[0_16px_34px_rgba(94,104,79,0.1)]"
+              className="mt-4 rounded-2xl border border-[#e8e3d9] bg-[#fffdf8] p-4"
             >
               <div>
                 <p className="text-[0.74rem] font-semibold uppercase tracking-[0.22em] text-[#7d876f]">Delivery details</p>
@@ -2275,7 +2278,7 @@ export function MobileAppCheckoutPage() {
 
               {profileError ? <p className="mt-3 text-[0.9rem] text-[#a8574d]">{profileError}</p> : null}
 
-              <div className="mt-4 rounded-[1.45rem] border border-[#eee4d6] bg-[linear-gradient(180deg,#fffdf8_0%,#faf6ef_100%)] px-4 py-4 text-[0.94rem] leading-7 text-[#54604c]">
+              <div className="mt-4 rounded-2xl border border-[#eee4d6] bg-[linear-gradient(180deg,#fffdf8_0%,#faf6ef_100%)] px-4 py-4 text-[0.94rem] leading-7 text-[#54604c]">
                 <label className="block">
                   <span className="mb-2 block text-[0.78rem] font-semibold uppercase tracking-[0.16em] text-[#7d876f]">10-digit phone number</span>
                   <input
@@ -2302,8 +2305,8 @@ export function MobileAppCheckoutPage() {
           <>
             <section
               ref={deliverySectionRef}
-              className={`mt-4 rounded-[1.85rem] border bg-white/88 p-5 shadow-[0_12px_28px_rgba(94,104,79,0.06)] ${
-                checkoutStep === "address" ? "border-[#cbbb9e] shadow-[0_16px_34px_rgba(94,104,79,0.1)]" : "border-[#eadfce]"
+              className={`mt-4 rounded-2xl border bg-white/88 p-5 shadow-none ${
+                checkoutStep === "address" ? "border-[#cbbb9e] shadow-none" : "border-[#eadfce]"
               }`}
             >
               <div className="flex items-center justify-between gap-3">
@@ -2327,13 +2330,13 @@ export function MobileAppCheckoutPage() {
 
               {user ? (
                 profileLoading ? (
-                  <div className="mt-4 rounded-[1.45rem] border border-[#eee4d6] bg-[linear-gradient(180deg,#fffdf8_0%,#faf6ef_100%)] px-4 py-4 text-[0.94rem] leading-7 text-[#54604c]">
+                  <div className="mt-4 rounded-2xl border border-[#eee4d6] bg-[linear-gradient(180deg,#fffdf8_0%,#faf6ef_100%)] px-4 py-4 text-[0.94rem] leading-7 text-[#54604c]">
                     <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-[#7d876f]">Verified mobile</p>
                     <p className="mt-1 text-[0.98rem] font-medium text-[#2f342d]">{resolveVerifiedPhone(user.phoneNumber)}</p>
                     <p className="mt-3 text-[0.94rem] text-[#68735e]">Verifying user and loading saved address...</p>
                   </div>
                 ) : savedAddress ? (
-                  <div className="mt-4 rounded-[1.45rem] border border-[#eee4d6] bg-[linear-gradient(180deg,#fffdf8_0%,#faf6ef_100%)] px-4 py-4 text-[0.96rem] leading-7 text-[#54604c]">
+                  <div className="mt-4 rounded-2xl border border-[#eee4d6] bg-[linear-gradient(180deg,#fffdf8_0%,#faf6ef_100%)] px-4 py-4 text-[0.96rem] leading-7 text-[#54604c]">
                     <div className="mb-3 rounded-[1rem] bg-[#f5f0e7] px-3.5 py-3">
                       <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-[#7d876f]">Verified mobile</p>
                       <p className="mt-1 text-[0.98rem] font-medium text-[#2f342d]">{savedAddress.phone}</p>
@@ -2351,7 +2354,7 @@ export function MobileAppCheckoutPage() {
                     <p>{savedAddress.phone}</p>
                   </div>
                 ) : (
-                  <div className="mt-4 rounded-[1.45rem] border border-[#eee4d6] bg-[linear-gradient(180deg,#fffdf8_0%,#faf6ef_100%)] px-4 py-4 text-[0.94rem] leading-7 text-[#54604c]">
+                  <div className="mt-4 rounded-2xl border border-[#eee4d6] bg-[linear-gradient(180deg,#fffdf8_0%,#faf6ef_100%)] px-4 py-4 text-[0.94rem] leading-7 text-[#54604c]">
                     <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-[#7d876f]">Verified mobile</p>
                     <p className="mt-1 text-[0.98rem] font-medium text-[#2f342d]">{resolveVerifiedPhone(user.phoneNumber)}</p>
                     <p className="mt-3 text-[0.94rem] text-[#68735e]">No saved address found. Add your address to continue.</p>
@@ -2366,7 +2369,7 @@ export function MobileAppCheckoutPage() {
           <>
             <section
               ref={paySectionRef}
-              className="mt-4 rounded-[1.85rem] border border-[#cbbb9e] bg-white/88 p-5 shadow-[0_16px_34px_rgba(94,104,79,0.1)]"
+              className="mt-4 rounded-2xl border border-[#e8e3d9] bg-[#fffdf8] p-4"
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -2385,7 +2388,7 @@ export function MobileAppCheckoutPage() {
                 {savings > 0 ? <SummaryRow label="Savings" value={`-${formatCurrency(savings)}`} valueClassName="text-[#b85b52]" /> : null}
               </div>
 
-              <div className="mt-5 rounded-[1.35rem] bg-[#faf6ef] px-4 py-4">
+              <div className="mt-5 rounded-2xl bg-[#faf6ef] px-4 py-4">
                 <div className="flex items-center justify-between gap-3">
                   <span className="brand-copy text-[1.5rem] text-[#2f342d]">Total</span>
                   <span className="text-[1.65rem] font-semibold text-[#2b2a29]">{formatCurrency(total)}</span>
@@ -2409,7 +2412,7 @@ export function MobileAppCheckoutPage() {
             </section>
 
             {activeAddress ? (
-              <section className="mt-4 rounded-[1.6rem] border border-[#eadfce] bg-white/88 px-4 py-4 shadow-[0_12px_28px_rgba(94,104,79,0.06)]">
+              <section className="mt-4 rounded-2xl border border-[#eadfce] bg-white/88 px-4 py-4 shadow-none">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-[#7d876f]">Delivery to</p>
@@ -2441,8 +2444,8 @@ export function MobileAppCheckoutPage() {
         ) : null}
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-40 px-3 pb-[calc(0.95rem+env(safe-area-inset-bottom))]">
-        <div className="mx-auto max-w-[430px] rounded-[1.9rem] border border-[rgba(214,203,185,0.82)] bg-[rgba(255,251,245,0.95)] px-4 py-3 shadow-[0_20px_42px_rgba(47,40,32,0.14)] backdrop-blur-xl">
+      <div className="mobile-app-action-bar fixed inset-x-0 bottom-0 z-40">
+        <div className="mx-auto max-w-[440px] px-4 py-3">
           <button
             type="button"
             onClick={() => void handlePrimaryCheckoutAction()}
@@ -2488,7 +2491,7 @@ export function MobileAppOrderConfirmationPage() {
   return (
     <MobileAppShell showBottomNav={false}>
       <div className="px-4 pb-8 pt-[calc(env(safe-area-inset-top)+1rem)]">
-        <div className="rounded-[2rem] border border-[#eadfce] bg-white/90 p-6 text-center shadow-[0_18px_42px_rgba(94,104,79,0.08)]">
+        <div className="rounded-[2rem] border border-[#eadfce] bg-white/90 p-6 text-center shadow-none">
           <span className="mx-auto inline-flex h-20 w-20 items-center justify-center rounded-full bg-[#eef4e7] text-[#5e684f]">
             <CheckIcon />
           </span>
@@ -2503,7 +2506,7 @@ export function MobileAppOrderConfirmationPage() {
 
         {confirmation ? (
           <>
-            <section className="mt-4 rounded-[1.8rem] border border-[#eadfce] bg-white/88 p-5 shadow-[0_12px_28px_rgba(94,104,79,0.06)]">
+            <section className="mt-4 rounded-2xl border border-[#eadfce] bg-white/88 p-5 shadow-none">
               <div className="grid grid-cols-2 gap-3">
                 <InfoCard label="Order ID" value={displayOrderId} />
                 <InfoCard label="Status" value={formatOrderConfirmationPaymentStatus(confirmation.paymentStatus)} />
@@ -2511,7 +2514,7 @@ export function MobileAppOrderConfirmationPage() {
                 <InfoCard label="Items" value={`${confirmation.items.length}`} />
               </div>
 
-              <div className="mt-5 rounded-[1.35rem] bg-[#faf6ef] px-4 py-4 text-left text-[0.96rem] leading-7 text-[#54604c]">
+              <div className="mt-5 rounded-2xl bg-[#faf6ef] px-4 py-4 text-left text-[0.96rem] leading-7 text-[#54604c]">
                 <p className="brand-copy text-[1.25rem] text-[#2f342d]">{confirmation.customer.fullName}</p>
                 <p className="mt-2">{confirmation.customer.address}</p>
                 <p>
@@ -2578,12 +2581,12 @@ function MobileHomeHeader({
   onOpenMenu: () => void;
 }) {
   return (
-    <div className="relative flex min-h-[4.5rem] items-center justify-between gap-3">
+    <div className="mobile-app-home-header relative flex min-h-14 items-center justify-between gap-3">
       <div className="flex items-center">
         <button
           type="button"
           onClick={onOpenMenu}
-          className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#e7dccd] bg-white/78 text-[#2f342d] shadow-[0_8px_20px_rgba(94,104,79,0.06)]"
+          className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#e7dccd] bg-white/78 text-[#2f342d] shadow-none"
           aria-label="Open navigation"
         >
           <MenuIcon />
@@ -2600,19 +2603,19 @@ function MobileHomeHeader({
       <div className="ml-auto flex items-center gap-2">
         <Link
           href={buildAppSearchHref()}
-          className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#e7dccd] bg-white/78 text-[#2f342d] shadow-[0_8px_20px_rgba(94,104,79,0.06)]"
+          className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#e7dccd] bg-white/78 text-[#2f342d] shadow-none"
           aria-label="Search"
         >
           <SearchIcon />
         </Link>
         <Link
           href={buildAppCheckoutHref()}
-          className="relative inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#e7dccd] bg-white/78 text-[#5e684f] shadow-[0_8px_20px_rgba(94,104,79,0.06)]"
+          className="relative inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#e7dccd] bg-white/78 text-[#5e684f] shadow-none"
           aria-label="Bag"
         >
           <BagOutlineIcon />
           {totalItems > 0 ? (
-            <span className="absolute -right-1.5 -top-1.5 inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-[#a8574d] px-1.5 text-[0.72rem] font-semibold leading-none text-[#fbf4e8] shadow-[0_8px_16px_rgba(89,45,36,0.2)]">
+            <span className="absolute -right-1.5 -top-1.5 inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-[#a8574d] px-1.5 text-[0.72rem] font-semibold leading-none text-[#fbf4e8] shadow-none">
               {totalItems}
             </span>
           ) : null}
@@ -2711,10 +2714,10 @@ function MobileProductCard({
   const canIncreaseQuantity = cartQuantity < getPurchasableQuantityLimit(product.availableStock);
 
   return (
-    <article className="overflow-hidden rounded-[1.75rem] border border-[#eadfce] bg-white/92 shadow-[0_16px_34px_rgba(94,104,79,0.08)]">
+    <article className="mobile-app-product-card overflow-hidden rounded-2xl border border-[#e8e3d9] bg-[#fffdf8]">
       <div className="relative">
         <Link href={buildAppProductHref(product.slug)} className="relative block">
-          <div className={slim ? "aspect-[1.06]" : compact ? "aspect-[0.9]" : "aspect-[1]"}>
+          <div className={slim ? "aspect-square" : compact ? "aspect-[0.86]" : "aspect-[0.8]"}>
             <div
               className="absolute inset-0 bg-[#efe5d7]"
               style={buildImageBackgroundStyle(product.primaryImageUrl, {
@@ -2730,17 +2733,17 @@ function MobileProductCard({
           ) : null}
         </Link>
 
-        <FavoriteToggleButton sku={product.sku} className="absolute right-3 top-3 z-10 h-10 w-10" />
+        <FavoriteToggleButton sku={product.sku} className="absolute right-2 top-2 z-10" />
       </div>
 
-      <div className={slim ? "px-3 pb-2.5 pt-2" : "px-3 pb-2.5 pt-2"}>
+      <div className="mobile-app-product-info px-3 pb-3 pt-3">
         <Link href={buildAppProductHref(product.slug)} className="block">
-          <h3 className={`brand-copy text-[#2f342d] ${slim ? "text-[0.84rem] leading-[1.08]" : "text-[0.86rem] leading-[1.08]"}`}>{product.name}</h3>
-          <p className={`mt-0.5 text-[#68735e] ${slim ? "text-[0.7rem] leading-[1rem]" : "text-[0.72rem] leading-[1rem]"}`}>{getMobileProductLabel(product)}</p>
+          <h3 className="mobile-app-product-name text-[#2f342d]">{product.name}</h3>
+          <p className="mt-1 text-[0.8rem] leading-5 text-[#68735e]">{getMobileProductLabel(product)}</p>
         </Link>
 
         <div className={`flex items-end gap-1.5 ${slim ? "mt-1" : "mt-1.25"}`}>
-          <span className={slim ? "text-[0.86rem] font-semibold text-[#2b2a29]" : "text-[0.88rem] font-semibold text-[#2b2a29]"}>{formatCurrency(product.price)}</span>
+          <span className="text-[1rem] font-semibold text-[#2b2a29]">{formatCurrency(product.price)}</span>
           {typeof product.originalPrice === "number" ? (
             <span className={slim ? "text-[0.68rem] text-[#9a9a93] line-through" : "text-[0.7rem] text-[#9a9a93] line-through"}>{formatCurrency(product.originalPrice)}</span>
           ) : null}
@@ -2810,10 +2813,10 @@ function MobileCategoryCard({
   return (
     <Link
       href={buildAppCategoryHref(card.shopFilter || card.title)}
-      className="relative overflow-hidden rounded-[1.6rem] border border-[#e9dfd1] bg-[#efe5d7] shadow-[0_14px_32px_rgba(94,104,79,0.07)]"
+      className="relative overflow-hidden rounded-2xl bg-[#efe5d7]"
     >
       <div
-        className="aspect-[0.82] w-full bg-[#efe5d7]"
+        className="aspect-[1.15] w-full bg-[#efe5d7]"
         style={{
           ...buildImageBackgroundStyle(previewImage, {
             focalPosition: card.backgroundPosition || "center 12%"
@@ -2970,11 +2973,11 @@ function PageHeading({
   eyebrow?: string;
 }) {
   return (
-    <div className="rounded-[1.9rem] border border-[#eadfce] bg-white/70 px-5 py-5 shadow-[0_12px_28px_rgba(94,104,79,0.05)]">
-      <p className="text-[0.74rem] font-semibold uppercase tracking-[0.22em] text-[#7d876f]">{eyebrow}</p>
-      <div className="mt-3">
-        <h1 className="brand-copy text-[2rem] leading-tight text-[#2f342d]">{title}</h1>
-        <p className="mt-3 text-[0.94rem] leading-7 text-[#68735e]">{subtitle}</p>
+    <div className="mobile-app-page-heading pb-4 pt-2">
+      <p className="sr-only">{eyebrow}</p>
+      <div className="mt-1.5">
+        <h1 className="text-[1.65rem] font-semibold leading-tight tracking-tight text-[#2f342d]">{title}</h1>
+        <p className="mt-2 text-[0.9rem] leading-6 text-[#68735e]">{subtitle}</p>
       </div>
     </div>
   );
@@ -2993,7 +2996,7 @@ function SectionHeading({
     <div className="mt-6 flex items-center justify-between gap-3">
       <h2 className="brand-copy text-[1.55rem] text-[#2f342d]">{title}</h2>
       {actionHref && actionLabel ? (
-        <Link href={actionHref} className="inline-flex items-center gap-1 text-[0.92rem] font-medium text-[#5e684f]">
+        <Link href={actionHref} className="inline-flex min-h-11 shrink-0 items-center gap-1 text-[0.85rem] font-semibold text-[#5e684f]">
           <span>{actionLabel}</span>
           <ChevronRightIcon />
         </Link>
@@ -3019,22 +3022,22 @@ function MobileHomeSection({
 }) {
   const shellClassName =
     tone === "warm"
-      ? "mt-6 -mx-4 bg-[linear-gradient(180deg,#fff9f0_0%,#f7efe3_100%)] px-4 py-5"
+      ? "mt-5 py-2"
       : tone === "sage"
-        ? "mt-7 -mx-4 bg-[linear-gradient(180deg,rgba(244,247,238,0.98)_0%,rgba(235,241,227,0.96)_100%)] px-4 py-5"
-        : "mt-7 pt-5";
+        ? "mt-6 -mx-4 bg-[#f1f3eb] px-4 py-5"
+        : "mt-6 pt-2";
 
   return (
     <section className={shellClassName}>
       <div className="flex items-start justify-between gap-3">
         <div>
           {eyebrow ? (
-            <p className="mb-2 text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-[#8a9078]">{eyebrow}</p>
+            <p className="mb-1 text-[0.7rem] font-medium uppercase tracking-[0.1em] text-[#68735e]">{eyebrow}</p>
           ) : null}
-          <h2 className="brand-copy text-[1.55rem] text-[#2f342d]">{title}</h2>
+          <h2 className="brand-copy text-[1.4rem] text-[#2f342d]">{title}</h2>
         </div>
         {actionHref && actionLabel ? (
-          <Link href={actionHref} className="mt-1 inline-flex items-center gap-1 text-[0.92rem] font-medium text-[#5e684f]">
+          <Link href={actionHref} className="inline-flex min-h-11 shrink-0 items-center gap-1 text-[0.85rem] font-semibold text-[#5e684f]">
             <span>{actionLabel}</span>
             <ChevronRightIcon />
           </Link>
@@ -3077,7 +3080,7 @@ function BenefitTile({
   icon: ReactNode;
 }) {
   return (
-    <div className="rounded-[1.35rem] bg-[#faf6ef] px-3 py-3 text-center">
+    <div className="rounded-2xl bg-[#faf6ef] px-3 py-3 text-center">
       <span className="mx-auto inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#f6efe2] text-[#758060]">
         {icon}
       </span>
@@ -3099,7 +3102,7 @@ function SimpleTrustPill({
       <span className="mx-auto inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#f3ecdf] text-[#758060]">
         {icon}
       </span>
-      <p className="mt-1 text-[0.6rem] font-semibold leading-[1.15] text-[#354233]">{title}</p>
+      <p className="mt-1 text-[0.75rem] font-medium leading-[1.4] text-[#354233]">{title}</p>
     </div>
   );
 }
@@ -3116,7 +3119,7 @@ function EmptyStateCard({
   actionLabel?: string;
 }) {
   return (
-    <section className="mt-5 rounded-[1.8rem] border border-dashed border-[#dccfb9] bg-[#fffaf2] px-5 py-8 text-center shadow-[0_10px_24px_rgba(94,104,79,0.04)]">
+    <section className="mt-5 rounded-2xl border border-dashed border-[#dccfb9] bg-[#fffaf2] px-5 py-8 text-center shadow-none">
       <h2 className="brand-copy text-[1.7rem] text-[#2f342d]">{title}</h2>
       <p className="mt-3 text-[0.96rem] leading-7 text-[#68735e]">{description}</p>
       {actionHref && actionLabel ? (
@@ -3145,9 +3148,9 @@ function SignInCard({
   disabled?: boolean;
 }) {
   return (
-    <section className="mt-5 rounded-[1.9rem] border border-[#eadfce] bg-[linear-gradient(180deg,rgba(255,252,246,0.96)_0%,rgba(248,240,229,0.94)_100%)] p-5 shadow-[0_16px_34px_rgba(94,104,79,0.08)]">
-      <h2 className="brand-copy text-[1.7rem] text-[#2f342d]">{title}</h2>
-      <p className="mt-3 text-[0.96rem] leading-7 text-[#68735e]">{description}</p>
+    <section className="mt-4 rounded-2xl border border-[#e8e3d9] bg-[#fffdf8] p-5">
+      <h2 className="mobile-app-ui-title text-[1.2rem] font-semibold text-[#2f342d]">{title}</h2>
+      <p className="mt-2 text-[0.94rem] leading-6 text-[#68735e]">{description}</p>
       <button
         type="button"
         onClick={onAction}
@@ -3176,15 +3179,15 @@ function MobileBottomSheet({
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-[rgba(36,49,36,0.3)] backdrop-blur-sm" onClick={onClose}>
-      <div className="absolute inset-x-0 bottom-0 px-3 pb-[calc(0.9rem+env(safe-area-inset-bottom))]">
+    <div className="fixed inset-0 z-[60] bg-[rgba(36,49,36,0.3)] backdrop-blur-sm" onClick={onClose}>
+      <div className="mobile-app-sheet-position absolute inset-x-0 bottom-0">
         <div
-          className="mx-auto max-w-[430px] rounded-[2rem] border border-[#eadfce] bg-[linear-gradient(180deg,#fffaf2_0%,#f8f0e4_100%)] px-5 pb-5 pt-3 shadow-[0_-18px_48px_rgba(47,40,32,0.18)]"
+          className="mobile-app-sheet mx-auto max-w-[440px] px-5 pt-3"
           onClick={(event) => event.stopPropagation()}
         >
           <div className="mx-auto h-1.5 w-16 rounded-full bg-[#d8ccb8]" />
           <div className="mt-4 flex items-center justify-between gap-3">
-            <p className="brand-copy text-[1.7rem] text-[#2f342d]">{title}</p>
+            <p className="text-[1.2rem] font-semibold text-[#2f342d]">{title}</p>
             <button
               type="button"
               onClick={onClose}
@@ -3194,7 +3197,7 @@ function MobileBottomSheet({
               <CloseIcon />
             </button>
           </div>
-          <div className="mt-5 max-h-[78svh] overflow-y-auto overscroll-contain pr-1">{children}</div>
+          <div className="mobile-app-sheet-content mt-5 overflow-y-auto overscroll-contain">{children}</div>
         </div>
       </div>
     </div>
@@ -3412,7 +3415,7 @@ function MobileCheckoutItem({
   const canIncreaseQuantity = item.quantity < getPurchasableQuantityLimit(item.availableStock);
 
   return (
-    <article className="grid grid-cols-[4.8rem_minmax(0,1fr)] gap-3 rounded-[1.35rem] bg-[#faf6ef] p-3">
+    <article className="mobile-app-checkout-item grid grid-cols-[3.5rem_minmax(0,1fr)] gap-3 border-b border-[#e8e3d9] py-4 last:border-b-0">
       <div className="aspect-square rounded-[1rem] bg-[#efe5d7]" style={buildImageBackgroundStyle(item.primaryImageUrl)} />
       <div>
         <div className="flex items-start justify-between gap-3">
@@ -3486,7 +3489,7 @@ function MobileReceiptOverlay({
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-[rgba(251,244,232,0.84)] px-4 backdrop-blur-[10px]">
       <div className="w-full max-w-[430px] rounded-[2rem] border border-[#ddd0bc] bg-[linear-gradient(180deg,rgba(255,250,242,0.98)_0%,rgba(247,237,224,0.96)_100%)] px-6 py-8 shadow-[0_30px_100px_rgba(94,104,79,0.18)]">
         <div className="flex flex-col items-center text-center">
-          <div className="flex h-20 w-20 items-center justify-center rounded-[1.6rem] border border-[#dcc9ad] bg-[linear-gradient(135deg,#fff3df_0%,#efd8ab_100%)] shadow-[0_18px_40px_rgba(176,111,61,0.16)]">
+          <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-[#dcc9ad] bg-[linear-gradient(135deg,#fff3df_0%,#efd8ab_100%)] shadow-none">
             <Image src="/eshwelogo-transparent.png" alt="Eshwe" width={64} height={64} className="h-16 w-16 object-contain" priority />
           </div>
           <p className="brand-caption mt-5 text-[0.62rem] font-semibold tracking-[0.18em] text-[#7d876f]">PAYMENT RECEIVED</p>
@@ -3497,10 +3500,10 @@ function MobileReceiptOverlay({
         </div>
 
         <div className="mx-auto mt-7 max-w-[18rem]">
-          <div className="relative rounded-[1.8rem] border border-[#d7ccb9] bg-[#667056] px-6 pb-6 pt-5 shadow-[0_22px_45px_rgba(94,104,79,0.2)]">
+          <div className="relative rounded-2xl border border-[#d7ccb9] bg-[#667056] px-6 pb-6 pt-5 shadow-[0_22px_45px_rgba(94,104,79,0.2)]">
             <div className="mx-auto h-2 w-28 rounded-full bg-[rgba(255,250,242,0.26)]" />
             <div className="absolute left-1/2 top-[3.2rem] h-3 w-44 -translate-x-1/2 rounded-full bg-[rgba(35,42,28,0.18)] blur-md" />
-            <div className="receipt-printer-card absolute left-1/2 top-[3.2rem] w-[78%] -translate-x-1/2 overflow-hidden rounded-b-[1.3rem] rounded-t-[0.8rem] border border-[#eadfce] bg-[#fffaf2] shadow-[0_18px_34px_rgba(47,40,32,0.16)]">
+            <div className="receipt-printer-card absolute left-1/2 top-[3.2rem] w-[78%] -translate-x-1/2 overflow-hidden rounded-b-[1.3rem] rounded-t-[0.8rem] border border-[#eadfce] bg-[#fffaf2] shadow-none">
               <div className="receipt-shine h-2 w-full bg-[linear-gradient(90deg,rgba(255,255,255,0)_0%,rgba(255,255,255,0.72)_50%,rgba(255,255,255,0)_100%)]" />
               <div className="space-y-3 px-5 pb-5 pt-4">
                 <div className="flex items-center justify-between">

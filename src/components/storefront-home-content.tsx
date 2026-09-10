@@ -1,6 +1,6 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -11,6 +11,7 @@ import { buildShopHref } from "@/lib/storefront-routes";
 import {
   DEFAULT_HOME_PAGE_CONTENT,
   normalizeHomeLaunchCardMaxWidth,
+  normalizeMobileHomeHeroSlides,
   type CategoryCard,
   type HomePageContent
 } from "@/types/homepage";
@@ -18,8 +19,10 @@ import {
 export function StorefrontHomeContent({ homeReady }: { homeReady: boolean }) {
   const [homePageContent, setHomePageContent] = useState<HomePageContent>(DEFAULT_HOME_PAGE_CONTENT);
   const [categoryCards, setCategoryCards] = useState<CategoryCard[]>([]);
-  const [heroImageLoaded, setHeroImageLoaded] = useState(false);
-  const heroImageUrl = homePageContent.heroImageUrl.trim();
+  const [activeDesktopHeroSlide, setActiveDesktopHeroSlide] = useState(0);
+  const [loadedDesktopHeroUrls, setLoadedDesktopHeroUrls] = useState<string[]>([]);
+  const heroImageUrl = "/homepagebg.webp";
+  const desktopHeroSlides = normalizeMobileHomeHeroSlides(homePageContent.desktopHeroSlides);
   const launchImageUrl = homePageContent.launchImageUrl.trim();
   const launchHasImage = Boolean(launchImageUrl);
   const launchCardMaxWidth = normalizeHomeLaunchCardMaxWidth(homePageContent.launchCardMaxWidth);
@@ -38,26 +41,22 @@ export function StorefrontHomeContent({ homeReady }: { homeReady: boolean }) {
   }, []);
 
   useEffect(() => {
-    setHeroImageLoaded(false);
-  }, [heroImageUrl]);
+    setActiveDesktopHeroSlide((current) => (desktopHeroSlides.length > 0 ? current % desktopHeroSlides.length : 0));
+  }, [desktopHeroSlides.length]);
 
   useEffect(() => {
-    if (typeof window === "undefined") {
+    if (desktopHeroSlides.length < 2) {
       return;
     }
 
-    if (!heroImageLoaded) {
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      window.dispatchEvent(new Event("eshwe:home-hero-ready"));
-    }, 220);
+    const intervalId = window.setInterval(() => {
+      setActiveDesktopHeroSlide((current) => (current + 1) % desktopHeroSlides.length);
+    }, 5000);
 
     return () => {
-      window.clearTimeout(timeoutId);
+      window.clearInterval(intervalId);
     };
-  }, [heroImageLoaded]);
+  }, [desktopHeroSlides.length]);
 
   const activeCategoryCards = categoryCards.filter((card) => card.active);
   const carouselCategories = activeCategoryCards.map((card) => ({
@@ -80,38 +79,33 @@ export function StorefrontHomeContent({ homeReady }: { homeReady: boolean }) {
           <img
             src={heroImageUrl}
             alt="eshwe boutique hero"
-            className={`absolute inset-0 h-full w-full object-cover transition-[opacity,transform,filter] duration-[1200ms] ease-out ${
-              heroImageLoaded ? "scale-100 opacity-100 blur-0" : "scale-[1.035] opacity-0 blur-[10px]"
-            }`}
-            style={{ objectPosition: homePageContent.heroImagePosition || "center" }}
+            className="absolute inset-0 h-full w-full object-cover"
+            style={{ objectPosition: "center" }}
             fetchPriority="high"
             loading="eager"
-            onLoad={() => setHeroImageLoaded(true)}
           />
         ) : null}
-        <div
-          className={`pointer-events-none absolute inset-0 transition-opacity duration-[900ms] ${
-            heroImageLoaded ? "opacity-0" : "opacity-100"
-          }`}
-          aria-hidden="true"
-        >
-          <div className="absolute inset-0 bg-[rgba(251,244,232,0.22)]" />
-          <div className="absolute inset-0 flex items-center justify-center px-6">
-            <div className="relative flex h-28 w-28 items-center justify-center sm:h-36 sm:w-36">
-              <div className="hero-loader-ring absolute inset-0 rounded-full border-[2.5px] border-[#d9c6a4] border-t-[#5e684f]" />
-              <div className="relative flex h-[5.4rem] w-[5.4rem] items-center justify-center rounded-full bg-[rgba(255,250,241,0.86)] shadow-[0_24px_60px_rgba(94,104,79,0.12)] backdrop-blur-md sm:h-[6.8rem] sm:w-[6.8rem]">
-                <Image
-                  src="/eshwelogo-transparent.png"
-                  alt="Eshwe"
-                  width={96}
-                  height={96}
-                  className="h-14 w-14 object-contain sm:h-[4.2rem] sm:w-[4.2rem]"
-                  priority
-                />
-              </div>
-            </div>
-          </div>
-        </div>
+        {desktopHeroSlides.map((slide, index) => (
+          <img
+            key={slide.imagePath || slide.imageUrl}
+            src={slide.imageUrl}
+            alt=""
+            aria-hidden="true"
+            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 ease-in-out ${
+              loadedDesktopHeroUrls.includes(slide.imageUrl) && activeDesktopHeroSlide === index
+                ? "opacity-100"
+                : "opacity-0"
+            }`}
+            style={{ objectPosition: slide.position || "center" }}
+            fetchPriority={index === activeDesktopHeroSlide ? "high" : "auto"}
+            loading={index === activeDesktopHeroSlide ? "eager" : "lazy"}
+            onLoad={() =>
+              setLoadedDesktopHeroUrls((current) =>
+                current.includes(slide.imageUrl) ? current : [...current, slide.imageUrl]
+              )
+            }
+          />
+        ))}
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,250,241,0.05),rgba(251,244,232,0.14))]" />
         <div
           className={`relative z-10 flex min-h-screen items-end px-6 pb-14 transition-[opacity,transform] duration-700 ease-out sm:px-10 sm:pb-18 lg:px-12 lg:pb-20 ${
@@ -121,7 +115,7 @@ export function StorefrontHomeContent({ homeReady }: { homeReady: boolean }) {
           }`}
         >
           <div
-            className="w-full rounded-[1.6rem] border border-[#f3dfaa]/40 bg-[rgba(67,79,57,0.56)] px-5 py-4 text-[#fbf4e8] shadow-[0_18px_40px_rgba(43,42,41,0.16)] backdrop-blur-[3px] sm:px-6 sm:py-5"
+            className="web-hero-copy w-full rounded-[1.6rem] border border-[#f3dfaa]/40 bg-[rgba(67,79,57,0.56)] px-5 py-4 text-[#fbf4e8] shadow-[0_18px_40px_rgba(43,42,41,0.16)] backdrop-blur-[3px] sm:px-6 sm:py-5"
             style={{ maxWidth: `${launchCardMaxWidth}px` }}
           >
             <div
@@ -209,7 +203,7 @@ export function StorefrontHomeContent({ homeReady }: { homeReady: boolean }) {
       {activeCategoryCards.length > 0 ? (
         <section
           id="categories"
-          className={`relative z-10 bg-[#fbf4e8] px-6 py-20 transition-[opacity,transform] duration-700 ease-out sm:px-10 lg:px-12 ${
+          className={`web-home-categories relative z-10 bg-[#fbf4e8] px-6 py-20 transition-[opacity,transform] duration-700 ease-out sm:px-10 lg:px-12 ${
             homeReady ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-6 opacity-0"
           }`}
         >

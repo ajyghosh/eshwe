@@ -13,13 +13,16 @@ import { CategoryCarousel } from "@/components/category-carousel";
 import { SiteFooter } from "@/components/site-footer";
 import { StorefrontHeader } from "@/components/storefront-header";
 import { subscribeToCategoryCards } from "@/lib/homepage";
+import { compareProductsByAvailability } from "@/lib/inventory";
 import { matchesProductIntent, matchesProductSearch, SHOP_INTENT_TAGS } from "@/lib/product-discovery";
 import { subscribeToSarees } from "@/lib/sarees";
 import {
   buildShopHref,
   buildShopPath,
+  buildShopVisiblePath,
   matchesRouteIdentifier,
-  resolveShopLocation
+  resolveShopLocation,
+  resolveShopSearchQuery
 } from "@/lib/storefront-routes";
 import { useProgressiveProductGrid } from "@/lib/use-progressive-product-grid";
 import type { CategoryCard } from "@/types/homepage";
@@ -41,11 +44,12 @@ type BrowseOption = {
 };
 
 export function ShopCataloguePage() {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "/shop";
   const searchParams = useSearchParams();
-  const searchBrowse = searchParams.get("browse");
-  const searchFilter = searchParams.get("filter");
-  const searchQueryParam = searchParams.get("q") ?? "";
+  const currentSearchParams = searchParams ?? new URLSearchParams();
+  const searchBrowse = currentSearchParams.get("browse");
+  const searchFilter = currentSearchParams.get("filter");
+  const searchQueryParam = resolveShopSearchQuery(pathname, currentSearchParams.get("q"));
   const [products, setProducts] = useState<Saree[]>([]);
   const [categoryCards, setCategoryCards] = useState<CategoryCard[]>([]);
   const [loading, setLoading] = useState(true);
@@ -131,18 +135,14 @@ export function ShopCataloguePage() {
     if (routeState.browse === "new-arrivals") {
       setActiveBrowse(browseNewArrivalsLabel);
       setActiveCuratedFilter("");
-      if (searchBrowse || searchFilter || searchQueryParam) {
-        replaceVisibleShopUrl(buildShopPath({ browse: "new-arrivals" }), searchQueryParam);
-      }
+      replaceVisibleShopUrl(buildShopPath({ browse: "new-arrivals" }), searchQueryParam);
       return;
     }
 
     if (routeState.browse === "featured") {
       setActiveBrowse(browseFeaturedLabel);
       setActiveCuratedFilter("");
-      if (searchBrowse || searchFilter || searchQueryParam) {
-        replaceVisibleShopUrl(buildShopPath({ browse: "featured" }), searchQueryParam);
-      }
+      replaceVisibleShopUrl(buildShopPath({ browse: "featured" }), searchQueryParam);
       return;
     }
 
@@ -158,9 +158,7 @@ export function ShopCataloguePage() {
       if (matchingOption) {
         setActiveBrowse(matchingOption.title);
         setActiveCuratedFilter(matchingOption.shopFilter);
-        if (searchBrowse || searchFilter || searchQueryParam) {
-          replaceVisibleShopUrl(buildShopPath({ browse: "curated", filter: matchingOption.shopFilter }), searchQueryParam);
-        }
+        replaceVisibleShopUrl(buildShopPath({ browse: "curated", filter: matchingOption.shopFilter }), searchQueryParam);
         return;
       }
 
@@ -170,9 +168,7 @@ export function ShopCataloguePage() {
         setActiveBrowse(browseAllLabel);
         setActiveCuratedFilter("");
         setActiveIntent(matchingIntent);
-        if (searchBrowse || searchFilter || searchQueryParam) {
-          replaceVisibleShopUrl(buildShopPath({ browse: "curated", filter: matchingIntent }), searchQueryParam);
-        }
+        replaceVisibleShopUrl(buildShopPath({ browse: "curated", filter: matchingIntent }), searchQueryParam);
         return;
       }
 
@@ -183,9 +179,7 @@ export function ShopCataloguePage() {
         setActiveBrowse(browseAllLabel);
         setActiveCuratedFilter("");
         setActiveCategory(matchingCategory);
-        if (searchBrowse || searchFilter || searchQueryParam) {
-          replaceVisibleShopUrl(buildShopPath({ browse: "curated", filter: matchingCategory }), searchQueryParam);
-        }
+        replaceVisibleShopUrl(buildShopPath({ browse: "curated", filter: matchingCategory }), searchQueryParam);
         return;
       }
 
@@ -195,18 +189,14 @@ export function ShopCataloguePage() {
         setActiveBrowse(browseAllLabel);
         setActiveCuratedFilter("");
         setActiveFabric(matchingFabric);
-        if (searchBrowse || searchFilter || searchQueryParam) {
-          replaceVisibleShopUrl(buildShopPath({ browse: "curated", filter: matchingFabric }), searchQueryParam);
-        }
+        replaceVisibleShopUrl(buildShopPath({ browse: "curated", filter: matchingFabric }), searchQueryParam);
         return;
       }
     }
 
     setActiveBrowse(browseAllLabel);
     setActiveCuratedFilter("");
-    if (searchBrowse || searchFilter || searchQueryParam) {
-      replaceVisibleShopUrl(buildShopPath(), searchQueryParam);
-    }
+    replaceVisibleShopUrl(buildShopPath(), searchQueryParam);
   }, [browseOptions, categories, fabrics, pathname, searchBrowse, searchFilter, searchQueryParam]);
 
   const browseFilteredProducts = products.filter((product) => {
@@ -459,34 +449,34 @@ export function ShopCataloguePage() {
   }
 
   return (
-    <main className="relative min-h-screen bg-[#fbf4e8] text-[#4f5942]">
+    <main className="web-storefront relative min-h-screen bg-[#fbf4e8] text-[#4f5942]">
       <StorefrontHeader />
 
       <section
         id="shop-grid"
-        className="relative overflow-hidden border-b border-[#e7dccc] bg-[#fbf4e8] px-6 py-8 sm:px-10 lg:px-12"
+        className="web-shop-tools relative border-b border-[#e7dccc] bg-[#fbf4e8] px-6 py-6 sm:px-10 lg:px-12"
       >
         <div className="mx-auto max-w-7xl">
-          <div className="relative rounded-[2rem] border border-[#e3d8c9] bg-[#f8f0e3] p-6 shadow-[0_22px_60px_rgba(94,104,79,0.08)] lg:p-8">
+          <div className="relative">
             <div className="space-y-5">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div className="web-shop-heading flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <p className="brand-caption text-[0.62rem] font-semibold tracking-[0.18em] text-[#7d876f]">
                     CURATED CATALOGUE
                   </p>
-                  <h1 className="brand-copy mt-3 text-3xl leading-tight text-[#2b2a29] sm:text-[2.8rem]">
-                    Find the right saree without the clutter.
+                  <h1 className="brand-copy mt-2 text-3xl leading-tight text-[#2b2a29]">
+                    The saree collection
                   </h1>
-                  <p className="mt-3 max-w-2xl text-sm leading-7 text-[#667056]">
-                    Search quickly, keep only the filters that matter, and browse the collection with one clear action per card.
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-[#667056]">
+                    Find your next drape by fabric, occasion, or colour.
                   </p>
                 </div>
 
-                <div className="rounded-[1.4rem] border border-[#ddd1c0] bg-[#fffaf2] px-5 py-4 text-sm text-[#667056]">
-                  <p className="brand-caption text-[0.56rem] font-semibold tracking-[0.14em] text-[#7d876f]">
+                <div className="shrink-0 text-sm text-[#667056] sm:text-right">
+                  <p className="sr-only">
                     RESULTS
                   </p>
-                  <p className="mt-2 text-lg font-semibold text-[#2b2a29]">
+                  <p className="text-base font-semibold text-[#2b2a29]">
                     {sortedProducts.length} piece{sortedProducts.length === 1 ? "" : "s"}
                   </p>
                   <p className="mt-1 text-xs text-[#7d876f]">
@@ -498,7 +488,7 @@ export function ShopCataloguePage() {
               </div>
 
               <form
-                className="grid gap-4 rounded-[1.6rem] border border-[#e4d8c9] bg-[#fbf7ef] p-4 md:grid-cols-2 xl:grid-cols-[1.45fr_1fr_1fr_1fr_1fr_auto]"
+                className="web-filter-toolbar grid gap-3 rounded-2xl border border-[#e4d8c9] bg-[#fffdf8] p-4"
                 onSubmit={handleSearchSubmit}
               >
                 <FilterInput
@@ -548,12 +538,12 @@ export function ShopCataloguePage() {
                 </div>
               </form>
 
-              <div className="flex flex-wrap items-center justify-between gap-3 rounded-[1.4rem] border border-[#e4d8c9] bg-[#fffaf2] px-4 py-4">
-                <div>
-                  <p className="brand-caption text-[0.58rem] font-semibold tracking-[0.16em] text-[#7d876f]">
+              <div className="web-advanced-toolbar flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <p className="brand-caption text-[0.68rem] font-semibold tracking-[0.1em] text-[#667056]">
                     ADVANCED FILTERS
                   </p>
-                  <p className="mt-2 text-sm text-[#667056]">
+                  <p className="text-sm text-[#667056]">
                     Browse mode and shopping intent.
                   </p>
                 </div>
@@ -638,15 +628,15 @@ export function ShopCataloguePage() {
         </div>
       </section>
 
-      <section className="px-6 py-10 pb-18 sm:px-10 lg:px-12">
+      <section className="web-shop-results px-6 py-6 pb-14 sm:px-10 lg:px-12">
         <div className="mx-auto max-w-7xl">
-          <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="brand-caption text-[0.62rem] font-semibold tracking-[0.18em] text-[#7d876f]">
+              <p className="sr-only">
                 CATALOGUE
               </p>
-              <h2 className="brand-copy mt-3 text-2xl text-[#3f4738] sm:text-[2rem]">
-                Sarees for every celebration and everyday elegance.
+              <h2 className="brand-copy text-2xl text-[#3f4738]">
+                Discover your favourites
               </h2>
             </div>
 
@@ -665,13 +655,12 @@ export function ShopCataloguePage() {
             />
           ) : (
             <>
-              <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-4">
+              <div className="web-product-grid grid gap-8 md:grid-cols-2 xl:grid-cols-4">
                 {visibleFilteredProducts.map((product) => (
                   <CatalogueProductCard
                     key={product.id ?? product.sku}
                     product={product}
                     buttonLabel="ADD TO BAG"
-                    showDetailButton={false}
                   />
                 ))}
               </div>
@@ -714,14 +703,40 @@ function replaceVisibleShopUrl(nextPath: string, searchQuery: string) {
     return;
   }
 
-  const params = new URLSearchParams();
+  const nextUrl = `${buildShopVisiblePath({ q: searchQuery, browse: resolveBrowseModeFromPath(nextPath), filter: resolveFilterFromPath(nextPath) })}${window.location.hash}`;
+  const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
 
-  if (searchQuery.trim()) {
-    params.set("q", searchQuery.trim());
+  if (currentUrl === nextUrl) {
+    return;
   }
 
-  const query = params.toString();
-  window.history.replaceState(window.history.state, "", `${nextPath}${query ? `?${query}` : ""}${window.location.hash}`);
+  window.history.replaceState(window.history.state, "", nextUrl);
+}
+
+function resolveBrowseModeFromPath(pathname: string) {
+  if (pathname.includes("/shop/new-arrivals/")) {
+    return "new-arrivals" as const;
+  }
+
+  if (pathname.includes("/shop/featured/")) {
+    return "featured" as const;
+  }
+
+  if (pathname.includes("/shop/category/")) {
+    return "curated" as const;
+  }
+
+  return "all" as const;
+}
+
+function resolveFilterFromPath(pathname: string) {
+  const segments = pathname.split("/").filter(Boolean);
+
+  if (segments[0] === "shop" && segments[1] === "category" && segments[2]) {
+    return decodeURIComponent(segments[2]);
+  }
+
+  return "";
 }
 
 function FilterSelect({
@@ -826,15 +841,20 @@ function sortProducts(products: Saree[], activeSort: string) {
   const sorted = [...products];
 
   if (activeSort === "Price: Low to High") {
-    return sorted.sort((left, right) => left.price - right.price);
+    return sorted.sort((left, right) => compareProductsByAvailability(left, right) || left.price - right.price);
   }
 
   if (activeSort === "Price: High to Low") {
-    return sorted.sort((left, right) => right.price - left.price);
+    return sorted.sort((left, right) => compareProductsByAvailability(left, right) || right.price - left.price);
   }
 
   if (activeSort === "Most Relevant") {
     return sorted.sort((left, right) => {
+      const availabilityDifference = compareProductsByAvailability(left, right);
+      if (availabilityDifference !== 0) {
+        return availabilityDifference;
+      }
+
       const leftScore = Number(left.featured) * 10 + Number(left.status === "active") * 5;
       const rightScore = Number(right.featured) * 10 + Number(right.status === "active") * 5;
 
@@ -842,7 +862,7 @@ function sortProducts(products: Saree[], activeSort: string) {
     });
   }
 
-  return sorted;
+  return sorted.sort((left, right) => compareProductsByAvailability(left, right));
 }
 
 function buildActiveFilters({

@@ -1,8 +1,8 @@
 {
   "name": "eshwe",
   "short_name": "eshwe",
-  "id": "/",
-  "start_url": "/",
+  "id": "/app/",
+  "start_url": "/app/",
   "scope": "/",
   "icons": [
     {

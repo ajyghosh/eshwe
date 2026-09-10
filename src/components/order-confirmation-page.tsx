@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { SiteFooter } from "@/components/site-footer";
 import { StorefrontHeader } from "@/components/storefront-header";
 import {
+  formatOrderConfirmationId,
   formatOrderConfirmationDate,
   formatOrderConfirmationDateOnly,
   formatOrderConfirmationPaymentStatus,
@@ -34,6 +35,7 @@ const CONFETTI_PIECES = Array.from({ length: 22 }, (_, index) => ({
 
 export function OrderConfirmationPage() {
   const [confirmation, setConfirmation] = useState<OrderConfirmationData | null>(null);
+  const displayOrderId = confirmation ? formatOrderConfirmationId(confirmation.internalOrderId) : "-";
 
   useEffect(() => {
     const savedConfirmation = readLatestOrderConfirmation();
@@ -48,10 +50,10 @@ export function OrderConfirmationPage() {
 
   if (!confirmation) {
     return (
-      <main className="min-h-screen bg-[#fbf4e8] text-[#4f5942]">
+      <main className="web-storefront min-h-screen bg-[#fbf4e8] text-[#4f5942]">
         <StorefrontHeader />
         <section className="px-6 py-12 sm:px-10 lg:px-12">
-          <div className="mx-auto max-w-3xl rounded-[2rem] border border-[#e3d8c9] bg-[#fffaf2] p-8 text-center shadow-[0_24px_60px_rgba(94,104,79,0.1)]">
+          <div className="web-surface mx-auto max-w-3xl rounded-[2rem] border border-[#e3d8c9] bg-[#fffaf2] p-8 text-center shadow-[0_24px_60px_rgba(94,104,79,0.1)]">
             <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-[1.8rem] border border-[#dcc9ad] bg-[linear-gradient(135deg,#fff3df_0%,#efd8ab_100%)] shadow-[0_18px_40px_rgba(176,111,61,0.18)]">
               <Image
                 src="/eshwelogo.png"
@@ -91,7 +93,7 @@ export function OrderConfirmationPage() {
   }
 
   return (
-    <main className="min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top,#fff9ec_0%,#fbf4e8_45%,#f5ebdc_100%)] text-[#4f5942]">
+    <main className="web-storefront min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top,#fff9ec_0%,#fbf4e8_45%,#f5ebdc_100%)] text-[#4f5942]">
       <StorefrontHeader />
 
       <section className="relative px-6 py-10 sm:px-10 lg:px-12">
@@ -125,12 +127,12 @@ export function OrderConfirmationPage() {
                   Thank you. Your order is confirmed.
                 </h1>
                 <p className="mt-4 max-w-2xl text-sm leading-7 text-[#667056]">
-                  We have captured your payment and saved the order details below. Open the receipt in a clean browser
+                  We have received your payment and saved the order details below. Open the receipt in a clean browser
                   view if you want to review it separately.
                 </p>
 
                 <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                  <InfoCard label="Order ID" value={confirmation.internalOrderId} />
+                  <InfoCard label="Order ID" value={displayOrderId} />
                   <InfoCard label="Payment ID" value={confirmation.razorpayPaymentId} />
                   <InfoCard label="Status" value={formatOrderConfirmationPaymentStatus(confirmation.paymentStatus)} />
                   <InfoCard label="Placed" value={formatOrderConfirmationDateOnly(confirmation.createdAtIso)} />
@@ -153,7 +155,7 @@ export function OrderConfirmationPage() {
                 </div>
               </div>
 
-              <aside className="rounded-[2rem] border border-[#e3d8c9] bg-[#fbf6ee] p-6 shadow-[0_18px_40px_rgba(94,104,79,0.08)]">
+              <aside className="web-surface rounded-[2rem] border border-[#e3d8c9] bg-[#fbf6ee] p-6 shadow-[0_18px_40px_rgba(94,104,79,0.08)]">
                 <p className="brand-caption text-[0.62rem] font-semibold tracking-[0.18em] text-[#7d876f]">SHIP TO</p>
                 <div className="mt-4 space-y-2 text-sm leading-7 text-[#667056]">
                   <p className="brand-copy text-2xl leading-tight text-[#2b2a29]">{confirmation.customer.fullName}</p>
@@ -175,7 +177,7 @@ export function OrderConfirmationPage() {
             </div>
 
             <div className="mt-10">
-              <section className="rounded-[2rem] border border-[#e3d8c9] bg-[#f8f0e3] p-6 shadow-[0_20px_50px_rgba(94,104,79,0.07)]">
+              <section className="web-surface rounded-[2rem] border border-[#e3d8c9] bg-[#f8f0e3] p-6 shadow-[0_20px_50px_rgba(94,104,79,0.07)]">
                 <div className="flex items-center justify-between gap-4 border-b border-[#e7dccb] pb-4">
                   <p className="brand-copy text-2xl text-[#2b2a29]">Order Items</p>
                   <p className="text-sm text-[#667056]">

@@ -110,29 +110,70 @@ export function formatOrderConfirmationPaymentStatus(status: string) {
   return status;
 }
 
+export function formatOrderConfirmationId(internalOrderId: string) {
+  const normalizedValue = internalOrderId.trim();
+
+  if (!normalizedValue) {
+    return "-";
+  }
+
+  return `#${normalizedValue.slice(0, 8).toUpperCase()}`;
+}
+
 export function openOrderReceiptPreview(confirmation: OrderConfirmationData) {
   if (typeof window === "undefined") {
     return;
   }
 
+  const currentPath = window.location.pathname || "/";
+  const isAppPath = currentPath.startsWith("/app");
+  const returnHref = isAppPath ? "/app/orders/" : "/account/";
+  const returnLabel = isAppPath ? "Back" : "Back to account";
   const previewWindow = window.open("", "_blank", "width=980,height=1200");
 
   if (!previewWindow) {
     return;
   }
 
-  const receiptHtml = buildOrderReceiptHtml(confirmation, window.location.origin);
+  const receiptHtml = buildOrderReceiptHtml(confirmation, window.location.origin, returnHref, returnLabel, isAppPath);
 
   previewWindow.document.open();
   previewWindow.document.write(receiptHtml);
   previewWindow.document.close();
 }
 
-function buildOrderReceiptHtml(confirmation: OrderConfirmationData, origin: string) {
+function buildOrderReceiptHtml(
+  confirmation: OrderConfirmationData,
+  origin: string,
+  returnHref: string,
+  returnLabel: string,
+  isAppPath: boolean
+) {
+  const displayOrderId = formatOrderConfirmationId(confirmation.internalOrderId);
   const placedAt = formatOrderConfirmationDate(confirmation.createdAtIso);
   const noteValue = confirmation.notes.trim() ? escapeHtml(confirmation.notes) : "No note added";
-  const paymentStatus = confirmation.paymentStatus.trim() || "pending";
+  const paymentStatus = formatOrderConfirmationPaymentStatus(confirmation.paymentStatus.trim() || "pending");
   const itemCount = String(confirmation.items.length);
+  const shareText = [
+    "Eshwe order receipt",
+    `Order ID: ${displayOrderId}`,
+    `Razorpay order ID: ${confirmation.razorpayOrderId || "-"}`,
+    `Payment ID: ${confirmation.razorpayPaymentId || "-"}`,
+    `Placed: ${placedAt}`,
+    `Payment status: ${paymentStatus}`,
+    "",
+    "Items:",
+    ...confirmation.items.map((item) => {
+      const lineTotal = typeof item.unitPrice === "number" ? item.unitPrice * item.quantity : null;
+      return `• ${item.name} (${item.sku}) × ${item.quantity}${lineTotal === null ? "" : ` — ${formatCurrency(lineTotal, confirmation.summary.currency)}`}`;
+    }),
+    "",
+    `Subtotal: ${formatCurrency(confirmation.summary.subtotal, confirmation.summary.currency)}`,
+    `Shipping: ${formatCurrency(confirmation.summary.shippingFee, confirmation.summary.currency)}`,
+    `Packaging: ${formatCurrency(confirmation.summary.packagingFee, confirmation.summary.currency)}`,
+    `Savings: -${formatCurrency(confirmation.summary.savings, confirmation.summary.currency)}`,
+    `Total paid: ${formatCurrency(confirmation.summary.total, confirmation.summary.currency)}`
+  ].join("\n");
   const itemsMarkup = confirmation.items
     .map((item) => {
       const unitPrice =
@@ -170,7 +211,7 @@ function buildOrderReceiptHtml(confirmation: OrderConfirmationData, origin: stri
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Order Receipt ${escapeHtml(confirmation.internalOrderId)}</title>
+    <title>Order Receipt ${escapeHtml(displayOrderId)}</title>
     <style>
       :root {
         color-scheme: light;
@@ -195,6 +236,31 @@ function buildOrderReceiptHtml(confirmation: OrderConfirmationData, origin: stri
         border-radius: 28px;
         box-shadow: 0 28px 70px rgba(94, 104, 79, 0.12);
         overflow: hidden;
+      }
+      .toolbar-button {
+        appearance: none;
+        border: 1px solid #d7ccb9;
+        border-radius: 999px;
+        background: rgba(255, 250, 242, 0.92);
+        color: #4f5942;
+        cursor: pointer;
+        font: 600 12px/1 "Avenir Next", "Segoe UI", sans-serif;
+        letter-spacing: 0.14em;
+        padding: 13px 18px;
+        text-transform: uppercase;
+      }
+      .toolbar-button.primary {
+        background: #5e684f;
+        border-color: #5e684f;
+        color: #fbf4e8;
+      }
+      .receipt-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 24px;
+        padding-top: 20px;
+        border-top: 1px solid #e7dccb;
       }
       .header {
         display: flex;
@@ -308,6 +374,10 @@ function buildOrderReceiptHtml(confirmation: OrderConfirmationData, origin: stri
         color: #667056;
       }
       @media (max-width: 699px) {
+        .toolbar-button {
+          flex: 1 1 calc(50% - 5px);
+          text-align: center;
+        }
         .header {
           flex-direction: column;
         }
@@ -316,6 +386,10 @@ function buildOrderReceiptHtml(confirmation: OrderConfirmationData, origin: stri
         }
         .grid {
           grid-template-columns: 1fr;
+        }
+        .receipt-actions .toolbar-button {
+          flex: 1 1 calc(50% - 5px);
+          text-align: center;
         }
       }
       @media print {
@@ -329,6 +403,10 @@ function buildOrderReceiptHtml(confirmation: OrderConfirmationData, origin: stri
         .sheet {
           border-radius: 0;
           box-shadow: none;
+        }
+        .toolbar,
+        .receipt-actions {
+          display: none;
         }
       }
     </style>
@@ -347,7 +425,7 @@ function buildOrderReceiptHtml(confirmation: OrderConfirmationData, origin: stri
             </div>
           </div>
           <div class="meta">
-            <div><strong>Order ID:</strong> ${escapeHtml(confirmation.internalOrderId)}</div>
+            <div><strong>Order ID:</strong> ${escapeHtml(displayOrderId)}</div>
             <div><strong>Razorpay Order:</strong> ${escapeHtml(confirmation.razorpayOrderId || "-")}</div>
             <div><strong>Payment ID:</strong> ${escapeHtml(confirmation.razorpayPaymentId || "-")}</div>
             <div><strong>Placed:</strong> ${escapeHtml(placedAt)}</div>
@@ -401,11 +479,71 @@ function buildOrderReceiptHtml(confirmation: OrderConfirmationData, origin: stri
           </div>
 
           <div class="footer">
-            Keep this receipt for your records. You can print this file directly from your browser.
+            ${isAppPath
+              ? "Share a complete PDF copy of this receipt directly from your phone."
+              : "Keep this receipt for your records. You can print this file directly from your browser."}
+          </div>
+
+          <div class="receipt-actions">
+            ${isAppPath
+              ? `
+            <button class="toolbar-button" type="button" onclick="shareReceipt()">Share</button>`
+              : `
+            <button class="toolbar-button" type="button" onclick="window.print()">Print receipt</button>`}
+            <button class="toolbar-button primary" type="button" onclick="goBackToStore()">${escapeHtml(returnLabel)}</button>
           </div>
         </div>
       </div>
     </div>
+    <script>
+      async function shareReceipt() {
+        const shareData = {
+          title: ${JSON.stringify(`Eshwe Receipt ${displayOrderId}`)},
+          text: ${JSON.stringify(shareText)}
+        };
+        try {
+          if (navigator.share) {
+            await navigator.share(shareData);
+            return;
+          }
+        } catch (error) {
+          if (error && error.name === "AbortError") {
+            return;
+          }
+        }
+
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(shareData.text);
+            window.alert("Receipt details copied. You can paste and share them now.");
+            return;
+          }
+        } catch (error) {}
+
+        window.print();
+      }
+
+      function goBackToStore() {
+        const fallbackHref = ${JSON.stringify(returnHref)};
+
+        try {
+          if (window.opener && !window.opener.closed) {
+            window.close();
+            window.setTimeout(function () {
+              window.location.href = fallbackHref;
+            }, 120);
+            return;
+          }
+        } catch (error) {}
+
+        if (window.history.length > 1) {
+          window.history.back();
+          return;
+        }
+
+        window.location.href = fallbackHref;
+      }
+    </script>
   </body>
 </html>`;
 }

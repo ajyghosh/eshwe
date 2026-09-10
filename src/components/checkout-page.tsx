@@ -52,7 +52,7 @@ export function CheckoutPage() {
   );
 
   return (
-    <main className="min-h-screen bg-[#fbf4e8] text-[#4f5942]">
+    <main className="web-storefront web-checkout min-h-screen bg-[#fbf4e8] text-[#4f5942]">
       <StorefrontHeader />
 
       <section className="px-6 py-10 sm:px-10 lg:px-12">
@@ -68,9 +68,9 @@ export function CheckoutPage() {
             </p>
           </div>
 
-          <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1.15fr)_390px]">
+          <div className="web-checkout-grid grid items-start gap-8 xl:grid-cols-[minmax(0,1.15fr)_390px]">
             <div className="space-y-8">
-              <section className="rounded-[2rem] border border-[#e3d8c9] bg-[#f8f0e3] p-6 shadow-[0_22px_60px_rgba(94,104,79,0.08)] sm:p-8">
+              <section className="web-surface rounded-[2rem] border border-[#e3d8c9] bg-[#f8f0e3] p-6 shadow-[0_22px_60px_rgba(94,104,79,0.08)] sm:p-8">
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <h2 className="brand-copy text-2xl text-[#2b2a29]">Cart Items</h2>
@@ -160,8 +160,8 @@ export function CheckoutPage() {
 
             </div>
 
-            <aside className="space-y-6">
-              <section className="rounded-[2rem] border border-[#dfd4c5] bg-[#fffdf8] p-5 shadow-[0_24px_60px_rgba(94,104,79,0.08)] sm:p-6">
+            <aside className="web-order-summary space-y-6">
+              <section className="web-surface rounded-[2rem] border border-[#dfd4c5] bg-[#fffdf8] p-5 shadow-[0_24px_60px_rgba(94,104,79,0.08)] sm:p-6">
                 <p className="brand-caption text-[0.62rem] font-semibold tracking-[0.18em] text-[#2b2a29]">
                   CHECKOUT SUMMARY
                 </p>
@@ -230,7 +230,7 @@ export function CheckoutPage() {
           </div>
 
           {items.length > 0 && (recommendationsLoading || recommendationState.products.length > 0) ? (
-            <section className="mt-10 rounded-[2rem] border border-[#e3d8c9] bg-[#f8f0e3] px-5 py-6 shadow-[0_22px_60px_rgba(94,104,79,0.08)] sm:px-7 sm:py-7 lg:px-8">
+            <section className="web-surface mt-10 rounded-[2rem] border border-[#e3d8c9] bg-[#f8f0e3] px-5 py-6 shadow-[0_22px_60px_rgba(94,104,79,0.08)] sm:px-7 sm:py-7 lg:px-8">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                 <div className="max-w-2xl">
                   <p className="brand-caption text-[0.62rem] font-semibold tracking-[0.18em] text-[#7d876f]">
@@ -255,7 +255,6 @@ export function CheckoutPage() {
                     buttonLabel="ADD"
                     maxWidthClassName="max-w-none"
                     cardClassName="w-[220px] shrink-0 snap-start sm:w-[250px] lg:w-[280px] xl:w-[calc((100%-10rem)/6)]"
-                    showDetailButton={false}
                   />
                 ) : (
                   <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-4">
@@ -264,7 +263,6 @@ export function CheckoutPage() {
                         key={product.id ?? product.sku}
                         product={product}
                         buttonLabel="ADD"
-                        showDetailButton={false}
                       />
                     ))}
                   </div>

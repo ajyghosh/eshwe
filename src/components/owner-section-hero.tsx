@@ -21,14 +21,14 @@ export function OwnerSectionHero({
 }: OwnerSectionHeroProps) {
   return (
     <section
-      className={`overflow-hidden rounded-[2.3rem] bg-[linear-gradient(135deg,#485343_0%,#5f6d58_48%,#d7c8ad_100%)] p-8 text-[#f8ecd2] shadow-[0_30px_80px_rgba(79,89,66,0.18)] sm:p-10 ${className}`}
+      className={`owner-section-header ${className}`}
     >
       <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
         <div className="max-w-3xl">
           <p className="brand-caption text-[0.68rem] font-semibold tracking-[0.22em] text-[#efe0b6]">
             {eyebrow}
           </p>
-          <h1 className="brand-copy mt-4 text-4xl leading-[1.04] text-[#fbf4e8] sm:text-5xl">
+          <h1 className="brand-copy mt-2 text-3xl leading-tight">
             {title}
           </h1>
           <p className="mt-4 max-w-2xl text-sm leading-7 text-[#f8f1e3]/84 sm:text-[0.95rem]">

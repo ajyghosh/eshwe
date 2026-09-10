@@ -3,7 +3,7 @@ import {
   doc,
   limit,
   onSnapshot,
-  orderBy,
+  or,
   query,
   serverTimestamp,
   updateDoc,
@@ -11,9 +11,30 @@ import {
 } from "firebase/firestore";
 
 import { db } from "@/lib/firebase";
+import { isProductPurchasable } from "@/lib/inventory";
 import type { CheckoutOrder } from "@/types/order";
+import type { Saree } from "@/types/saree";
 
 const ORDER_COLLECTION = "checkoutOrders";
+
+export function buildReorderSelections(order: CheckoutOrder, catalogueProducts: Saree[]) {
+  const productsBySku = new Map(catalogueProducts.map((product) => [product.sku, product]));
+
+  return (order.cartItems ?? []).flatMap((item) => {
+    const product = productsBySku.get(item.sku);
+
+    if (!product || !isProductPurchasable(product)) {
+      return [];
+    }
+
+    return [
+      {
+        product,
+        quantity: Math.max(1, Math.floor(item.quantity) || 1)
+      }
+    ];
+  });
+}
 
 export function subscribeToCustomerOrders(
   userId: string,
@@ -55,7 +76,16 @@ export function subscribeToSuccessfulOrders(
     return () => undefined;
   }
 
-  const ordersQuery = query(collection(db, ORDER_COLLECTION), orderBy("createdAt", "desc"), limit(100));
+  // Owner totals and dispatch queues need the full paid history, including
+  // legacy orders that use either of the older payment flags.
+  const ordersQuery = query(
+    collection(db, ORDER_COLLECTION),
+    or(
+      where("paymentStatus", "==", "captured"),
+      where("status", "==", "paid"),
+      where("paymentCaptured", "==", true)
+    )
+  );
 
   return onSnapshot(
     ordersQuery,

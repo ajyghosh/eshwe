@@ -24,6 +24,7 @@ import type { Saree } from "@/types/saree";
 import type { CartItem } from "@/types/cart";
 
 const CART_STORAGE_KEY = "eshwe-cart-v1";
+const CART_POST_PAYMENT_CLEAR_KEY = "eshwe.clearCartAfterPayment";
 
 type CartContextValue = {
   items: CartItem[];
@@ -113,7 +114,25 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [hydratedStorageKey, items, storageKey]);
 
   useEffect(() => {
-    if (loading) {
+    if (hydratedStorageKey !== storageKey || typeof window === "undefined") {
+      return;
+    }
+
+    if (!consumePendingCartClear()) {
+      return;
+    }
+
+    window.localStorage.removeItem(storageKey);
+
+    if (storageKey !== guestStorageKey) {
+      window.localStorage.removeItem(guestStorageKey);
+    }
+
+    setItems([]);
+  }, [guestStorageKey, hydratedStorageKey, storageKey]);
+
+  useEffect(() => {
+    if (loading || hydratedStorageKey !== storageKey || items.length === 0) {
       return;
     }
 
@@ -123,7 +142,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       },
       { status: ["active", "out_of_stock"] }
     );
-  }, [loading]);
+  }, [hydratedStorageKey, items.length, loading, storageKey]);
 
   const value = useMemo<CartContextValue>(() => {
     const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -225,6 +244,14 @@ export function useCart() {
   return context;
 }
 
+export function markCartForPostPaymentClear() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.sessionStorage.setItem(CART_POST_PAYMENT_CLEAR_KEY, "1");
+}
+
 function normalizeQuantity(value: number) {
   return Math.max(1, Math.floor(value));
 }
@@ -275,6 +302,20 @@ function readStoredCart(storageKey: string) {
       ...item,
       availableStock: normalizeAvailableStock(item.availableStock)
     }));
+}
+
+function consumePendingCartClear() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  const shouldClear = window.sessionStorage.getItem(CART_POST_PAYMENT_CLEAR_KEY) === "1";
+
+  if (shouldClear) {
+    window.sessionStorage.removeItem(CART_POST_PAYMENT_CLEAR_KEY);
+  }
+
+  return shouldClear;
 }
 
 function mergeCartItems(primaryItems: CartItem[], secondaryItems: CartItem[]) {

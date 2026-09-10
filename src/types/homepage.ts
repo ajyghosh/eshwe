@@ -1,3 +1,10 @@
+export type MobileHomeHeroSlide = {
+  imageUrl: string;
+  imagePath?: string | null;
+  imageAlt?: string | null;
+  position?: string | null;
+};
+
 export type HomePageContent = {
   id?: string;
   heroImageUrl: string;
@@ -6,6 +13,11 @@ export type HomePageContent = {
   launchEyebrow: string;
   launchHeading: string;
   launchBody: string;
+  mobileLaunchEyebrow: string;
+  mobileLaunchHeading: string;
+  mobileLaunchBody: string;
+  mobileLaunchButtonLabel: string;
+  mobileLaunchButtonHref: string;
   launchCardMaxWidth: number;
   launchImageUrl: string;
   launchImagePath?: string | null;
@@ -13,6 +25,8 @@ export type HomePageContent = {
   launchImageLayout: "top" | "right" | "left";
   categoriesHeading: string;
   categoriesSubtitle: string;
+  desktopHeroSlides: MobileHomeHeroSlide[];
+  mobileHeroSlides: MobileHomeHeroSlide[];
   updatedAt?: unknown;
 };
 
@@ -39,14 +53,52 @@ export const DEFAULT_HOME_PAGE_CONTENT: HomePageContent = {
   launchHeading: "We are currently in a soft launch preview.",
   launchBody:
     "The boutique is live for a trial run while we fine-tune the experience and curate the first collections.",
+  mobileLaunchEyebrow: "OPENING SHORTLY",
+  mobileLaunchHeading: "Timeless Sarees, thoughtfully yours",
+  mobileLaunchBody:
+    "Handpicked drapes in mul cotton, tissue and more. Soft on you, perfect for every occasion.",
+  mobileLaunchButtonLabel: "SHOP SAREES",
+  mobileLaunchButtonHref: "/app/search/",
   launchCardMaxWidth: DEFAULT_HOME_LAUNCH_CARD_MAX_WIDTH,
   launchImageUrl: "",
   launchImagePath: "",
   launchImageAlt: "Soft launch promotion",
   launchImageLayout: "right",
   categoriesHeading: "",
-  categoriesSubtitle: ""
+  categoriesSubtitle: "",
+  desktopHeroSlides: [],
+  mobileHeroSlides: []
 };
+
+export function normalizeMobileHomeHeroSlides(value: unknown): MobileHomeHeroSlide[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const slides: MobileHomeHeroSlide[] = [];
+
+  value.forEach((entry) => {
+      if (!entry || typeof entry !== "object") {
+        return;
+      }
+
+      const nextEntry = entry as Record<string, unknown>;
+      const imageUrl = typeof nextEntry.imageUrl === "string" ? nextEntry.imageUrl.trim() : "";
+
+      if (!imageUrl) {
+        return;
+      }
+
+      slides.push({
+        imageUrl,
+        imagePath: typeof nextEntry.imagePath === "string" ? nextEntry.imagePath : "",
+        imageAlt: typeof nextEntry.imageAlt === "string" ? nextEntry.imageAlt : "",
+        position: typeof nextEntry.position === "string" ? nextEntry.position : "center"
+      });
+  });
+
+  return slides.slice(0, 6);
+}
 
 export function normalizeHomeLaunchCardMaxWidth(value: number | string | null | undefined) {
   const parsedValue =

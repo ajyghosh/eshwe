@@ -8,13 +8,11 @@ import type { Saree } from "@/types/saree";
 export function ProductCardCarousel({
   products,
   buttonLabel,
-  showDetailButton = true,
   cardClassName = "w-[220px] shrink-0 snap-start sm:w-[250px] lg:w-[calc((100%-6rem)/4)]",
   maxWidthClassName = "max-w-6xl"
 }: {
   products: Saree[];
   buttonLabel?: string;
-  showDetailButton?: boolean;
   cardClassName?: string;
   maxWidthClassName?: string;
 }) {
@@ -203,7 +201,6 @@ export function ProductCardCarousel({
               <CatalogueProductCard
                 product={product}
                 buttonLabel={buttonLabel}
-                showDetailButton={showDetailButton}
               />
             </div>
           ))}

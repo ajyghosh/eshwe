@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { User } from "firebase/auth";
 
 import { OwnerBackofficeNav } from "@/components/owner-backoffice-nav";
 import { OwnerSectionHero } from "@/components/owner-section-hero";
+import { OwnerDialog } from "@/components/owner-dialog";
+import { useOwnerUnsavedChanges } from "@/lib/use-owner-unsaved-changes";
 import {
   isPrimaryOwnerEmail,
   normalizeEmail,
@@ -14,8 +16,7 @@ import {
   signOutOwner,
   subscribeToAuth
 } from "@/lib/auth";
-import { ConfirmationDialog } from "@/components/confirmation-dialog";
-import { seedDummyCatalogue } from "@/lib/dummy-catalogue";
+import { ConfirmationDialog } from "@/components/owner-confirmation-dialog";
 import {
   defaultDryingTips,
   defaultProductLength,
@@ -83,7 +84,6 @@ export function OwnerDashboard() {
   const [dialogState, setDialogState] = useState<
     | { type: "signout" }
     | { type: "delete-product"; product: Saree }
-    | { type: "seed-dummy" }
     | null
   >(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -106,14 +106,35 @@ export function OwnerDashboard() {
   const [isSaving, setIsSaving] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isDeletingId, setIsDeletingId] = useState<string | null>(null);
-  const [isSeedingDummy, setIsSeedingDummy] = useState(false);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [isProductFormOpen, setIsProductFormOpen] = useState(false);
   const [primaryImageFile, setPrimaryImageFile] = useState<File | null>(null);
   const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
   const [removedGalleryPaths, setRemovedGalleryPaths] = useState<string[]>([]);
   const [form, setForm] = useState<ProductFormState>(createEmptyForm());
+  const [initialForm, setInitialForm] = useState(() => JSON.stringify(createEmptyForm()));
+  const [discardAction, setDiscardAction] = useState<(() => void) | null>(null);
+  const addProductButtonRef = useRef<HTMLButtonElement>(null);
+  const productNameRef = useRef<HTMLInputElement>(null);
+  const hasUnsavedChanges = isProductFormOpen && (
+    JSON.stringify(form) !== initialForm || Boolean(primaryImageFile) || galleryFiles.length > 0 || removedGalleryPaths.length > 0
+  );
+  useOwnerUnsavedChanges(hasUnsavedChanges, isSaving);
   const autoDiscountPreview = calculateDiscountPercent(form.price, form.originalPrice);
+
+  useEffect(() => {
+    if (isProductFormOpen && !editingProductId) productNameRef.current?.focus();
+  }, [isProductFormOpen, editingProductId]);
+
+  function requestFormAction(action: () => void) {
+    if (isSaving) return;
+    if (hasUnsavedChanges) setDiscardAction(() => action);
+    else action();
+  }
+
+  function requestCloseForm() {
+    requestFormAction(resetForm);
+  }
 
   useEffect(() => {
     return subscribeToAuth((nextUser) => {
@@ -126,6 +147,7 @@ export function OwnerDashboard() {
     return subscribeToSarees(
       (nextProducts) => {
         setProducts(nextProducts);
+        setReadError(null);
         setProductsLoading(false);
       },
       {},
@@ -284,7 +306,7 @@ export function OwnerDashboard() {
     setGalleryFiles([]);
     setActionError(null);
     setActionNotice(null);
-    setForm({
+    const nextForm: ProductFormState = {
       name: product.name,
       slug: product.slug,
       sku: product.sku,
@@ -317,10 +339,13 @@ export function OwnerDashboard() {
       productNote: product.productNote ?? defaultProductNote,
       sareeCareTips: (product.sareeCareTips?.length ? product.sareeCareTips : defaultSareeCareTips).join("\n"),
       dryingTips: (product.dryingTips?.length ? product.dryingTips : defaultDryingTips).join("\n")
-    });
+    };
+    setForm(nextForm);
+    setInitialForm(JSON.stringify(nextForm));
   }
 
   function resetForm() {
+    if (!editingProductId) queueMicrotask(() => addProductButtonRef.current?.focus());
     setEditingProductId(null);
     setIsProductFormOpen(false);
     setPrimaryImageFile(null);
@@ -328,6 +353,7 @@ export function OwnerDashboard() {
     setRemovedGalleryPaths([]);
     setActionError(null);
     setForm(createEmptyForm());
+    setInitialForm(JSON.stringify(createEmptyForm()));
   }
 
   function startCreatingProduct() {
@@ -339,6 +365,7 @@ export function OwnerDashboard() {
     setActionError(null);
     setActionNotice(null);
     setForm(createEmptyForm());
+    setInitialForm(JSON.stringify(createEmptyForm()));
   }
 
   function removeExistingGalleryImage(index: number) {
@@ -506,36 +533,6 @@ export function OwnerDashboard() {
     }
   }
 
-  async function handleSeedDummyCatalogue() {
-    if (!ownerAuthorized) {
-      setActionError("You must be signed in as the owner to generate dummy products.");
-      return;
-    }
-
-    setIsSeedingDummy(true);
-    setActionError(null);
-    setActionNotice(null);
-
-    try {
-      const result = await seedDummyCatalogue({
-        existingProducts: products,
-        productGroups,
-        productMasterOptions
-      });
-
-      setActionNotice(
-        result.created > 0
-          ? `Created ${result.created} dummy products across ${result.categories.length} categor${result.categories.length === 1 ? "y" : "ies"}. Skipped ${result.skipped} existing SKU${result.skipped === 1 ? "" : "s"}.`
-          : `No new dummy products were created. Skipped ${result.skipped} existing SKU${result.skipped === 1 ? "" : "s"}.`
-      );
-      setDialogState(null);
-    } catch (error) {
-      setActionError(error instanceof Error ? error.message : "Dummy catalogue generation failed.");
-    } finally {
-      setIsSeedingDummy(false);
-    }
-  }
-
   async function handleDialogConfirm() {
     if (!dialogState) {
       return;
@@ -548,27 +545,19 @@ export function OwnerDashboard() {
 
     if (dialogState.type === "delete-product") {
       await confirmDeleteProduct(dialogState.product);
-      return;
-    }
-
-    if (dialogState.type === "seed-dummy") {
-      await handleSeedDummyCatalogue();
     }
   }
 
   const dialogPending =
     (dialogState?.type === "signout" && isSigningOut) ||
     (dialogState?.type === "delete-product" &&
-      Boolean(dialogState.product.id && isDeletingId === dialogState.product.id)) ||
-    (dialogState?.type === "seed-dummy" && isSeedingDummy);
+      Boolean(dialogState.product.id && isDeletingId === dialogState.product.id));
 
   const dialogTitle =
     dialogState?.type === "signout"
       ? "Sign out of the owner panel?"
       : dialogState?.type === "delete-product"
         ? "Delete this product?"
-        : dialogState?.type === "seed-dummy"
-          ? "Generate dummy catalogue data?"
         : "";
 
   const dialogMessage =
@@ -576,18 +565,14 @@ export function OwnerDashboard() {
       ? "You will be signed out of the owner dashboard on this device."
       : dialogState?.type === "delete-product"
         ? `${dialogState.product.name} will be deleted from the catalogue and its uploaded images will also be removed.`
-        : dialogState?.type === "seed-dummy"
-          ? "This will create up to 100 dummy products per available category using reusable local images and mixed product states for testing. Existing dummy SKUs will be skipped."
-          : "";
+        : "";
 
   const dialogConfirmLabel =
     dialogState?.type === "signout"
       ? "SIGN OUT"
       : dialogState?.type === "delete-product"
         ? "DELETE PRODUCT"
-        : dialogState?.type === "seed-dummy"
-          ? "GENERATE DUMMY DATA"
-          : "CONFIRM";
+        : "CONFIRM";
 
   const dialogTone = dialogState?.type === "delete-product" ? "danger" : "neutral";
 
@@ -630,18 +615,19 @@ export function OwnerDashboard() {
       <div className={shellClassName}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h3 className="brand-copy text-2xl text-[#3f4738]">{mode === "edit" ? "Edit item" : "Add new item"}</h3>
+            <h3 id="owner-product-editor-title" className="brand-copy text-2xl text-[#3f4738]">{mode === "edit" ? "Edit product" : "Add product"}</h3>
             <p className="mt-1 text-sm text-[#667056]">
               {mode === "edit"
                 ? "Update this product here without leaving the catalogue cards below."
-                : "Product records are stored in Firestore and product images in Firebase Storage."}
+                : "Add the product details, pricing, stock, and photographs."}
             </p>
           </div>
 
           {showHeaderClose ? (
             <button
               type="button"
-              onClick={resetForm}
+              onClick={requestCloseForm}
+              disabled={isSaving}
               className="brand-caption rounded-2xl border border-[#d1c3ae] px-5 py-3 text-[0.58rem] font-semibold tracking-[0.08em] text-[#5e684f]"
             >
               CLOSE
@@ -651,10 +637,13 @@ export function OwnerDashboard() {
 
         {mode === "edit" && actionError ? <p className="mt-5 text-sm text-[#9d4b45]">{actionError}</p> : null}
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+        <form className="owner-product-form mt-6 space-y-6" onSubmit={handleSubmit}>
+          <fieldset disabled={isSaving} className="owner-form-fields space-y-6">
+          <h4 className="owner-form-section-title">Product details</h4>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Product name">
               <input
+                ref={productNameRef}
                 value={form.name}
                 onChange={(event) =>
                   setForm((current) => ({
@@ -739,6 +728,9 @@ export function OwnerDashboard() {
                 ))}
               </select>
             </Field>
+          </div>
+          <h4 className="owner-form-section-title">Pricing, stock, and visibility</h4>
+          <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Price (INR)">
               <input
                 value={form.price}
@@ -883,6 +875,7 @@ export function OwnerDashboard() {
             />
           </Field>
 
+          <h4 className="owner-form-section-title">Fabric and care</h4>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Length">
               <input
@@ -911,6 +904,7 @@ export function OwnerDashboard() {
             />
           </Field>
 
+          <h4 className="owner-form-section-title">Photography</h4>
           <div className="grid gap-4 lg:grid-cols-2">
             <Field label="Care and handling">
               <textarea
@@ -981,7 +975,8 @@ export function OwnerDashboard() {
             </Field>
           </div>
 
-          <div className="flex flex-wrap gap-3">
+          </fieldset>
+          <div className="owner-editor-actions flex flex-wrap gap-3">
             <button
               type="submit"
               disabled={isSaving}
@@ -992,11 +987,13 @@ export function OwnerDashboard() {
 
             <button
               type="button"
-              onClick={resetForm}
+              onClick={requestCloseForm}
+              disabled={isSaving}
               className="brand-caption rounded-2xl border border-[#d1c3ae] px-6 py-3 text-[0.62rem] font-semibold tracking-[0.08em] text-[#5e684f]"
             >
               {mode === "edit" ? "CLOSE EDITOR" : "CLOSE FORM"}
             </button>
+            <span role="status" className="owner-muted">{isSaving ? "Saving product…" : hasUnsavedChanges ? "Unsaved changes" : "No unsaved changes"}</span>
           </div>
         </form>
       </div>
@@ -1021,13 +1018,13 @@ export function OwnerDashboard() {
       <div className="mx-auto max-w-7xl">
         <OwnerSectionHero
           eyebrow="OWNER CATALOGUE"
-          title="Catalogue workspace for products, pricing, and stock"
-          description="Use this page for catalogue operations only. Storefront structure, orders, messages, waitlist, and owner access now live in their own pages."
+          title="Catalogue"
+          description="Manage products, pricing, stock, and photographs."
           action={
             user ? (
               <button
                 type="button"
-                onClick={() => setDialogState({ type: "signout" })}
+                onClick={() => requestFormAction(() => setDialogState({ type: "signout" }))}
                 className="brand-caption rounded-2xl bg-[#f8ecd2] px-5 py-3 text-[0.62rem] font-semibold tracking-[0.08em] text-[#5a6851]"
               >
                 SIGN OUT
@@ -1059,7 +1056,7 @@ export function OwnerDashboard() {
               {user ? (
                 <button
                   type="button"
-                  onClick={() => setDialogState({ type: "signout" })}
+                  onClick={() => requestFormAction(() => setDialogState({ type: "signout" }))}
                   className="brand-caption mt-8 inline-flex rounded-2xl border border-[#cfc2ad] px-6 py-3 text-[0.66rem] font-semibold tracking-[0.08em] text-[#5e684f]"
                 >
                   SIGN OUT
@@ -1083,128 +1080,27 @@ export function OwnerDashboard() {
             </section>
 
             <aside className="rounded-[1.8rem] border border-[#e3d8c9] bg-white/70 p-8">
-              <h3 className="brand-copy text-2xl text-[#3f4738]">Firebase notes</h3>
+              <h3 className="brand-copy text-2xl text-[#3f4738]">Sign-in help</h3>
               <ul className="mt-5 space-y-3 text-sm leading-7 text-[#667056]">
-                <li>Enable Google Authentication in Firebase Console.</li>
-                <li>Set `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` to your live custom domain.</li>
-                <li>Add `eshwe.com` to Firebase Authentication authorized domains.</li>
-                <li>Add `https://eshwe.com/__/auth/handler` to the Google OAuth redirect URIs.</li>
-                <li>Deploy Firestore and Storage rules after this code update.</li>
+                <li>Use the Google account authorized for this store.</li>
+                <li>If the wrong account is signed in, sign out and choose another account.</li>
+                <li>Ask the primary owner to add your email if you need access.</li>
               </ul>
             </aside>
           </div>
         ) : (
           <div className="mt-10 space-y-8">
-            <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
-              <StatCard label="Total Products" value={String(stats.total)} />
-              <StatCard label="Active" value={String(stats.active)} />
-              <StatCard label="Featured" value={String(stats.featured)} />
-              <StatCard label="Out Of Stock" value={String(stats.outOfStock)} />
-              <Link
-                href="/owner/messages/"
-                className="rounded-[1.5rem] border border-[#d8cbb7] bg-white/80 p-6 shadow-[0_16px_35px_rgba(94,104,79,0.06)] transition-colors duration-200 hover:border-[#bdae97] hover:bg-[#fdf8f0]"
-              >
-                <p className="text-sm text-[#667056]">Messages</p>
-                <div className="mt-3 flex items-end justify-between gap-3">
-                  <p className="brand-copy text-4xl text-[#3f4738]">
-                    {customerMessagesLoading ? "..." : String(customerMessageCount)}
-                  </p>
-                  <span className="brand-caption text-[0.62rem] font-semibold tracking-[0.08em] text-[#5e684f]">
-                    OPEN
-                  </span>
-                </div>
-              </Link>
-              <Link
-                href="/owner/waitlist/"
-                className="rounded-[1.5rem] border border-[#d8cbb7] bg-white/80 p-6 shadow-[0_16px_35px_rgba(94,104,79,0.06)] transition-colors duration-200 hover:border-[#bdae97] hover:bg-[#fdf8f0]"
-              >
-                <p className="text-sm text-[#667056]">Waitlist</p>
-                <div className="mt-3 flex items-end justify-between gap-3">
-                  <p className="brand-copy text-4xl text-[#3f4738]">
-                    {waitlistLoading ? "..." : String(waitlistCount)}
-                  </p>
-                  <span className="brand-caption text-[0.62rem] font-semibold tracking-[0.08em] text-[#5e684f]">
-                    OPEN
-                  </span>
-                </div>
-              </Link>
-              <Link
-                href="/owner/orders/"
-                className="rounded-[1.5rem] border border-[#d8cbb7] bg-white/80 p-6 shadow-[0_16px_35px_rgba(94,104,79,0.06)] transition-colors duration-200 hover:border-[#bdae97] hover:bg-[#fdf8f0]"
-              >
-                <p className="text-sm text-[#667056]">Orders</p>
-                <div className="mt-3 flex items-end justify-between gap-3">
-                  <p className="brand-copy text-4xl text-[#3f4738]">Paid</p>
-                  <span className="brand-caption text-[0.62rem] font-semibold tracking-[0.08em] text-[#5e684f]">
-                    OPEN
-                  </span>
-                </div>
-              </Link>
+            <section className="owner-catalogue-stats grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <StatCard label="Total Products" value={readError ? "Unavailable" : productsLoading ? "Loading…" : String(stats.total)} />
+              <StatCard label="Active" value={readError ? "Unavailable" : productsLoading ? "Loading…" : String(stats.active)} />
+              <StatCard label="Featured" value={readError ? "Unavailable" : productsLoading ? "Loading…" : String(stats.featured)} />
+              <StatCard label="Out Of Stock" value={readError ? "Unavailable" : productsLoading ? "Loading…" : String(stats.outOfStock)} />
             </section>
 
             <section className="space-y-8">
-              <section className="rounded-[1.8rem] border border-[#e3d8c9] bg-[#f8f0e3] p-7 sm:p-8">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <h2 className="brand-copy text-3xl text-[#3f4738]">Product workspace</h2>
-                    <p className="mt-2 text-sm leading-7 text-[#667056]">
-                      Keep catalogue edits intentional. Open the form only when you are adding a new saree or updating one.
-                    </p>
-                  </div>
-
-                  <div className="flex flex-wrap gap-3">
-                    <button
-                      type="button"
-                      onClick={startCreatingProduct}
-                      className="brand-caption rounded-2xl bg-[#5e684f] px-5 py-3 text-[0.62rem] font-semibold tracking-[0.08em] text-[#fbf4e8]"
-                    >
-                      ADD NEW ITEM
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDialogState({ type: "seed-dummy" })}
-                      disabled={isSeedingDummy}
-                      className="brand-caption rounded-2xl border border-[#cfc2ad] bg-white/70 px-5 py-3 text-[0.62rem] font-semibold tracking-[0.08em] text-[#5e684f] disabled:opacity-60"
-                    >
-                      {isSeedingDummy ? "GENERATING..." : "GENERATE DUMMY DATA"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDialogState({ type: "signout" })}
-                      className="brand-caption rounded-2xl border border-[#cfc2ad] px-4 py-3 text-[0.58rem] font-semibold tracking-[0.08em] text-[#5e684f]"
-                    >
-                      SIGN OUT
-                    </button>
-                  </div>
-                </div>
-
-                {actionError ? <p className="mt-5 text-sm text-[#9d4b45]">{actionError}</p> : null}
-                {actionNotice ? <p className="mt-5 text-sm text-[#4d6a41]">{actionNotice}</p> : null}
-
-                {!isCreatingProduct ? (
-                  <div className="mt-8 rounded-[1.5rem] border border-dashed border-[#d8cbb7] bg-white/65 p-6 sm:p-7">
-                    <p className="brand-caption text-[0.58rem] font-semibold tracking-[0.18em] text-[#7d876f]">
-                      CLEAN WORKFLOW
-                    </p>
-                    <h3 className="brand-copy mt-3 text-2xl text-[#3f4738]">Open the form only when needed</h3>
-                    <p className="mt-3 max-w-2xl text-sm leading-7 text-[#667056]">
-                      Use the grouped catalogue cards below to browse each category, then edit any item directly. When you want a new record, open a fresh product form from here.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={startCreatingProduct}
-                      className="brand-caption mt-6 rounded-2xl bg-[#5e684f] px-6 py-3 text-[0.62rem] font-semibold tracking-[0.08em] text-[#fbf4e8]"
-                    >
-                      CREATE PRODUCT
-                    </button>
-                  </div>
-                ) : (
-                  renderProductForm({
-                    mode: "create",
-                    shellClassName: "mt-8 rounded-[1.5rem] border border-[#e1d5c5] bg-white/65 p-6 sm:p-7"
-                  })
-                )}
-              </section>
+              {actionError ? <p className="owner-error" role="alert">{actionError}</p> : null}
+              {actionNotice ? <p className="owner-notice" role="status">{actionNotice}</p> : null}
+              {isCreatingProduct ? renderProductForm({ mode: "create", shellClassName: "owner-panel" }) : null}
 
               <section className="rounded-[1.8rem] border border-[#e3d8c9] bg-white/70 p-7 sm:p-8">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -1217,19 +1113,13 @@ export function OwnerDashboard() {
 
                   <button
                     type="button"
-                    onClick={startCreatingProduct}
+                    ref={addProductButtonRef}
+                    onClick={() => requestFormAction(startCreatingProduct)}
                     className="brand-caption rounded-2xl bg-[#5e684f] px-5 py-3 text-[0.62rem] font-semibold tracking-[0.08em] text-[#fbf4e8]"
                   >
                     ADD NEW ITEM
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setDialogState({ type: "seed-dummy" })}
-                    disabled={isSeedingDummy}
-                    className="brand-caption rounded-2xl border border-[#cfc2ad] bg-white/75 px-5 py-3 text-[0.62rem] font-semibold tracking-[0.08em] text-[#5e684f] disabled:opacity-60"
-                  >
-                    {isSeedingDummy ? "GENERATING..." : "GENERATE DUMMY DATA"}
-                  </button>
+
                 </div>
 
                 <div className="mt-6 space-y-6">
@@ -1299,7 +1189,7 @@ export function OwnerDashboard() {
                                   <div className="mt-4 flex flex-wrap gap-2">
                                     <button
                                       type="button"
-                                      onClick={() => beginEditing(product)}
+                                      onClick={() => requestFormAction(() => beginEditing(product))}
                                       className="brand-caption rounded-full bg-[#5e684f] px-4 py-2 text-[0.52rem] font-semibold tracking-[0.08em] text-[#fbf4e8]"
                                     >
                                       EDIT
@@ -1325,7 +1215,7 @@ export function OwnerDashboard() {
               </section>
 
               {isEditingProduct ? (
-                <div className="fixed inset-0 z-50 bg-[#3f4738]/32 px-4 py-5 sm:px-6 sm:py-8 lg:px-10">
+                <OwnerDialog open={isEditingProduct} onClose={requestCloseForm} labelledBy="owner-product-editor-title" className="owner-product-dialog">
                   <div className="mx-auto h-full max-w-6xl overflow-hidden rounded-[2rem] border border-[#dfd2c1] bg-[#fbf4e8] shadow-[0_30px_90px_rgba(63,71,56,0.22)]">
                     <div className="h-full overflow-y-auto p-5 sm:p-7 lg:p-8">
                       {renderProductForm({
@@ -1335,7 +1225,7 @@ export function OwnerDashboard() {
                       })}
                     </div>
                   </div>
-                </div>
+                </OwnerDialog>
               ) : null}
             </section>
 
@@ -1348,6 +1238,19 @@ export function OwnerDashboard() {
               pending={Boolean(dialogPending)}
               onConfirm={handleDialogConfirm}
               onClose={() => setDialogState(null)}
+            />
+            <ConfirmationDialog
+              open={Boolean(discardAction)}
+              title="Discard unsaved changes?"
+              message="Your product changes have not been saved. Keep editing to avoid losing them."
+              confirmLabel="Discard changes"
+              cancelLabel="Keep editing"
+              onConfirm={() => {
+                const action = discardAction;
+                setDiscardAction(null);
+                action?.();
+              }}
+              onClose={() => setDiscardAction(null)}
             />
           </div>
         )}

@@ -24,12 +24,12 @@ type OwnerBackofficeNavProps = {
 };
 
 export function OwnerBackofficeNav({ badges = {}, className = "" }: OwnerBackofficeNavProps) {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "/owner";
 
   return (
     <nav
       aria-label="Owner navigation"
-      className={`hide-scrollbar flex gap-3 overflow-x-auto rounded-[1.6rem] border border-[#ddd1c0] bg-white/72 p-3 shadow-[0_16px_40px_rgba(94,104,79,0.06)] ${className}`}
+      className={`owner-navigation hide-scrollbar flex gap-2 overflow-x-auto ${className}`}
     >
       {navItems.map((item) => {
         const isActive = pathname === item.href || pathname === `${item.href}/`;
@@ -51,6 +51,7 @@ export function OwnerBackofficeNav({ badges = {}, className = "" }: OwnerBackoff
           <Link
             key={item.href}
             href={item.href}
+            aria-current={isActive ? "page" : undefined}
             className={`inline-flex shrink-0 items-center gap-2 rounded-[1.1rem] px-4 py-3 text-sm font-medium transition-colors duration-200 ${
               isActive
                 ? "bg-[#5e684f] text-[#fbf4e8]"

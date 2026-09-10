@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import { ConfirmationDialog } from "@/components/confirmation-dialog";
+import { ConfirmationDialog } from "@/components/owner-confirmation-dialog";
 import {
   createProductMasterOption,
   deleteProductMasterOption,

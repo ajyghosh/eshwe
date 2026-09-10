@@ -12,12 +12,10 @@ import type { Saree } from "@/types/saree";
 
 export function CatalogueProductCard({
   product,
-  buttonLabel,
-  showDetailButton = true
+  buttonLabel
 }: {
   product: Saree;
   buttonLabel?: string;
-  showDetailButton?: boolean;
 }) {
   const { addItem, items, updateQuantity } = useCart();
   const [waitlistDialogOpen, setWaitlistDialogOpen] = useState(false);
@@ -54,7 +52,7 @@ export function CatalogueProductCard({
   }
 
   return (
-    <article className="flex flex-col">
+    <article className="web-product-card flex flex-col">
       <div className="relative">
         <Link href={buildProductDetailHref(product.slug)} className="group block">
           <ProductMedia product={product} />
@@ -62,7 +60,7 @@ export function CatalogueProductCard({
         <FavoriteToggleButton sku={product.sku} className="absolute right-5 top-5 z-10" />
       </div>
 
-      <div className="pt-5">
+      <div className="web-product-card-info pt-5">
         <Link href={buildProductDetailHref(product.slug)} className="group block">
           <h3 className="brand-copy text-sm text-[#3f4738] transition-colors duration-300 group-hover:text-[#5e684f] sm:text-base">
             {product.name}
@@ -85,7 +83,7 @@ export function CatalogueProductCard({
           ) : null}
         </div>
 
-        <div className="mt-5 flex flex-wrap items-center gap-3">
+        <div className="web-product-card-actions mt-5 flex flex-wrap items-center gap-3">
           {product.status === "out_of_stock" ? (
             <button
               type="button"
@@ -118,14 +116,6 @@ export function CatalogueProductCard({
             </button>
           )}
 
-          {showDetailButton ? (
-            <Link
-              href={buildProductDetailHref(product.slug)}
-              className="brand-caption inline-flex rounded-2xl border border-[#d6ccb9] px-5 py-2.5 text-[0.52rem] font-semibold tracking-[0.05em] text-[#5e684f] sm:text-[0.58rem]"
-            >
-              VIEW DETAILS
-            </Link>
-          ) : null}
         </div>
       </div>
 
@@ -168,7 +158,7 @@ export function ProductMedia({ product }: { product: Saree }) {
     : undefined;
 
   return (
-    <div className="relative overflow-hidden rounded-[1.75rem] bg-[#efe5d7]">
+    <div className="web-product-media relative overflow-hidden rounded-[1.75rem] bg-[#efe5d7]">
       <div
         className="aspect-[0.86] w-full transition-transform duration-500 group-hover:scale-[1.02]"
         style={{
@@ -196,7 +186,7 @@ export function ProductMedia({ product }: { product: Saree }) {
 
 export function ProductLoadingGrid({ count = 4 }: { count?: number }) {
   return (
-    <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-4">
+    <div className="web-product-grid grid gap-8 md:grid-cols-2 xl:grid-cols-4">
       {Array.from({ length: count }).map((_, index) => (
         <div key={index} className="animate-pulse">
           <div className="aspect-[0.86] rounded-[1.75rem] bg-[#e8decf]" />

@@ -30,6 +30,13 @@
         }
       },
       {
+        "source": "/api/razorpay/app-callback",
+        "function": {
+          "functionId": "razorpayAppCallback",
+          "region": "asia-south1"
+        }
+      },
+      {
         "source": "/api/razorpay/webhook",
         "function": {
           "functionId": "razorpayWebhook",
@@ -37,8 +44,34 @@
         }
       },
       {
+        "source": "/api/customer-auth/send-otp",
+        "function": {
+          "functionId": "sendCustomerOtp",
+          "region": "asia-south1"
+        }
+      },
+      {
+        "source": "/api/customer-auth/verify-otp",
+        "function": {
+          "functionId": "verifyCustomerOtp",
+          "region": "asia-south1"
+        }
+      },
+      {
         "source": "/product/**",
         "destination": "/product/index.html"
+      },
+      {
+        "source": "/app/product/**",
+        "destination": "/app/product/index.html"
+      },
+      {
+        "source": "/app/search/**",
+        "destination": "/app/search/index.html"
+      },
+      {
+        "source": "/shop/search/**",
+        "destination": "/shop/index.html"
       },
       {
         "source": "/shop/new-arrivals/**",

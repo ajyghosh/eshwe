@@ -10,6 +10,9 @@ import { useAuthSession } from "@/components/auth-provider";
 import { formatCurrency } from "@/components/catalogue-product-card";
 import { useCart } from "@/components/cart-provider";
 import { CheckoutProgress } from "@/components/checkout-progress";
+import { LoadingDots } from "@/components/loading-dots";
+import { CheckoutPaymentAction } from "@/components/checkout-payment-action";
+import { useCheckoutRecovery } from "@/components/checkout-recovery-provider";
 import { SiteFooter } from "@/components/site-footer";
 import { StorefrontHeader } from "@/components/storefront-header";
 import { syncCustomerDisplayName } from "@/lib/auth";
@@ -71,7 +74,8 @@ const emptyAddressDialogForm: AddressDialogFormState = {
 };
 
 export function PaymentPage() {
-  const { stockReady, items, isReady, isSyncing, subtotal, savings, shippingFee, packagingFee, total, clearCart } = useCart();
+  const recovery = useCheckoutRecovery();
+  const { stockReady, items, isReady, isSyncing, syncError, subtotal, savings, shippingFee, packagingFee, total, clearCart } = useCart();
   const { user, signIn } = useAuthSession();
   const router = useRouter();
   const [savedAddresses, setSavedAddresses] = useState<CustomerAddress[]>([]);
@@ -95,7 +99,7 @@ export function PaymentPage() {
 
   const selectedAddress = savedAddresses.find((address) => address.id === selectedAddressId) ?? null;
   const hasUnavailableItems = items.some((item) => isCartItemUnavailable(item));
-  const canProceedToPayment = !isSyncing && stockReady && items.length > 0 && !hasUnavailableItems && Boolean(user && selectedAddress);
+  const canProceedToPayment = isReady && !isSyncing && stockReady && items.length > 0 && !hasUnavailableItems && Boolean(user && selectedAddress);
   const itemCount = items.reduce((count, item) => count + item.quantity, 0);
   const subtotalLabel = `Subtotal${itemCount > 0 ? ` (${itemCount} item${itemCount === 1 ? "" : "s"})` : ""}`;
 
@@ -352,6 +356,8 @@ export function PaymentPage() {
             </h1>
           </div>
 
+          {syncError ? <p role="alert" className="mb-4 text-sm text-[#9d4b45]">{syncError}</p> : null}
+
           {items.length === 0 ? (
             <section className="web-surface rounded-[2rem] border border-[#e3d8c9] bg-[#f8f0e3] p-8 text-center shadow-[0_22px_60px_rgba(94,104,79,0.08)]">
               <p className="brand-copy text-2xl text-[#2b2a29]">Getting your checkout ready...</p>
@@ -525,9 +531,12 @@ export function PaymentPage() {
                     </p>
                   </div>
 
-                  <button
-                    type="button"
+                  <CheckoutPaymentAction
+                    orderId={recovery.orderId}
+                    recoveryError={recovery.error}
+                    processing={paymentSubmitting}
                     onClick={() => void handleProceedToPayment()}
+                    busy={paymentSubmitting || profileSaving || isSyncing}
                     disabled={!canProceedToPayment || paymentSubmitting || profileSaving || profileLoading}
                     className="brand-caption mt-5 inline-flex w-full items-center justify-center gap-2.5 rounded-[1rem] bg-[#5e684f] px-5 py-3.5 text-[0.68rem] font-semibold tracking-[0.14em] text-[#fbf4e8] disabled:cursor-not-allowed disabled:opacity-60"
                   >
@@ -546,7 +555,8 @@ export function PaymentPage() {
                       : hasUnavailableItems
                         ? "UNAVAILABLE ITEMS IN BAG"
                           : "CONTINUE TO RAZORPAY"}
-                  </button>
+                    {paymentSubmitting || profileSaving || isSyncing ? <LoadingDots /> : null}
+                  </CheckoutPaymentAction>
 
                   {paymentMessage && !paymentOverlayStep ? (
                     <div className="mt-4 flex items-center gap-3 rounded-[1rem] border border-[#d8cbb7] bg-[#fbf7ef] px-4 py-3 text-sm leading-6 text-[#667056]">

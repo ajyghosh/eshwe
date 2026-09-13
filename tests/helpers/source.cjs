@@ -4,7 +4,7 @@ const vm = require('node:vm');
 const ts = require('typescript');
 function loadSource(name, mocks = {}, globals = {}) {
   const filename = path.resolve(name);
-  const output = ts.transpileModule(fs.readFileSync(filename, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
+  const output = ts.transpileModule(fs.readFileSync(filename, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX } }).outputText;
   const module = { exports: {} };
   vm.runInNewContext(output, { module, exports: module.exports, process, console, setTimeout, clearTimeout, URL, URLSearchParams, ...globals, require(id) {
     if (id in mocks) return mocks[id];

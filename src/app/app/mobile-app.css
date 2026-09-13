@@ -111,9 +111,15 @@
   flex-shrink: 0;
 }
 
+.mobile-app-product-grid {
+  grid-auto-rows: 1fr;
+}
+
 .mobile-app-product-card {
   display: flex;
   flex-direction: column;
+  height: 100%;
+  min-width: 0;
 }
 
 .mobile-app-product-info {
@@ -133,6 +139,11 @@
   font-weight: 500;
   line-height: 1.4;
   overflow-wrap: anywhere;
+  min-height: 2.8em;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 
 .mobile-app-product-card :is(button, a).brand-caption {
@@ -195,7 +206,7 @@
 }
 
 .mobile-app-action-bar {
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-bottom: calc(env(safe-area-inset-bottom) + 10px);
 }
 
 .mobile-app-action-bar :is(button, a).brand-caption {

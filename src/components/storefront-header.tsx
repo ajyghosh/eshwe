@@ -412,9 +412,6 @@ export function StorefrontHeader({
               </div>
 
               <nav className="flex shrink-0 items-center gap-2 text-[#667056]">
-                <a href="https://www.indiapost.gov.in/" target="_blank" rel="noopener noreferrer" aria-label="Track order with India Post (opens in a new tab)" className="shrink-0 rounded-full border border-[#d6ccb9] px-3 py-2 text-xs font-semibold transition-colors hover:bg-[#efe7d9] sm:text-sm">
-                  Track order ↗
-                </a>
                 <HeaderActionButton
                   label="Search"
                   icon={<HeaderSearchIcon />}
@@ -502,6 +499,16 @@ export function StorefrontHeader({
                     {totalItems}
                   </span>
                 </Link>
+                <a
+                  href="https://www.indiapost.gov.in/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Track order with India Post (opens in a new tab)"
+                  title="Track order with India Post (opens in a new tab)"
+                  className="web-header-action ml-2 inline-flex h-10 shrink-0 items-center justify-center px-2 text-sm text-[#768068] transition-colors duration-200 hover:text-[#5e684f] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5e684f]"
+                >
+                  Track
+                </a>
               </nav>
             </div>
 

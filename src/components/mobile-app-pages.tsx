@@ -3,6 +3,9 @@
 import Image from "next/image";
 import { paymentLabel, fulfilmentLabel } from "@/lib/order-status";
 import { OrderStatusPage } from "@/components/order-status-page";
+import { LoadingDots } from "@/components/loading-dots";
+import { CheckoutPaymentAction } from "@/components/checkout-payment-action";
+import { useCheckoutRecovery } from "@/components/checkout-recovery-provider";
 import { createCheckout, openCheckout } from "@/lib/checkout";
 import Link from "next/link";
 import { SavedAddressSelector } from "@/components/saved-address-selector";
@@ -715,7 +718,7 @@ export function MobileAppSearchPage({ categoryFirst = false }: { categoryFirst?:
           </div>
         ) : null}
 
-        <div className="mt-5 grid grid-cols-2 gap-3">
+        <div className="mobile-app-product-grid mt-5 grid grid-cols-2 gap-3">
           {filteredProducts.map((product) => (
             <MobileProductCard key={product.id ?? product.sku} product={product} />
           ))}
@@ -1491,7 +1494,7 @@ export function MobileAppProductPage() {
 
   return (
     <MobileAppShell showBottomNav={false}>
-      <div className="px-4 pb-[calc(6.8rem+env(safe-area-inset-bottom))] pt-[calc(env(safe-area-inset-top)+0.85rem)]">
+      <div className="px-4 pb-[calc(6.8rem+env(safe-area-inset-bottom)+10px)] pt-[calc(env(safe-area-inset-top)+0.85rem)]">
         <div className="flex items-center justify-between gap-3">
           <button
             type="button"
@@ -1699,7 +1702,8 @@ export function MobileAppProductPage() {
 
 export function MobileAppCheckoutPage() {
   const router = useRouter();
-  const { items, subtotal, savings, shippingFee, packagingFee, total, totalItems, updateQuantity, removeItem, clearCart, isReady, stockReady, isSyncing } = useCart();
+  const recovery = useCheckoutRecovery();
+  const { items, subtotal, savings, shippingFee, packagingFee, total, totalItems, updateQuantity, removeItem, clearCart, isReady, stockReady, isSyncing, syncError } = useCart();
   const { user, signIn } = useAuthSession();
   const [savedAddress, setSavedAddress] = useState<CustomerAddress | null>(null);
   const [addressSheetOpen, setAddressSheetOpen] = useState(false);
@@ -1721,7 +1725,7 @@ export function MobileAppCheckoutPage() {
   const [products, setProducts] = useState<Saree[]>([]);
   const hasUnavailableItems = items.some((item) => isCartItemUnavailable(item));
   const activeAddress = user ? savedAddress : null;
-  const canProceed = !isSyncing && stockReady && items.length > 0 && !hasUnavailableItems && Boolean(activeAddress);
+  const canProceed = isReady && !isSyncing && stockReady && items.length > 0 && !hasUnavailableItems && Boolean(activeAddress);
   const showVerificationStep = checkoutStep === "delivery";
   const showAddressStep = checkoutStep === "address";
 
@@ -2025,7 +2029,7 @@ export function MobileAppCheckoutPage() {
         />
       ) : null}
 
-      <div className="px-4 pb-[calc(6.9rem+env(safe-area-inset-bottom))] pt-[calc(env(safe-area-inset-top)+0.85rem)]">
+      <div className="px-4 pb-[calc(6.9rem+env(safe-area-inset-bottom)+10px)] pt-[calc(env(safe-area-inset-top)+0.85rem)]">
         <div className="flex items-center justify-between gap-3">
           <button
             type="button"
@@ -2040,6 +2044,8 @@ export function MobileAppCheckoutPage() {
           </div>
           <span className="h-11 w-11" />
         </div>
+
+        {syncError ? <p role="alert" className="mt-3 text-sm text-[#9d4b45]">{syncError}</p> : null}
 
         <section className="mobile-app-checkout-heading mt-3 border-b border-[#e8e3d9] pb-5">
           <div className="flex items-center justify-between gap-3">
@@ -2298,18 +2304,25 @@ export function MobileAppCheckoutPage() {
 
       <div className="mobile-app-action-bar fixed inset-x-0 bottom-0 z-40">
         <div className="mx-auto max-w-[440px] px-4 py-3">
-          <button
-            type="button"
+          {checkoutStep === "pay" && profileError ? <p role="alert" className="mb-2 text-sm text-[#a8574d]">{profileError}</p> : null}
+          <CheckoutPaymentAction
+            orderId={checkoutStep === "pay" ? recovery.orderId : null}
+            recoveryError={checkoutStep === "pay" ? recovery.error : null}
+            mobile
+            processing={paymentSubmitting}
             onClick={() => void handlePrimaryCheckoutAction()}
+            busy={paymentSubmitting || profileSaving || isSyncing || (!isReady && !syncError)}
             disabled={
+              !isReady ||
               (checkoutStep === "bag" && items.length === 0) ||
               (checkoutStep === "address" && (profileLoading || profileSaving)) ||
               (checkoutStep === "pay" && (!canProceed || paymentSubmitting || profileSaving))
             }
             className="brand-caption inline-flex h-14 w-full items-center justify-center rounded-[1.15rem] bg-[#5e684f] px-5 text-[0.66rem] font-semibold tracking-[0.15em] text-[#fbf4e8] disabled:opacity-55"
           >
-            {checkoutStep === "pay" && isSyncing ? "SAVING BAG…" : primaryButtonLabel}
-          </button>
+            {!isReady ? (syncError ? "BAG SYNC PAUSED" : "GETTING YOUR BAG READY…") : checkoutStep === "pay" && isSyncing ? "SAVING BAG…" : primaryButtonLabel}
+            {paymentSubmitting || profileSaving || isSyncing || (!isReady && !syncError) ? <LoadingDots /> : null}
+          </CheckoutPaymentAction>
         </div>
       </div>
 
@@ -2443,11 +2456,9 @@ function MobileRecommendationSection({
         <p className="text-[0.72rem] font-semibold uppercase tracking-[0.24em] text-[#7d876f]">{title}</p>
         <span className="h-px flex-1 bg-[#dccfb9]" />
       </div>
-      <div className="mt-4 grid grid-cols-2 gap-3">
+      <div className="mobile-app-product-grid mt-4 grid grid-cols-2 gap-3">
         {products.map((product) => (
-          <div key={product.id ?? product.sku} className="min-w-0">
-            <MobileProductCard product={product} compact slim />
-          </div>
+          <MobileProductCard key={product.id ?? product.sku} product={product} compact slim />
         ))}
       </div>
       <Link
@@ -2498,13 +2509,15 @@ function MobileProductCard({
       </div>
 
       <div className="mobile-app-product-info px-3 pb-3 pt-3">
-        <Link href={buildAppProductHref(product.slug)} className="block">
-          <h3 className="mobile-app-product-name text-[#2f342d]">{product.name}</h3>
-          {product.availableStock <= 2 ? <p className="mt-1 text-xs text-[#5e684f]">{getStockMessage(product)}</p> : null}
-          <p className="mt-1 text-[0.8rem] leading-5 text-[#68735e]">{getMobileProductLabel(product)}</p>
+        <Link href={buildAppProductHref(product.slug)} className="block flex-1">
+          <h3 title={product.name} className="mobile-app-product-name text-[#2f342d]">{product.name}</h3>
+          <p aria-hidden={product.availableStock > 2 ? true : undefined} className="mt-1 min-h-5 text-xs leading-5 text-[#5e684f]">
+            {product.availableStock <= 2 ? getStockMessage(product) : null}
+          </p>
+          <p title={getMobileProductLabel(product)} className="mt-1 truncate text-[0.8rem] leading-5 text-[#68735e]">{getMobileProductLabel(product)}</p>
         </Link>
 
-        <div className={`flex items-end gap-1.5 ${slim ? "mt-1" : "mt-1.25"}`}>
+        <div className={`flex flex-wrap items-end gap-1.5 ${slim ? "mt-1" : "mt-1.25"}`}>
           <span className="text-[1rem] font-semibold text-[#2b2a29]">{formatCurrency(product.price)}</span>
           {typeof product.originalPrice === "number" ? (
             <span className={slim ? "text-[0.68rem] text-[#9a9a93] line-through" : "text-[0.7rem] text-[#9a9a93] line-through"}>{formatCurrency(product.originalPrice)}</span>
@@ -2825,7 +2838,7 @@ function MobileProductPreviewGrid({
   }
 
   return (
-    <div className="mt-4 grid grid-cols-2 gap-3">
+    <div className="mobile-app-product-grid mt-4 grid grid-cols-2 gap-3">
       {previewProducts.map((product) => (
         <MobileProductCard key={`${product.id ?? product.sku}-${sectionKey}`} product={product} compact />
       ))}
@@ -2847,7 +2860,7 @@ function YouMayAlsoLikeSection({ products }: { products: Saree[] }) {
         </h2>
         <span className="h-px flex-1 bg-[#dccfb9]" />
       </div>
-      <div className="mt-4 grid grid-cols-2 gap-3">
+      <div className="mobile-app-product-grid mt-4 grid grid-cols-2 gap-3">
         {products.map((product) => (
           <MobileProductCard key={`${product.id ?? product.sku}-you-may-like`} product={product} compact />
         ))}

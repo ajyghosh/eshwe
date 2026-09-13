@@ -3,10 +3,8 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useAuthSession } from "@/components/auth-provider";
 import { clampCartQuantityToStock, isProductPurchasable } from "@/lib/inventory";
-import { claimGuestData } from "@/lib/guest-migration";
 import { normalizeCart, syncCartItemsWithCatalogue } from "@/lib/cart-state";
-import { createOptimisticList } from "@/lib/optimistic-list";
-import { changeCustomerCart, migrateCustomerCart, subscribeToCustomerProfile } from "@/lib/customer-profiles";
+import { createCustomerCartSession } from "@/lib/customer-cart-session";
 import { subscribeToSarees } from "@/lib/sarees";
 import type { Saree } from "@/types/saree";
 import type { CartItem } from "@/types/cart";
@@ -32,7 +30,7 @@ export function CartProvider({children}:{children:ReactNode}) {
   const [stockReady,setStockReady]=useState(false);
   const [syncError,setSyncError]=useState<string|null>(null);
   const [isSyncing,setIsSyncing]=useState(false);
-  const cartSync=useRef<{ uid: string; sync: ReturnType<typeof createOptimisticList<CartItem>> } | null>(null);
+  const cartSync=useRef<{ uid: string; sync: ReturnType<typeof createCustomerCartSession> } | null>(null);
   const [online,setOnline]=useState(true);
   const owner=user?.uid||"guest";
   useEffect(()=>{
@@ -41,7 +39,7 @@ export function CartProvider({children}:{children:ReactNode}) {
   },[]);
   useEffect(()=>{
     if(loading)return;
-    let active=true;setRawItems([]);setResolvedUser(null);setSyncError(null);setIsSyncing(false);
+    setRawItems([]);setResolvedUser(null);setSyncError(null);setIsSyncing(false);
     if(!user){
       const sync=()=>{setRawItems(readGuest());setResolvedUser("guest");};sync();
       const storage=(event:StorageEvent)=>{if(event.key===GUEST_KEY||event.key===null)sync();};
@@ -49,17 +47,9 @@ export function CartProvider({children}:{children:ReactNode}) {
       return()=>{window.removeEventListener("storage",storage);window.removeEventListener("eshwe-guest-cart",sync);};
     }
     const uid=user.uid;
-    const sync=createOptimisticList<CartItem>(change=>changeCustomerCart(uid,change),(items,pending)=>{if(active){setRawItems(items);setIsSyncing(pending);}},()=>{if(active)setSyncError("Your bag change could not be saved. Please try again.");});
+    const sync=createCustomerCartSession(uid,localStorage,GUEST_KEY,(items,pending,ready)=>{setRawItems(items);setIsSyncing(pending);setResolvedUser(ready?uid:null);},setSyncError);
     cartSync.current={uid,sync};
-    const unsubscribe=subscribeToCustomerProfile(uid,profile=>{if(active){sync.receive({items:profile?.cartItems||[],revision:profile?.cartRevision||0});setResolvedUser(uid);}},error=>{if(active)setSyncError(error.message);});
-    try {
-      for (const job of claimGuestData(localStorage, GUEST_KEY, uid)) {
-        void migrateCustomerCart(uid, normalizeCart(job.items), job.id).then(() => localStorage.removeItem(job.key)).catch(error => { if (active) setSyncError(error.message); });
-      }
-    } catch { setSyncError("Your browser could not prepare bag syncing. Please allow site storage."); }
-    const legacyKey=`eshwe-cart-v1:${uid}`;
-    try { const legacy=normalizeCart(JSON.parse(localStorage.getItem(legacyKey)||"[]")); if(legacy.length)void migrateCustomerCart(uid,legacy,`legacy-${uid}`).then(()=>localStorage.removeItem(legacyKey)).catch(error=>{if(active)setSyncError(error.message);}); }catch{/* Ignore malformed old browser data. */}
-    return()=>{active=false;sync.dispose();cartSync.current=null;unsubscribe();};
+    return()=>{sync.dispose();cartSync.current=null;};
   },[loading,user]);
   useEffect(()=>{
     setStockReady(false);
@@ -69,7 +59,7 @@ export function CartProvider({children}:{children:ReactNode}) {
   const value=useMemo<CartContextValue>(()=>{
     function change(fn:(items:CartItem[])=>CartItem[]){
       setSyncError(null);
-      if(user){if(cartSync.current?.uid===user.uid){setResolvedUser(user.uid);cartSync.current.sync.change(fn);}}
+      if(user){if(resolvedUser===user.uid&&cartSync.current?.uid===user.uid){cartSync.current.sync.change(fn);}}
       else {try{const next=fn(readGuest());writeGuest(next);setRawItems(next);setResolvedUser("guest");}catch{setSyncError("Your browser could not save the bag. Please allow site storage.");}}
     }
     const subtotal=items.reduce((sum,item)=>sum+item.price*item.quantity,0);

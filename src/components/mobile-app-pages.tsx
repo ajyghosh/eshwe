@@ -2318,7 +2318,7 @@ export function MobileAppCheckoutPage() {
               (checkoutStep === "address" && (profileLoading || profileSaving)) ||
               (checkoutStep === "pay" && (!canProceed || paymentSubmitting || profileSaving))
             }
-            className="brand-caption inline-flex h-14 w-full items-center justify-center rounded-[1.15rem] bg-[#5e684f] px-5 text-[0.66rem] font-semibold tracking-[0.15em] text-[#fbf4e8] disabled:opacity-55"
+            className="brand-caption inline-flex h-14 w-full items-center justify-center rounded-[1.15rem] bg-[#a8574d] px-5 text-[0.66rem] font-semibold tracking-[0.15em] text-[#fbf4e8] disabled:opacity-55"
           >
             {!isReady ? (syncError ? "BAG SYNC PAUSED" : "GETTING YOUR BAG READY…") : checkoutStep === "pay" && isSyncing ? "SAVING BAG…" : primaryButtonLabel}
             {paymentSubmitting || profileSaving || isSyncing || (!isReady && !syncError) ? <LoadingDots /> : null}

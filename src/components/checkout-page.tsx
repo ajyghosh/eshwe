@@ -204,7 +204,7 @@ export function CheckoutPage() {
                   href={canContinueToPayment ? "/payment" : "/checkout"}
                   aria-disabled={!canContinueToPayment}
                   className={`brand-caption mt-5 inline-flex w-full items-center justify-center gap-2.5 rounded-[1rem] px-5 py-3.5 text-[0.68rem] font-semibold tracking-[0.14em] !text-[#fbf4e8] ${
-                    canContinueToPayment ? "bg-[#5e684f]" : "cursor-not-allowed bg-[#c8c2b6]"
+                    canContinueToPayment ? "bg-[#a8574d]" : "cursor-not-allowed bg-[#c8c2b6]"
                   }`}
                   onClick={(event) => {
                     if (!canContinueToPayment) {

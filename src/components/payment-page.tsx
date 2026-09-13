@@ -538,7 +538,7 @@ export function PaymentPage() {
                     onClick={() => void handleProceedToPayment()}
                     busy={paymentSubmitting || profileSaving || isSyncing}
                     disabled={!canProceedToPayment || paymentSubmitting || profileSaving || profileLoading}
-                    className="brand-caption mt-5 inline-flex w-full items-center justify-center gap-2.5 rounded-[1rem] bg-[#5e684f] px-5 py-3.5 text-[0.68rem] font-semibold tracking-[0.14em] text-[#fbf4e8] disabled:cursor-not-allowed disabled:opacity-60"
+                    className="brand-caption mt-5 inline-flex w-full items-center justify-center gap-2.5 rounded-[1rem] bg-[#a8574d] px-5 py-3.5 text-[0.68rem] font-semibold tracking-[0.14em] text-[#fbf4e8] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <span aria-hidden="true" className="inline-flex">
                       <svg viewBox="0 0 20 20" className="h-3.5 w-3.5 fill-none stroke-current stroke-[1.8]">

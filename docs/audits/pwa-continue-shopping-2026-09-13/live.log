@@ -1,0 +1,9 @@
+PASS PWA add button becomes quantity controls and Continue shopping
+PASS Split action bar fits 320 390 and 430 pixel screens
+PASS Quantity caps remain enforced and removing the item restores Add to Cart
+PASS Shared product links return to Browse and retain the bag
+PASS Continue shopping restores search filters sort and scroll position
+PASS The return destination survives a product reload
+PASS Related product navigation keeps the original catalogue destination
+PASS Desktop web product controls are unchanged
+PASS No uncaught browser errors

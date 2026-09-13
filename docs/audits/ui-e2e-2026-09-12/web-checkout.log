@@ -1,0 +1,3 @@
+PASS web checkout opens
+PASS web authorized state
+PASS web captured state

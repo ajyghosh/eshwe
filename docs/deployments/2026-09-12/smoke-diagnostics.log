@@ -1,0 +1,46 @@
+category initial {
+  url: 'https://eshwe.com/shop/category/mul-cotton/search/golden-checkered-mul-cotton-051/',
+  controls: [ 'Newest', 'ALL CATEGORIES', 'ALL FABRICS', 'ALL' ],
+  inputs: [ 'Golden Checkered Mul Cotton 051' ],
+  cards: 1
+}
+category reload {
+  url: 'https://eshwe.com/shop/category/mul-cotton/search/golden-checkered-mul-cotton-051/',
+  controls: [ 'Newest', 'ALL CATEGORIES', 'ALL FABRICS', 'ALL' ],
+  inputs: [ 'golden checkered mul cotton 051' ],
+  cards: 1
+}
+offline cache { keys: [ 'eshwe-app-v5' ], fallback: true }
+offline immediate {
+  status: 200,
+  fromWorker: true,
+  title: 'Reconnect | eshwe',
+  text: 'eshwe\n' +
+    '\n' +
+    "You're offline\n" +
+    '\n' +
+    'Reconnect to see current stock and check your orders.\n' +
+    '\n' +
+    'If you were paying, check your existing order after reconnecting before making another payment.\n' +
+    '\n' +
+    'Try again'
+}
+offline settled {
+  title: 'Reconnect | eshwe',
+  text: 'eshwe\n' +
+    '\n' +
+    "You're offline\n" +
+    '\n' +
+    'Reconnect to see current stock and check your orders.\n' +
+    '\n' +
+    'If you were paying, check your existing order after reconnecting before making another payment.\n' +
+    '\n' +
+    'Try again'
+}
+page.reload: net::ERR_ABORTED; maybe frame was detached?
+Call log:
+[2m  - waiting for navigation until "load"[22m
+
+    at [stdin]:2:2038 {
+  name: 'Error'
+}

@@ -1,0 +1,11 @@
+FAIL Live stock update preserves an unfinished web search Expected values to be strictly equal:
++ actual - expected
+
++ ''
+- 'DUMMY-MUL-COTTON-068'
+
+FAIL Live stock update preserves an applied web availability filter Expected values to be strictly equal:
+
+'ALL' !== 'AVAILABLE'
+
+PASS Guest cart quantity changes sync between web and PWA and remove cleanly

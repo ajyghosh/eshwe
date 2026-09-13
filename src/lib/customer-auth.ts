@@ -49,6 +49,7 @@ export async function verifyCustomerOtp(phone: string, otp: string): Promise<Use
 
 export function getCustomerAuthApiUrl(path: "send-otp" | "verify-otp") {
   const endpointPath = path === "send-otp" ? "send-otp" : "verify-otp";
+  if (process.env.NEXT_PUBLIC_FUNCTIONS_EMULATOR_URL) return `${process.env.NEXT_PUBLIC_FUNCTIONS_EMULATOR_URL}/${path === "send-otp" ? "sendCustomerOtp" : "verifyCustomerOtp"}`;
 
   if (typeof window !== "undefined" && !isLocalDevelopmentHostname(window.location.hostname)) {
     return `${CUSTOMER_AUTH_API_BASE_PATH}/${endpointPath}`;

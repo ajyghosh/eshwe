@@ -1,0 +1,73 @@
+[
+  {
+    "attempt": 1,
+    "automaticRecovery": true,
+    "manualRecovery": null,
+    "body": "eshwe app\n\nOrders\n\nTrack the pieces you have already placed.\n\nSign in to see your orders\n\nYour bag, wishlist, and orders sync with your signed-in account.\n\nCONTINUE WITH SMS\nContact\nTerms\nPrivacy\nShipping & Returns\n\n© 2026 eshwe Saree Studio\n\nHome\nCategories\nWishlist\nAccount",
+    "events": [
+      {
+        "url": "http://127.0.0.1:3000/app/account/",
+        "status": 200
+      },
+      {
+        "url": "http://127.0.0.1:3000/app/orders/",
+        "status": 200
+      },
+      "[2026-09-12T15:17:50.638Z]  @firebase/firestore: Firestore (12.17.0): Could not reach Cloud Firestore backend. Connection failed 1 times. Most recent error: FirebaseError: [code=unavailable]: The operation could not be completed\nThis typically indicates that your device does not have a healthy Internet connection at the moment. The client will operate in offline mode until it is able to successfully connect to the backend.",
+      {
+        "url": "http://127.0.0.1:3000/app/orders/",
+        "status": 200
+      }
+    ]
+  },
+  {
+    "attempt": 2,
+    "automaticRecovery": true,
+    "manualRecovery": null,
+    "body": "eshwe app\n\nOrders\n\nTrack the pieces you have already placed.\n\nSign in to see your orders\n\nYour bag, wishlist, and orders sync with your signed-in account.\n\nCONTINUE WITH SMS\nContact\nTerms\nPrivacy\nShipping & Returns\n\n© 2026 eshwe Saree Studio\n\nHome\nCategories\nWishlist\nAccount",
+    "events": [
+      {
+        "url": "http://127.0.0.1:3000/app/account/",
+        "status": 200
+      },
+      {
+        "url": "http://127.0.0.1:3000/app/orders/",
+        "status": 200
+      },
+      "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+      "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+      "Failed to load resource: net::ERR_FAILED",
+      "Failed to load resource: net::ERR_FAILED",
+      {
+        "url": "http://127.0.0.1:3000/app/orders/",
+        "status": 200
+      }
+    ]
+  },
+  {
+    "attempt": 3,
+    "automaticRecovery": true,
+    "manualRecovery": null,
+    "body": "eshwe app\n\nOrders\n\nTrack the pieces you have already placed.\n\nSign in to see your orders\n\nYour bag, wishlist, and orders sync with your signed-in account.\n\nCONTINUE WITH SMS\nContact\nTerms\nPrivacy\nShipping & Returns\n\n© 2026 eshwe Saree Studio\n\nHome\nCategories\nWishlist\nAccount",
+    "events": [
+      {
+        "url": "http://127.0.0.1:3000/app/account/",
+        "status": 200
+      },
+      "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+      "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+      "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+      {
+        "url": "http://127.0.0.1:3000/app/orders/",
+        "status": 200
+      },
+      "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+      "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+      "Failed to load resource: net::ERR_FAILED",
+      {
+        "url": "http://127.0.0.1:3000/app/orders/",
+        "status": 200
+      }
+    ]
+  }
+]

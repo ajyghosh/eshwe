@@ -48,7 +48,7 @@ function orderFixture(documents) {
     }
   };
   return {
-    api: loadSource('src/lib/orders.ts', { 'firebase/firestore': firestore, '@/lib/firebase': { db: {} } }),
+    api: loadSource('src/lib/orders.ts', { 'firebase/firestore': firestore, '@/lib/firebase': { db: {} }, '@/lib/api': {postJson:()=>{throw Error('Unexpected API request')}} }),
     fail: error => fail(error),
     disposed: () => disposed
   };

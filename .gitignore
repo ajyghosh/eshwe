@@ -11,3 +11,6 @@ pnpm-debug.log*
 .DS_Store
 firebase-debug.log
 tsconfig.tsbuildinfo
+
+# Generated public catalogue used only for static builds
+.catalogue-build/

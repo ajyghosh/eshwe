@@ -118,7 +118,9 @@ export function resolveShopLocation(
     }
 
     if (segments[1] === "category" && segments[2]) {
-      return { browse: "curated" as const, filter: decodeURIComponent(segments.slice(2).join("/")) };
+      const searchIndex = segments.indexOf("search", 3);
+      const filterSegments = segments.slice(2, searchIndex === -1 ? undefined : searchIndex);
+      return { browse: "curated" as const, filter: decodeURIComponent(filterSegments.join("/")) };
     }
   }
 

@@ -1,0 +1,5 @@
+PASS Live stock update preserves an unfinished web search
+PASS Live stock update preserves an applied web availability filter
+FAIL Guest cart quantity changes sync between web and PWA and remove cleanly The expression evaluated to a falsy value:
+
+  assert.ok(p.url().includes('/payment'))

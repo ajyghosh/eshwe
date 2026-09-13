@@ -1,0 +1,14 @@
+[
+  {
+    "name": "Live stock update preserves an unfinished web search",
+    "status": "passed"
+  },
+  {
+    "name": "Live stock update preserves an applied web availability filter",
+    "status": "passed"
+  },
+  {
+    "name": "Guest cart quantity changes sync between web and PWA and remove cleanly",
+    "status": "passed"
+  }
+]

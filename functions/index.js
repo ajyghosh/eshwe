@@ -5,6 +5,9 @@ const crypto = require("node:crypto");
 const admin = require("firebase-admin");
 const { onRequest } = require("firebase-functions/v2/https");
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
+const { createCommerce, CommerceError, normalizeItems } = require("./commerce");
+const { createProductService } = require("./products");
 const logger = require("firebase-functions/logger");
 const { defineSecret } = require("firebase-functions/params");
 const nodemailer = require("nodemailer");
@@ -22,10 +25,7 @@ if (!admin.apps.length) {
 const db = admin.firestore();
 const REGION = "asia-south1";
 const CURRENCY = "INR";
-const MAX_ITEM_QUANTITY = 10;
-const DEFAULT_AVAILABLE_STOCK = MAX_ITEM_QUANTITY;
 const ORDER_COLLECTION = "checkoutOrders";
-const PRODUCT_COLLECTION = "sarees";
 const CUSTOMER_OTP_REQUEST_COLLECTION = "customerOtpRequests";
 const CUSTOMER_OTP_CODE_COLLECTION = "customerOtpCodes";
 const APP_CHECK_ENFORCEMENT = (process.env.APP_CHECK_ENFORCEMENT || "off").trim().toLowerCase();
@@ -166,6 +166,9 @@ exports.verifyCustomerOtp = onRequest(
       const payload = parseBody(request.body);
       const phone = normalizeCustomerOtpPhone(payload.phone);
       const otp = normalizeOtp(payload.otp);
+      await incrementOtpAllowance(`verify-ip:${hashValue(getRequestIpAddress(request) || "unknown")}`, {
+        cooldownSeconds: 0, hourlyLimit: 120, messagePrefix: "This device"
+      });
       await verifyStoredCustomerCode(phone.msisdn, otp);
       const uid = await ensureCustomerAuthUser(phone.e164);
       const customToken = await admin.auth().createCustomToken(uid, {
@@ -207,52 +210,13 @@ exports.createRazorpayOrder = onRequest(
       const customer = normalizeCustomer(payload.customer);
       const sourcePath = normalizeSourcePath(payload.sourcePath);
       const orderNotes = normalizeOptionalText(payload.notes, 500);
-      const pricedOrder = await priceCart(requestedItems);
-      const orderRef = db.collection(ORDER_COLLECTION).doc();
-      const receipt = buildReceipt(orderRef.id);
-      const razorpay = createRazorpayClient();
-
-      const razorpayOrder = await razorpay.orders.create({
-        amount: pricedOrder.totalPaise,
-        currency: CURRENCY,
-        receipt,
-        notes: {
-          internalOrderId: orderRef.id,
-          customerName: truncateValue(customer.fullName, 60),
-          customerPhone: truncateValue(customer.phone, 20)
-        }
-      });
-
-      await orderRef.set({
-        amountPaise: pricedOrder.totalPaise,
-        amountBreakdown: pricedOrder.summary,
-        inventoryCommitted: false,
-        cartItems: pricedOrder.items,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        currency: CURRENCY,
-        customer,
-        notes: orderNotes,
-        paymentStatus: "pending",
-        razorpayOrderId: razorpayOrder.id,
-        receipt,
-        sourcePath,
-        status: "created",
-        userId: verifiedUser?.uid || null,
-        appCheckAppId: verifiedAppCheck?.appId || null,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
-      });
-
-      response.status(200).json({
-        amount: razorpayOrder.amount,
-        currency: razorpayOrder.currency,
-        internalOrderId: orderRef.id,
-        keyId: razorpayKeyIdSecret.value(),
-        lineItems: pricedOrder.items,
-        razorpayOrderId: razorpayOrder.id
-      });
+      if (!verifiedUser) throw new HttpError(401, "Sign in before paying.");
+      const commerce = getCommerce();
+      const order = await commerce.reserve({ userId: verifiedUser.uid, checkoutKey: payload.checkoutKey, items: requestedItems, customer, notes: orderNotes, sourcePath });
+      response.status(200).json(checkoutResponse(order));
     } catch (error) {
       logger.error("createRazorpayOrder failed", error);
-      response.status(getErrorStatus(error, 400)).json({ error: getErrorMessage(error, "Unable to create payment order.") });
+      response.status(getErrorStatus(error, 400)).json({ error: getErrorMessage(error, "Unable to create payment order."), internalOrderId: error.orderId || null });
     }
   }
 );
@@ -276,6 +240,10 @@ exports.verifyRazorpayPayment = onRequest(
       await verifyAppCheck(request);
       const payload = parseBody(request.body);
       const internalOrderId = requireString(payload.internalOrderId, "Order reference is missing.");
+      const user = await verifyOptionalAuthUser(request);
+      if (!user) throw new HttpError(401, "Sign in to verify this order.");
+      const ownedOrder = await db.collection(ORDER_COLLECTION).doc(internalOrderId).get();
+      if (!ownedOrder.exists || ownedOrder.data().userId !== user.uid) throw new HttpError(404, "Order not found.");
       const razorpayOrderId = requireString(payload.razorpay_order_id, "Razorpay order id is missing.");
       const razorpayPaymentId = requireString(payload.razorpay_payment_id, "Razorpay payment id is missing.");
       const razorpaySignature = requireString(payload.razorpay_signature, "Razorpay signature is missing.");
@@ -288,6 +256,8 @@ exports.verifyRazorpayPayment = onRequest(
 
       response.status(200).json({
         paymentStatus: verificationResult.paymentStatus,
+        order: verificationResult.orderData,
+        confirmation: buildOrderConfirmationPayload(internalOrderId, verificationResult.orderData, razorpayOrderId, razorpayPaymentId, verificationResult.paymentStatus),
         success: true
       });
     } catch (error) {
@@ -351,7 +321,7 @@ exports.razorpayAppCallback = onRequest(
 exports.razorpayWebhook = onRequest(
   {
     region: REGION,
-    secrets: [razorpayWebhookSecret]
+    secrets: [razorpayWebhookSecret, razorpayKeyIdSecret, razorpayKeySecretSecret]
   },
   async (request, response) => {
     if (handleCors(request, response, ["POST"])) {
@@ -399,6 +369,88 @@ function createRazorpayClient() {
     key_secret: razorpayKeySecretSecret.value()
   });
 }
+
+function getCommerce() {
+  const razorpay = createRazorpayClient();
+  return createCommerce({ db, timestamp: () => admin.firestore.FieldValue.serverTimestamp(), gateway: {
+    createOrder: payload => razorpay.orders.create(payload),
+    fetchPayments: id => razorpay.orders.fetchPayments(id),
+    fetchRefund: id => razorpay.refunds.fetch(id),
+    refund: async (id, body, key) => {
+      const response = await fetch(`https://api.razorpay.com/v1/payments/${encodeURIComponent(id)}/refund`, {
+        method: "POST", headers: { "Content-Type": "application/json", "X-Refund-Idempotency": key, Authorization: `Basic ${Buffer.from(`${razorpayKeyIdSecret.value()}:${razorpayKeySecretSecret.value()}`).toString("base64")}` },
+        body: JSON.stringify(body), signal: AbortSignal.timeout(20000)
+      });
+      if (!response.ok) throw new Error("Refund could not be confirmed; queued for reconciliation.");
+      return response.json();
+    }
+  } });
+}
+
+function checkoutResponse(order) {
+  return { amount: order.amountPaise, currency: order.currency, internalOrderId: order.id, keyId: razorpayKeyIdSecret.value(), lineItems: order.cartItems, razorpayOrderId: order.razorpayOrderId || null, reservationExpiresAt: order.reservationExpiresAt, canPay: order.reservationState === "held" && order.reservationExpiresAt > Date.now() && order.gatewaySetup === "ready" && !order.paymentCaptured && order.paymentStatus !== "authorized", order };
+}
+
+async function requireOwner(request) {
+  const user = await verifyOptionalAuthUser(request);
+  if (!user?.email_verified || !user.email) throw new HttpError(403, "Owner access required.");
+  if (user.email !== "ajyghosh@gmail.com" && !(await db.collection("ownerAccounts").doc(user.email).get()).exists) throw new HttpError(403, "Owner access required.");
+  return user;
+}
+
+exports.checkoutStatus = onRequest({ region: REGION, secrets: [razorpayKeyIdSecret, razorpayKeySecretSecret] }, async (request, response) => {
+  if (handleCors(request, response, ["POST"])) return;
+  if (request.method !== "POST") return response.status(405).json({ error: "Method not allowed." });
+  try {
+    await verifyAppCheck(request);
+    const user = await verifyOptionalAuthUser(request);
+    if (!user) throw new HttpError(401, "Sign in to view your order.");
+    const payload = parseBody(request.body); const commerce = getCommerce();
+    const id = payload.internalOrderId || (await commerce.sessionRef(user.uid).get()).data()?.orderId;
+    if (!id) return response.json({ order: null });
+    const existing = await commerce.readOrder(id);
+    if (!existing || existing.userId !== user.uid) throw new HttpError(404, "Order not found.");
+    const order = await commerce.reconcile(id, payload.cancel === true);
+    response.json({ ...checkoutResponse(order), confirmation: buildOrderConfirmationPayload(id, order, order.razorpayOrderId || "", order.razorpayPaymentId || "", order.paymentStatus || "pending") });
+  } catch (error) { response.status(getErrorStatus(error, 503)).json({ error: getErrorMessage(error, "Unable to check payment. Please retry status checking before paying again.") }); }
+});
+
+exports.ownerOrderAction = onRequest({ region: REGION, secrets: [razorpayKeyIdSecret, razorpayKeySecretSecret] }, async (request, response) => {
+  if (handleCors(request, response, ["POST"])) return;
+  if (request.method !== "POST") return response.status(405).json({ error: "Method not allowed." });
+  try {
+    const owner = await requireOwner(request); const payload = parseBody(request.body);
+    const commerce = getCommerce();
+    const id = requireString(payload.orderId, "Order is required.");
+    const order = payload.action === "refund"
+      ? await commerce.requestAmountRefund(id, { amountPaise: payload.amountPaise, requestId: payload.requestId, expectedRefundedAmountPaise: payload.expectedRefundedAmountPaise }, owner.uid)
+      : payload.action === "reconcile" ? await commerce.reconcile(id) : await commerce.fulfilment(id, payload.action, owner.uid);
+    response.json({ order });
+  } catch (error) { response.status(getErrorStatus(error, 400)).json({ error: getErrorMessage(error, "Order action failed.") }); }
+});
+
+exports.ownerProductAction = onRequest({ region: REGION }, async (request, response) => {
+  if (handleCors(request, response, ["POST"])) return;
+  if (request.method !== "POST") return response.status(405).json({ error: "Method not allowed." });
+  try {
+    const owner = await requireOwner(request);
+    const result = await createProductService({ db, timestamp: () => admin.firestore.FieldValue.serverTimestamp() }).save(parseBody(request.body), owner.uid);
+    response.json(result);
+  } catch (error) { response.status(getErrorStatus(error, 400)).json({ error: getErrorMessage(error, "Product save failed.") }); }
+});
+
+exports.reconcileCheckoutOrders = onSchedule({ schedule: "every 5 minutes", region: REGION, secrets: [razorpayKeyIdSecret, razorpayKeySecretSecret] }, async () => {
+  const commerce = getCommerce();
+  const [expired, exceptions] = await Promise.all([
+    db.collection(ORDER_COLLECTION).where("reservationState", "==", "held").where("reservationExpiresAt", "<=", Date.now()).limit(100).get(),
+    db.collection(ORDER_COLLECTION).where("attentionRequired", "==", true).limit(100).get()
+  ]);
+  const ids = new Set([...expired.docs, ...exceptions.docs].map(doc => doc.id));
+  for (const id of ids) {
+    try { await commerce.reconcile(id); }
+    catch (error) { logger.error("Order reconciliation needs retry", { orderId: id, message: getErrorMessage(error, "Reconciliation failed") }); }
+  }
+});
 
 class HttpError extends Error {
   constructor(status, message) {
@@ -534,26 +586,7 @@ function buildReceipt(orderId) {
   return `eshwe-${orderId.slice(0, 20)}`;
 }
 
-function normalizeRequestedItems(value) {
-  if (!Array.isArray(value) || value.length === 0) {
-    throw new Error("Your cart is empty.");
-  }
-
-  return value.map((item) => {
-    if (!item || typeof item !== "object") {
-      throw new Error("Cart item payload is invalid.");
-    }
-
-    const sku = requireString(item.sku, "Product sku is missing.");
-    const quantity = Number(item.quantity);
-
-    if (!Number.isInteger(quantity) || quantity < 1 || quantity > MAX_ITEM_QUANTITY) {
-      throw new Error(`Quantity for ${sku} is invalid.`);
-    }
-
-    return { quantity, sku };
-  });
-}
+function normalizeRequestedItems(value) { return normalizeItems(value); }
 
 function normalizeCustomer(value) {
   if (!value || typeof value !== "object") {
@@ -611,114 +644,6 @@ function requirePhone(value) {
   }
 
   return digits;
-}
-
-async function priceCart(requestedItems) {
-  const items = [];
-  let subtotal = 0;
-  let savings = 0;
-
-  for (const requestedItem of requestedItems) {
-    const productSnapshot = await db
-      .collection(PRODUCT_COLLECTION)
-      .where("sku", "==", requestedItem.sku)
-      .limit(1)
-      .get();
-
-    if (productSnapshot.empty) {
-      throw new Error(`Product ${requestedItem.sku} could not be found.`);
-    }
-
-    const productDoc = productSnapshot.docs[0];
-    const product = productDoc.data();
-
-    if (product.status !== "active") {
-      throw new Error(`${product.name || requestedItem.sku} is not available right now.`);
-    }
-
-    const availableStock = normalizeAvailableStock(product.availableStock);
-
-    if (availableStock <= 0) {
-      throw new Error(`${product.name || requestedItem.sku} is not available right now.`);
-    }
-
-    if (requestedItem.quantity > availableStock) {
-      throw new Error(`${product.name || requestedItem.sku} is no longer available in the requested quantity.`);
-    }
-
-    const unitPrice = sanitizeCurrencyAmount(product.price, `Price for ${requestedItem.sku} is invalid.`);
-    const unitOriginalPrice =
-      typeof product.originalPrice === "number" ? sanitizeCurrencyAmount(product.originalPrice) : null;
-    const lineSubtotal = unitPrice * requestedItem.quantity;
-
-    subtotal += lineSubtotal;
-    savings += Math.max((unitOriginalPrice || unitPrice) - unitPrice, 0) * requestedItem.quantity;
-    items.push({
-      color: product.color || "",
-      name: product.name || requestedItem.sku,
-      primaryImageUrl: product.primaryImageUrl || "",
-      availableStock,
-      productId: productDoc.id,
-      quantity: requestedItem.quantity,
-      sku: requestedItem.sku,
-      slug: product.slug || "",
-      status: product.status,
-      unitOriginalPrice,
-      unitPrice
-    });
-  }
-
-  const shippingFee = 0;
-  const packagingFee = 0;
-  const total = subtotal + shippingFee + packagingFee;
-
-  if (total <= 0) {
-    throw new Error("Cart total is invalid.");
-  }
-
-  return {
-    items,
-    summary: {
-      packagingFee,
-      savings,
-      shippingFee,
-      subtotal,
-      total
-    },
-    totalPaise: Math.round(total * 100)
-  };
-}
-
-function normalizeAvailableStock(value) {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    return DEFAULT_AVAILABLE_STOCK;
-  }
-
-  return Math.max(0, Math.floor(value));
-}
-
-function sanitizeCurrencyAmount(value, errorMessage = "Amount is invalid.") {
-  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
-    throw new Error(errorMessage);
-  }
-
-  return Number(value.toFixed(2));
-}
-
-function normalizePaymentStatus(value) {
-  if (value === "captured") {
-    return "captured";
-  }
-
-  if (value === "authorized") {
-    return "authorized";
-  }
-
-  if (value === "failed") {
-    return "failed";
-  }
-
-  return "pending";
 }
 
 function sanitizePaymentEntity(payment) {
@@ -780,62 +705,16 @@ async function verifyPaymentForOrder({
     .digest("hex");
 
   if (!safeEqual(generatedSignature, razorpaySignature)) {
-    await orderRef.update({
-      paymentFailureReason: "signature_mismatch",
-      paymentStatus: "failed",
-      status: "verification_failed",
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      verificationAttemptedAt: admin.firestore.FieldValue.serverTimestamp()
-    });
-    throw new Error("Payment signature verification failed.");
+    throw new HttpError(400, "Payment signature verification failed.");
   }
-
-  const razorpay = createRazorpayClient();
-  const payment = await razorpay.payments.fetch(razorpayPaymentId);
-
-  if (!payment || payment.order_id !== razorpayOrderId) {
-    throw new Error("Payment could not be matched to the order.");
+  const payment = await createRazorpayClient().payments.fetch(razorpayPaymentId);
+  const commerce = getCommerce();
+  let order = await commerce.recordPayment(internalOrderId, payment);
+  if (order.refundStatus === "requested") {
+    try { order = await commerce.refund(internalOrderId); }
+    catch (error) { logger.error("Refund queued for retry", { internalOrderId }); }
   }
-
-  if (Number(payment.amount) !== Number(orderData.amountPaise)) {
-    throw new Error("Payment amount mismatch.");
-  }
-
-  const normalizedPaymentStatus = normalizePaymentStatus(payment.status);
-  const paymentEntity = sanitizePaymentEntity(payment);
-
-  if (normalizedPaymentStatus === "captured") {
-    await commitPaidOrderInventory(orderRef, {
-      paymentCaptured: Boolean(payment.captured),
-      paymentEntity,
-      paymentMethod: payment.method || null,
-      paymentStatus: normalizedPaymentStatus,
-      razorpayPaymentId,
-      razorpaySignature,
-      status: "paid",
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      verifiedAt: admin.firestore.FieldValue.serverTimestamp()
-    });
-  } else {
-    await orderRef.update({
-      paymentCaptured: Boolean(payment.captured),
-      paymentEntity,
-      paymentMethod: payment.method || null,
-      paymentStatus: normalizedPaymentStatus,
-      razorpayPaymentId,
-      razorpaySignature,
-      status: normalizedPaymentStatus === "captured" ? "paid" : "authorized",
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      verifiedAt: admin.firestore.FieldValue.serverTimestamp()
-    });
-  }
-
-  const verifiedOrderSnapshot = await orderRef.get();
-
-  return {
-    orderData: verifiedOrderSnapshot.data() || orderData,
-    paymentStatus: normalizedPaymentStatus
-  };
+  return { orderData: order, paymentStatus: order.paymentStatus };
 }
 
 function buildOrderConfirmationPayload(internalOrderId, orderData, razorpayOrderId, razorpayPaymentId, paymentStatus) {
@@ -844,7 +723,10 @@ function buildOrderConfirmationPayload(internalOrderId, orderData, razorpayOrder
   const cartItems = Array.isArray(orderData.cartItems) ? orderData.cartItems : [];
 
   return {
-    createdAtIso: new Date().toISOString(),
+    createdAtIso: orderData.createdAt?.toDate?.().toISOString() || new Date().toISOString(),
+    userId: orderData.userId,
+    refundStatus: orderData.refundStatus || null,
+    attentionRequired: Boolean(orderData.attentionRequired),
     customer: {
       address: customer.address || "",
       city: customer.city || "",
@@ -879,235 +761,32 @@ function buildOrderConfirmationPayload(internalOrderId, orderData, razorpayOrder
   };
 }
 
-function renderAppCallbackSuccessHtml({ callbackSource, confirmation }) {
-  const serializedConfirmation = JSON.stringify(confirmation).replace(/</g, "\\u003c");
-  const sourceLabel = escapeHtml(callbackSource || "app-checkout");
-
-  return `<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>eshwe Payment Complete</title>
-    <style>
-      *{box-sizing:border-box}
-      body{margin:0;min-height:100vh;display:grid;place-items:center;background:#fbf4e8;color:#2b2a29;font:16px/1.6 "Avenir Next","Segoe UI",sans-serif}
-      .card{width:min(430px,calc(100vw - 28px));padding:30px 22px;border:1px solid #ddd0bc;border-radius:30px;background:linear-gradient(180deg,rgba(255,250,242,0.98) 0%,rgba(247,237,224,0.96) 100%);box-shadow:0 30px 100px rgba(94,104,79,0.18);text-align:center}
-      .logo-wrap{display:flex;align-items:center;justify-content:center}
-      .logo{display:flex;height:82px;width:82px;align-items:center;justify-content:center;border-radius:24px;border:1px solid #dcc9ad;background:linear-gradient(135deg,#fff3df 0%,#efd8ab 100%);box-shadow:0 18px 40px rgba(176,111,61,0.16)}
-      .logo img{height:62px;width:62px;object-fit:contain}
-      .pill{display:inline-flex;padding:8px 14px;border-radius:999px;background:#eef4e7;color:#5e684f;font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase}
-      h1{margin:18px 0 0;font:400 34px/1.08 Georgia,serif}
-      p{margin:14px 0 0;color:#667056}
-      .printer{margin:28px auto 0;max-width:288px}
-      .printer-shell{position:relative;border:1px solid #d7ccb9;border-radius:28px;background:#667056;padding:20px 20px 24px;box-shadow:0 22px 45px rgba(94,104,79,0.2)}
-      .printer-slot{margin:0 auto;height:8px;width:112px;border-radius:999px;background:rgba(255,250,242,.26)}
-      .printer-shadow{position:absolute;left:50%;top:54px;height:12px;width:172px;transform:translateX(-50%);border-radius:999px;background:rgba(35,42,28,.18);filter:blur(10px)}
-      .receipt{position:absolute;left:50%;top:54px;width:78%;transform:translateX(-50%);overflow:hidden;border:1px solid #eadfce;border-radius:14px 14px 22px 22px;background:#fffaf2;box-shadow:0 18px 34px rgba(47,40,32,0.16);animation:receipt-slide 1700ms cubic-bezier(.22,1,.36,1) infinite alternate}
-      .receipt-shine{height:8px;width:100%;background:linear-gradient(90deg,rgba(255,255,255,0) 0%,rgba(255,255,255,.72) 50%,rgba(255,255,255,0) 100%);animation:receipt-shine 1700ms ease-in-out infinite}
-      .receipt-body{padding:16px 18px 20px}
-      .receipt-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
-      .line{display:block;height:10px;border-radius:999px;background:#e6dbc9}
-      .line.soft{background:#efe6d9}
-      .divider{margin:14px 0;height:1px;background:#ece1d3}
-      .printer-pills{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding-top:138px}
-      .status-pill{border:1px solid rgba(255,250,242,.14);border-radius:16px;background:rgba(255,250,242,.1);padding:10px 8px}
-      .status-pill strong{display:block;font-size:11px;letter-spacing:.14em;color:rgba(255,250,242,.72);text-transform:uppercase}
-      .status-pill span{display:block;margin-top:4px;font-size:13px;color:#fffaf2}
-      .dots{margin-top:18px;display:flex;justify-content:center;gap:8px}
-      .dot{width:10px;height:10px;border-radius:999px;background:#5e684f;animation:pulse 1100ms ease-in-out infinite}
-      .dot:nth-child(2){animation-delay:180ms}.dot:nth-child(3){animation-delay:360ms}
-      @keyframes pulse{0%,80%,100%{transform:scale(.72);opacity:.45}40%{transform:scale(1);opacity:1}}
-      @keyframes receipt-slide{0%{transform:translateX(-50%) translateY(-2px)}100%{transform:translateX(-50%) translateY(20px)}}
-      @keyframes receipt-shine{0%,100%{transform:translateX(-30%)}50%{transform:translateX(30%)}}
-    </style>
-  </head>
-  <body>
-    <div class="card">
-      <div class="logo-wrap"><div class="logo"><img src="/eshwelogo-transparent.png" alt="eshwe" /></div></div>
-      <span class="pill">Paid</span>
-      <h1>Printing your receipt.</h1>
-      <p>Your payment is confirmed. We are preparing the confirmation view and taking you back to the eshwe app.</p>
-      <p style="font-size:13px;">Source: ${sourceLabel}</p>
-      <div class="printer">
-        <div class="printer-shell">
-          <div class="printer-slot"></div>
-          <div class="printer-shadow"></div>
-          <div class="receipt">
-            <div class="receipt-shine"></div>
-            <div class="receipt-body">
-              <div class="receipt-row">
-                <span class="line" style="width:84px"></span>
-                <span class="line soft" style="width:54px"></span>
-              </div>
-              <div class="divider"></div>
-              <span class="line" style="width:100%"></span>
-              <span class="line" style="margin-top:8px;width:82%"></span>
-              <span class="line soft" style="margin-top:8px;width:65%"></span>
-            </div>
-          </div>
-          <div class="printer-pills">
-            <div class="status-pill"><strong>Payment</strong><span>Paid</span></div>
-            <div class="status-pill"><strong>Receipt</strong><span>Printing</span></div>
-            <div class="status-pill"><strong>Next</strong><span>Preview</span></div>
-          </div>
-        </div>
-      </div>
-      <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
-    </div>
-    <script>
-      try {
-        window.sessionStorage.setItem("eshwe.latestOrderConfirmation", JSON.stringify(${serializedConfirmation}));
-        window.sessionStorage.setItem("eshwe.clearCartAfterPayment", "1");
-        window.sessionStorage.removeItem("eshwe.mobilePaymentPending");
-      } catch (error) {}
-      window.setTimeout(function () {
-        window.location.replace("/app/order-confirmation/");
-      }, 1600);
-    </script>
-  </body>
-</html>`;
+function renderAppCallbackSuccessHtml({ confirmation }) {
+  const destination = `/app/order-confirmation/?order=${encodeURIComponent(confirmation.internalOrderId)}`;
+  return `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Payment status</title></head><body><p>Checking your order. Sign in with the same account to view its payment status.</p><a href="${destination}">View order</a><script>location.replace(${JSON.stringify(destination)});</script></body></html>`;
 }
-
 function renderAppCallbackFailureHtml({ message }) {
-  const safeMessage = escapeHtml(message || "Payment could not be completed.");
-  const destination = `/app/checkout/?payment=failed&reason=${encodeURIComponent(message || "Payment could not be completed.")}`;
-
-  return `<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>eshwe Payment Incomplete</title>
-    <style>
-      body{margin:0;min-height:100vh;display:grid;place-items:center;background:#fbf4e8;color:#2b2a29;font:16px/1.6 "Avenir Next","Segoe UI",sans-serif}
-      .card{width:min(420px,calc(100vw - 32px));padding:28px 24px;border:1px solid #e6d0c9;border-radius:28px;background:#fff8f4;box-shadow:0 30px 100px rgba(94,104,79,0.12);text-align:center}
-      h1{margin:0;font:400 32px/1.08 Georgia,serif}
-      p{margin:14px 0 0;color:#8b5a52}
-      a{display:inline-flex;margin-top:22px;padding:12px 18px;border-radius:16px;background:#5e684f;color:#fbf4e8;text-decoration:none;font-size:12px;font-weight:700;letter-spacing:.14em}
-    </style>
-  </head>
-  <body>
-    <div class="card">
-      <h1>Payment incomplete.</h1>
-      <p>${safeMessage}</p>
-      <a href="${destination}">RETURN TO CHECKOUT</a>
-    </div>
-    <script>
-      try { window.sessionStorage.removeItem("eshwe.mobilePaymentPending"); } catch (error) {}
-      window.location.replace("${destination}");
-    </script>
-  </body>
-</html>`;
+  return `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Check payment status</title></head><body><p>${escapeHtml(message)}</p><p>If you paid, check your order before attempting another payment.</p><a href="/app/orders/">View orders</a></body></html>`;
 }
 
 async function handleWebhookEvent(payload) {
-  const eventName = typeof payload.event === "string" ? payload.event : "unknown";
-  const paymentEntity = payload?.payload?.payment?.entity || null;
-  const orderEntity = payload?.payload?.order?.entity || null;
-  const internalOrderId =
-    orderEntity?.notes?.internalOrderId || paymentEntity?.notes?.internalOrderId || null;
-  const razorpayOrderId = orderEntity?.id || paymentEntity?.order_id || null;
-
-  const orderRef = await findOrderReference(internalOrderId, razorpayOrderId);
-
-  if (!orderRef) {
-    logger.warn("Webhook order not found", { eventName, internalOrderId, razorpayOrderId });
+  const eventName = payload.event || "unknown";
+  const payment = payload?.payload?.payment?.entity;
+  const externalOrder = payload?.payload?.order?.entity;
+  const refundEntity = payload?.payload?.refund?.entity;
+  const commerce = getCommerce();
+  if (refundEntity) {
+    const matches = await db.collection(ORDER_COLLECTION).where("razorpayPaymentId", "==", refundEntity.payment_id).limit(1).get();
+    if (matches.empty) throw new Error("Refund order association is not ready; retry webhook.");
+    await commerce.recordRefund(matches.docs[0].id, refundEntity);
     return;
   }
-
-  const updates = {
-    lastWebhookEvent: eventName,
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    webhookPayment: paymentEntity ? sanitizePaymentEntity(paymentEntity) : null,
-    webhookReceivedAt: admin.firestore.FieldValue.serverTimestamp()
-  };
-
-  if (eventName === "payment.captured" || eventName === "order.paid") {
-    await commitPaidOrderInventory(orderRef, {
-      ...updates,
-      paymentCaptured: true,
-      paymentMethod: paymentEntity?.method || null,
-      paymentStatus: "captured",
-      status: "paid"
-    });
-    return;
-  } else if (eventName === "payment.authorized") {
-    updates.paymentStatus = "authorized";
-    updates.status = "authorized";
-  } else if (eventName === "payment.failed") {
-    updates.paymentStatus = "failed";
-    updates.status = "payment_failed";
-  }
-
-  if (paymentEntity?.id) {
-    updates.razorpayPaymentId = paymentEntity.id;
-  }
-
-  await orderRef.update(updates);
-}
-
-async function commitPaidOrderInventory(orderRef, orderUpdates) {
-  await db.runTransaction(async (transaction) => {
-    const orderSnapshot = await transaction.get(orderRef);
-
-    if (!orderSnapshot.exists) {
-      throw new Error("Order could not be found.");
-    }
-
-    const orderData = orderSnapshot.data() || {};
-    const cartItems = Array.isArray(orderData.cartItems) ? orderData.cartItems : [];
-    const inventoryAlreadyCommitted = orderData.inventoryCommitted === true;
-
-    if (!inventoryAlreadyCommitted) {
-      for (const item of cartItems) {
-        const productRef = await getProductReferenceForOrderItem(transaction, item);
-        const productSnapshot = await transaction.get(productRef);
-
-        if (!productSnapshot.exists) {
-          throw new Error(`${item.name || item.sku || "A product"} is no longer available.`);
-        }
-
-        const product = productSnapshot.data() || {};
-        const availableStock = normalizeAvailableStock(product.availableStock);
-
-        if (product.status !== "active" || availableStock < item.quantity) {
-          throw new Error(`${product.name || item.name || item.sku || "A product"} is no longer available.`);
-        }
-
-        const nextAvailableStock = availableStock - item.quantity;
-        transaction.update(productRef, {
-          availableStock: nextAvailableStock,
-          status: nextAvailableStock > 0 ? "active" : "out_of_stock",
-          updatedAt: admin.firestore.FieldValue.serverTimestamp()
-        });
-      }
-    }
-
-    transaction.update(orderRef, inventoryAlreadyCommitted
-      ? orderUpdates
-      : {
-          ...orderUpdates,
-          inventoryCommitted: true,
-          inventoryCommittedAt: admin.firestore.FieldValue.serverTimestamp()
-        });
-  });
-}
-
-async function getProductReferenceForOrderItem(transaction, item) {
-  if (item?.productId) {
-    return db.collection(PRODUCT_COLLECTION).doc(String(item.productId));
-  }
-
-  const snapshot = await transaction.get(
-    db.collection(PRODUCT_COLLECTION).where("sku", "==", String(item?.sku || "")).limit(1)
-  );
-
-  if (snapshot.empty) {
-    throw new Error(`${item?.name || item?.sku || "A product"} is no longer available.`);
-  }
-
-  return snapshot.docs[0].ref;
+  if (!["payment.captured", "payment.authorized", "payment.failed", "order.paid"].includes(eventName)) return;
+  const ref = await findOrderReference(externalOrder?.notes?.internalOrderId || payment?.notes?.internalOrderId, externalOrder?.id || payment?.order_id);
+  if (!ref) throw new Error("Payment order association is not ready; retry webhook.");
+  // Fetch current provider state; signed old events never downgrade a capture.
+  if (payment?.id) await commerce.recordPayment(ref.id, await createRazorpayClient().payments.fetch(payment.id));
+  await commerce.reconcile(ref.id);
 }
 
 async function findOrderReference(internalOrderId, razorpayOrderId) {
@@ -1253,43 +932,26 @@ async function sendVerificationSmsViaMsg91(msisdn, code) {
 
 async function verifyStoredCustomerCode(msisdn, otp) {
   const codeRef = db.collection(CUSTOMER_OTP_CODE_COLLECTION).doc(hashValue(msisdn));
-  const now = Date.now();
-
-  await db.runTransaction(async (transaction) => {
+  const result = await db.runTransaction(async transaction => {
     const snapshot = await transaction.get(codeRef);
-
-    if (!snapshot.exists) {
-      throw new HttpError(400, "The verification code is invalid or has expired.");
-    }
-
-    const current = snapshot.data() || {};
-    const expiresAt = normalizePositiveInteger(current.expiresAt, 0);
-    const attemptCount = normalizePositiveInteger(current.attemptCount, 0);
-
-    if (expiresAt <= now) {
+    if (!snapshot.exists) return { status: 400, message: "The verification code is invalid or has expired." };
+    const current = snapshot.data();
+    if (current.expiresAt <= Date.now()) {
       transaction.delete(codeRef);
-      throw new HttpError(400, "The verification code is invalid or has expired.");
+      return { status: 400, message: "The verification code is invalid or has expired." };
     }
-
-    if (attemptCount >= OTP_MAX_VERIFY_ATTEMPTS) {
-      transaction.delete(codeRef);
-      throw new HttpError(429, "Too many incorrect attempts. Please request a new code.");
+    if ((current.attemptCount || 0) >= OTP_MAX_VERIFY_ATTEMPTS) {
+      return { status: 429, message: "Too many incorrect attempts. Please request a new code." };
     }
-
     if (!safeEqual(current.codeHash || "", hashVerificationCode(msisdn, otp))) {
-      transaction.set(
-        codeRef,
-        {
-          attemptCount: attemptCount + 1,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp()
-        },
-        { merge: true }
-      );
-      throw new HttpError(400, "The verification code is invalid or has expired.");
+      const count = (current.attemptCount || 0) + 1;
+      transaction.update(codeRef, { attemptCount: count, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+      return { status: count >= OTP_MAX_VERIFY_ATTEMPTS ? 429 : 400, message: count >= OTP_MAX_VERIFY_ATTEMPTS ? "Too many incorrect attempts. Please request a new code." : "The verification code is invalid or has expired." };
     }
-
     transaction.delete(codeRef);
+    return null;
   });
+  if (result) throw new HttpError(result.status, result.message);
 }
 
 async function ensureCustomerAuthUser(phoneNumber) {
@@ -1495,7 +1157,7 @@ function getErrorMessage(error, fallback) {
 }
 
 function getErrorStatus(error, fallback) {
-  if (error instanceof HttpError && Number.isInteger(error.status)) {
+  if ((error instanceof HttpError || error instanceof CommerceError) && Number.isInteger(error.status)) {
     return error.status;
   }
 

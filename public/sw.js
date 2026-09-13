@@ -1,102 +1,32 @@
-const CACHE_NAME = "eshwe-app-v4";
-
-const STATIC_ASSET_EXTENSIONS = new Set([
-  "avif",
-  "css",
-  "gif",
-  "ico",
-  "jpg",
-  "jpeg",
-  "js",
-  "json",
-  "png",
-  "svg",
-  "webmanifest",
-  "webp",
-  "woff",
-  "woff2"
-]);
-
-self.addEventListener("install", () => {
-  self.skipWaiting();
+const CACHE_NAME = "eshwe-app-v6";
+const OFFLINE_URL = "/offline.html";
+const STATIC_EXTENSIONS = /\.(?:avif|css|gif|ico|jpe?g|js|png|svg|webmanifest|webp|woff2?)$/i;
+self.addEventListener("install", event => {
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.add(OFFLINE_URL)).then(() => self.skipWaiting()));
 });
-
-self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches
-      .keys()
-      .then((keys) =>
-        Promise.all(
-          keys
-            .filter((key) => key.startsWith("eshwe-app-"))
-            .map((key) => caches.delete(key))
-        )
-      )
-      .then(() => self.clients.claim())
-  );
+self.addEventListener("activate", event => {
+  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith("eshwe-app-") && key !== CACHE_NAME).map(key => caches.delete(key)))).then(() => self.clients.claim()));
 });
-
-self.addEventListener("fetch", (event) => {
-  const request = event.request;
-  const requestUrl = new URL(request.url);
-
-  if (request.method !== "GET" || requestUrl.origin !== self.location.origin) {
+self.addEventListener("fetch", event => {
+  const request = event.request; const url = new URL(request.url);
+  if (request.method !== "GET" || url.origin !== self.location.origin || url.pathname.startsWith("/api/")) return;
+  if (request.mode === "navigate") {
+    // Never store authenticated pages or receipts; only the generic fallback.
+    // Bypass the browser HTTP cache too: a cached app shell can hang waiting for
+    // live data offline instead of reaching the reconnect document.
+    event.respondWith(fetch(request, { cache: "no-store" }).catch(async () => (await caches.match(OFFLINE_URL)) || new Response("You are offline. Reconnect and reload to check your order.", { status: 503, headers: { "Content-Type": "text/plain" } })));
     return;
   }
-
-  if (
-    request.mode === "navigate" ||
-    requestUrl.pathname.startsWith("/api/") ||
-    isNextFlightRequest(request, requestUrl) ||
-    !isCacheableStaticAsset(requestUrl)
-  ) {
-    return;
-  }
-
-  event.respondWith(
-    caches.match(request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-
-      return fetch(request).then((networkResponse) => {
-        if (!isCacheableResponse(networkResponse)) {
-          return networkResponse;
-        }
-
-        const responseClone = networkResponse.clone();
-
-        void caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
-
-        return networkResponse;
-      });
-    })
-  );
+  if (url.searchParams.has("_rsc") || url.pathname.endsWith(".txt") || request.headers.get("RSC") === "1" || request.headers.has("Next-Router-State-Tree") || !STATIC_EXTENSIONS.test(url.pathname)) return;
+  const network = async () => {
+    const response = await fetch(request);
+    if (response.ok && response.type === "basic" && !response.headers.get("content-type")?.includes("text/x-component")) {
+      const copy = response.clone();
+      event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.put(request,copy)));
+    }
+    return response;
+  };
+  // Only content-hashed build assets are immutable. Logos/icons revalidate.
+  const immutable = url.pathname.startsWith("/_next/static/");
+  event.respondWith(immutable ? caches.match(request).then(cached => cached || network()) : network().catch(async () => (await caches.match(request)) || Response.error()));
 });
-
-function isNextFlightRequest(request, requestUrl) {
-  return (
-    requestUrl.searchParams.has("_rsc") ||
-    requestUrl.pathname.endsWith(".txt") ||
-    request.headers.get("RSC") === "1" ||
-    request.headers.has("Next-Router-State-Tree") ||
-    request.headers.has("Next-Router-Prefetch") ||
-    request.headers.has("Next-Url")
-  );
-}
-
-function isCacheableStaticAsset(requestUrl) {
-  const extension = requestUrl.pathname.split(".").pop()?.toLowerCase();
-
-  return Boolean(extension && STATIC_ASSET_EXTENSIONS.has(extension));
-}
-
-function isCacheableResponse(response) {
-  return Boolean(response && response.status === 200 && response.type === "basic" && !isFlightResponse(response));
-}
-
-function isFlightResponse(response) {
-  const contentType = response.headers.get("content-type") ?? "";
-
-  return contentType.includes("text/x-component") || contentType.includes("text/plain");
-}

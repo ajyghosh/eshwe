@@ -25,6 +25,7 @@ type RazorpayEventResponse = {
 };
 
 type RazorpayCheckoutOptions = {
+  timeout?: number;
   amount: number;
   callback_url?: string;
   currency: string;

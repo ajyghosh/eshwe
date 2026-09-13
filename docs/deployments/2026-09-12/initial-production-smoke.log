@@ -1,0 +1,21 @@
+PASS Live shop HTML matches the verified release
+PASS Live route renders: /
+PASS Live route renders: /shop/
+PASS Live route renders: /checkout/
+PASS Live route renders: /payment/
+PASS Live route renders: /app/
+PASS Live route renders: /app/search/
+PASS Live route renders: /app/account/
+PASS Live route renders: /owner/
+PASS Web tracking link points to India Post
+FAIL Live category and search URL survives reload page.waitForFunction: Timeout 20000ms exceeded.
+PASS PWA Account tracking link and mobile layout
+PASS PWA worker matches the release and prevents stale worker caching
+FAIL PWA offline fallback renders and reconnect recovers The input did not match the regular expression /offline|reconnect/i. Input:
+
+''
+
+PASS New API rejects unauthenticated requests: /api/checkout/status
+PASS New API rejects unauthenticated requests: /api/owner/order
+PASS New API rejects unauthenticated requests: /api/owner/product
+PASS No uncaught browser runtime errors

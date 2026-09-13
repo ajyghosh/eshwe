@@ -1,0 +1,29 @@
+{
+  "deployed": true,
+  "regressionTestsPassed": 60,
+  "localBrowserChecksPassed": 20,
+  "liveChecksPassed": 6,
+  "lint": "passed",
+  "typecheck": "passed",
+  "productionBuild": "passed",
+  "heldWriteDelayMs": 5000,
+  "localUiFeedbackRangeMs": [
+    1,
+    20
+  ],
+  "liveUiFeedbackRangeMs": [
+    2,
+    12
+  ],
+  "liveBagNavigationMs": {
+    "web": 325,
+    "pwa": 273
+  },
+  "release": {
+    "name": "sites/eshwesareestudio/releases/1789269593651000",
+    "releaseTime": "2026-09-13T03:19:53.651Z",
+    "version": "sites/eshwesareestudio/versions/c75bfc791fed709a"
+  },
+  "productionAccountWrites": false,
+  "physicalDevicesTested": false
+}

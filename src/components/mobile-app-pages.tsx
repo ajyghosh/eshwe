@@ -1,7 +1,11 @@
 "use client";
 
 import Image from "next/image";
+import { paymentLabel, fulfilmentLabel } from "@/lib/order-status";
+import { OrderStatusPage } from "@/components/order-status-page";
+import { createCheckout, openCheckout } from "@/lib/checkout";
 import Link from "next/link";
+import { SavedAddressSelector } from "@/components/saved-address-selector";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
@@ -12,11 +16,13 @@ import { useCart } from "@/components/cart-provider";
 import { FavoriteToggleButton } from "@/components/favorite-toggle-button";
 import { useFavorites } from "@/components/favorites-provider";
 import { MobileAppShell } from "@/components/mobile-app-shell";
+import { attachPwaProductOrigin, preparePwaShoppingReturn } from "@/lib/pwa-shopping-navigation";
 import { NotifyWaitlistDialog } from "@/components/notify-waitlist-dialog";
 import { subscribeToCategoryCards, subscribeToHomePageContent } from "@/lib/homepage";
 import {
   compareProductsByAvailability,
   getPurchasableQuantityLimit,
+  getStockMessage,
   isCartItemUnavailable,
   isProductPurchasable
 } from "@/lib/inventory";
@@ -61,7 +67,7 @@ import {
   resolveAppProductSlug,
   resolveAppSearchState
 } from "@/lib/mobile-app-routes";
-import { getCustomerProfile, saveCustomerProfile } from "@/lib/customer-profiles";
+import { subscribeToCustomerProfile, saveCustomerAddress, getSelectedAddress } from "@/lib/customer-profiles";
 import { normalizeMobileHomeHeroSlides, type CategoryCard, type HomePageContent } from "@/types/homepage";
 import type { CartItem } from "@/types/cart";
 import type { CustomerAddress } from "@/types/customer-profile";
@@ -371,6 +377,8 @@ export function MobileAppSearchPage({ categoryFirst = false }: { categoryFirst?:
       sort: currentSearchParams.get("sort") ?? ""
     });
   }, [pathname, searchParams]);
+  const [productsLoading, setProductsLoading] = useState(true);
+  const [productsError, setProductsError] = useState<string | null>(null);
   const [products, setProducts] = useState<Saree[]>([]);
   const [categoryCards, setCategoryCards] = useState<CategoryCard[]>([]);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
@@ -415,8 +423,10 @@ export function MobileAppSearchPage({ categoryFirst = false }: { categoryFirst?:
     return subscribeToSarees(
       (nextProducts) => {
         setProducts(nextProducts.filter((product) => product.status !== "draft"));
+        setProductsLoading(false); setProductsError(null);
       },
-      { status: ["active", "out_of_stock"] }
+      { status: ["active", "out_of_stock"] },
+      error => { setProductsLoading(false); setProductsError(error.message); }
     );
   }, []);
 
@@ -600,6 +610,8 @@ export function MobileAppSearchPage({ categoryFirst = false }: { categoryFirst?:
       sort: activeSort
     });
   }
+
+  if (productsLoading || productsError) return <MobileAppShell><div className="p-6" role="status">{productsLoading ? "Loading the collection…" : "Could not load the collection. Check your connection."}{productsError ? <button className="ml-3 underline" onClick={() => location.reload()}>Retry</button> : null}</div></MobileAppShell>;
 
   return (
     <MobileAppShell activeTab="categories">
@@ -928,6 +940,7 @@ export function MobileAppOrdersPage() {
   const router = useRouter();
   const { user, loading, signIn } = useAuthSession();
   const { addItem } = useCart();
+  const [orderLimit, setOrderLimit] = useState(50);
   const [orders, setOrders] = useState<CheckoutOrder[]>([]);
   const [products, setProducts] = useState<Saree[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -951,9 +964,10 @@ export function MobileAppOrdersPage() {
       (nextError) => {
         setOrders([]);
         setError(nextError.message);
-      }
+      },
+      orderLimit
     );
-  }, [user?.uid]);
+  }, [user, orderLimit]);
 
   useEffect(() => {
     return subscribeToSarees(
@@ -1008,7 +1022,7 @@ export function MobileAppOrdersPage() {
         {!user ? (
           <SignInCard
             title="Sign in to see your orders"
-            description="Your mobile cart stays separate, but order history belongs to your account."
+            description="Your bag, wishlist, and orders sync with your signed-in account."
             actionLabel={loading ? "CHECKING SESSION" : "CONTINUE WITH SMS"}
             onAction={() => void signIn()}
             disabled={loading}
@@ -1052,7 +1066,7 @@ export function MobileAppOrdersPage() {
                           ? "bg-[#edf4e7] text-[#4f5942]"
                           : "bg-[#fff0eb] text-[#a8574d]"
                       }`}>
-                        {order.dispatchStatus === "completed" ? "Dispatched" : "Pending"}
+                        {paymentLabel(order)} · {fulfilmentLabel(order)}
                       </span>
                       <p className="mt-2 text-[1rem] font-semibold text-[#2b2a29]">
                         {formatCurrency(order.amountBreakdown?.total ?? (order.amountPaise ?? 0) / 100)}
@@ -1073,7 +1087,7 @@ export function MobileAppOrdersPage() {
                         ))}
                       </div>
 
-                      <div className="mt-4 flex flex-wrap gap-2">
+                      <div className="mt-4 flex flex-wrap gap-2"><Link className="underline" href={`/app/order-confirmation/?order=${encodeURIComponent(order.id)}`}>Check payment / resume</Link>
                         <button
                           type="button"
                           onClick={() => openOrderReceiptPreview(buildOrderConfirmationFromOrder(order))}
@@ -1096,6 +1110,7 @@ export function MobileAppOrdersPage() {
             })}
           </div>
         )}
+        {orders.length >= orderLimit ? <button className="mt-6 underline" onClick={() => setOrderLimit(count => count + 50)}>Load older orders</button> : null}
       </div>
     </MobileAppShell>
   );
@@ -1117,70 +1132,20 @@ export function MobileAppAccountPage() {
   const accountDisplayName =
     user?.displayName?.trim() || selectedAddress?.fullName?.trim() || addressForm.fullName.trim() || "Account";
 
+  const addressBaselineRef = useRef<CustomerAddress | null>(null);
+  const wasSheetOpen = useRef(false);
+  useEffect(() => { if (sheetOpen && !wasSheetOpen.current) addressBaselineRef.current = selectedAddress; wasSheetOpen.current = sheetOpen; }, [sheetOpen, selectedAddress]);
   useEffect(() => {
-    if (!user?.uid) {
-      setSelectedAddress(null);
-      setOrders([]);
+    if (!user) { setSelectedAddress(null); setProfileLoading(false); return; }
+    setProfileLoading(true);
+    return subscribeToCustomerProfile(user.uid, profile => {
+      const address = getSelectedAddress(profile);
+      setSelectedAddress(address);
+      if (!sheetOpen) setAddressForm(address ? { address: address.address, city: address.city, email: address.email, fullName: address.fullName, phone: resolveVerifiedPhone(user.phoneNumber,address.phone), pincode: address.pincode, state: address.state } : { address: "", city: "", email: user.email || "", fullName: user.displayName || "", phone: resolveVerifiedPhone(user.phoneNumber), pincode: "", state: "" });
       setProfileLoading(false);
-      return;
-    }
+    }, error => { setProfileLoading(false); setProfileError(error.message); });
+  }, [user, sheetOpen]);
 
-    let cancelled = false;
-    const userId = user.uid;
-    const userDisplayName = user.displayName ?? "";
-    const userEmail = user.email ?? "";
-    const userPhone = user.phoneNumber ?? "";
-
-    async function loadProfile() {
-      setProfileLoading(true);
-
-      try {
-        const customerProfile = await getCustomerProfile(userId);
-
-        if (cancelled) {
-          return;
-        }
-
-        const address = customerProfile?.addresses?.[0]
-          ? applyVerifiedPhoneToAddress(customerProfile.addresses[0], userPhone)
-          : null;
-        setSelectedAddress(address);
-        setAddressForm(
-          address
-            ? {
-                address: address.address,
-                city: address.city,
-                email: address.email,
-                fullName: address.fullName,
-                phone: resolveVerifiedPhone(userPhone, address.phone),
-                pincode: address.pincode,
-                state: address.state
-              }
-            : {
-                ...emptyAddressForm,
-                fullName: userDisplayName,
-                email: userEmail,
-                phone: resolveVerifiedPhone(userPhone)
-              }
-        );
-        setProfileError(null);
-      } catch (error) {
-        if (!cancelled) {
-          setProfileError(error instanceof Error ? error.message : "Profile could not be loaded.");
-        }
-      } finally {
-        if (!cancelled) {
-          setProfileLoading(false);
-        }
-      }
-    }
-
-    void loadProfile();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.displayName, user?.email, user?.phoneNumber, user?.uid]);
 
   useEffect(() => {
     if (!user?.uid) {
@@ -1192,7 +1157,7 @@ export function MobileAppAccountPage() {
     return subscribeToCustomerOrders(userId, (nextOrders) => {
       setOrders(nextOrders.slice(0, 5));
     });
-  }, [user?.uid]);
+  }, [user]);
 
   useEffect(() => {
     if (!profileMessage) {
@@ -1226,17 +1191,8 @@ export function MobileAppAccountPage() {
 
     try {
       await syncCustomerDisplayName(nextAddress.fullName);
-      await saveCustomerProfile(userId, {
-        fullName: nextAddress.fullName,
-        email: nextAddress.email,
-        phone: nextAddress.phone,
-        address: nextAddress.address,
-        city: nextAddress.city,
-        state: nextAddress.state,
-        pincode: nextAddress.pincode,
-        selectedAddressId: nextAddress.id,
-        addresses: [nextAddress]
-      });
+      nextAddress.id = addressBaselineRef.current?.id || selectedAddress?.id || crypto.randomUUID();
+      await saveCustomerAddress(userId, nextAddress, addressBaselineRef.current);
       setSelectedAddress(nextAddress);
       setProfileMessage("Address saved.");
       setProfileError(null);
@@ -1268,6 +1224,11 @@ export function MobileAppAccountPage() {
           subtitle={user ? "Review saved address and your recent orders in one place." : "Sign in to manage address and orders."}
         />
 
+        <a href="https://www.indiapost.gov.in/" target="_blank" rel="noopener noreferrer" aria-label="Track order with India Post (opens in a new tab)" className="mt-4 flex items-center justify-between gap-4 rounded-2xl border border-[#eadfce] bg-white/88 p-5 text-[#4f5942]">
+          <span><span className="block font-semibold">Track order</span><span className="mt-1 block text-sm text-[#68735e]">Track your parcel on India Post using your consignment number.</span></span>
+          <span aria-hidden="true">↗</span>
+        </a>
+
         {!user ? (
           <SignInCard
             title="Open your account"
@@ -1282,7 +1243,7 @@ export function MobileAppAccountPage() {
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-[0.74rem] font-semibold uppercase tracking-[0.22em] text-[#7d876f]">Saved address</p>
-                  <p className="mt-2 text-[0.96rem] text-[#68735e]">One primary address for faster checkout.</p>
+                  <p className="mt-2 text-[0.96rem] text-[#68735e]">Choose the saved address for checkout.</p>
                 </div>
                 <button
                   type="button"
@@ -1295,6 +1256,7 @@ export function MobileAppAccountPage() {
               </div>
 
               {profileMessage ? <p className="mt-3 text-[0.9rem] text-[#5e684f]">{profileMessage}</p> : null}
+              {user ? <SavedAddressSelector key={user.uid} userId={user.uid} /> : null}
               {profileError ? <p className="mt-3 text-[0.9rem] text-[#a8574d]">{profileError}</p> : null}
 
               {profileLoading ? (
@@ -1440,6 +1402,8 @@ export function MobileAppProductPage() {
   const pathname = usePathname() ?? "/app/product";
   const searchParams = useSearchParams();
   const { addItem, items, updateQuantity, totalItems } = useCart();
+  const [productsLoading, setProductsLoading] = useState(true);
+  const [productsError, setProductsError] = useState<string | null>(null);
   const [products, setProducts] = useState<Saree[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [waitlistDialogOpen, setWaitlistDialogOpen] = useState(false);
@@ -1454,8 +1418,10 @@ export function MobileAppProductPage() {
     return subscribeToSarees(
       (nextProducts) => {
         setProducts(nextProducts.filter((product) => product.status !== "draft"));
+        setProductsLoading(false); setProductsError(null);
       },
-      { status: ["active", "out_of_stock"] }
+      { status: ["active", "out_of_stock"] },
+      error => { setProductsLoading(false); setProductsError(error.message); }
     );
   }, []);
 
@@ -1493,6 +1459,7 @@ export function MobileAppProductPage() {
     }
 
     const nextUrl = `${buildAppProductPath(slug)}${window.location.hash}`;
+    attachPwaProductOrigin(buildAppProductPath(slug));
     const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
 
     if (currentUrl !== nextUrl) {
@@ -1500,6 +1467,7 @@ export function MobileAppProductPage() {
     }
   }, [slug]);
 
+  if (productsLoading || productsError) return <MobileAppShell><div className="p-6" role="status">{productsLoading ? "Loading this saree…" : "Could not load this saree. Check your connection."}{productsError ? <button className="ml-3 underline" onClick={() => location.reload()}>Retry</button> : null}</div></MobileAppShell>;
   if (!product) {
     return (
       <MobileAppShell showBottomNav={false}>
@@ -1632,6 +1600,7 @@ export function MobileAppProductPage() {
             </div>
 
             <div className="mt-5 grid gap-3">
+              <p className="font-semibold" role="status">{getStockMessage(product)}</p>
               <TrustRow title="Handpicked fabric and finish" description="Each saree is selected to feel soft, elegant, and easy to wear." />
               <TrustRow title="Secure checkout with Razorpay" description="UPI, cards, net banking, and wallets open inside the payment step." />
               <TrustRow title="Support if you need help" description="Use your account and contact routes for order or address support." />
@@ -1674,7 +1643,8 @@ export function MobileAppProductPage() {
       <div className="mobile-app-action-bar fixed inset-x-0 bottom-0 z-40">
         <div className="mx-auto flex max-w-[440px] items-center gap-3 px-4 py-3">
           {cartQuantity > 0 ? (
-            <div className="grid w-full grid-cols-[3rem_1fr_3rem] items-center rounded-[1rem] bg-[#5e684f] px-1.5 py-1.5 text-[#fbf4e8]">
+            <>
+            <div className="grid h-12 w-[128px] shrink-0 grid-cols-[44px_1fr_44px] items-center rounded-[1rem] bg-[#5e684f] text-[#fbf4e8] [&>button]:h-11 [&>button]:w-11">
               <QuantityButton label="Decrease quantity" onClick={() => updateQuantity(product.sku, cartQuantity - 1)}>
                 -
               </QuantityButton>
@@ -1687,6 +1657,17 @@ export function MobileAppProductPage() {
                 +
               </QuantityButton>
             </div>
+            <button
+              type="button"
+              onClick={() => {
+                const href = preparePwaShoppingReturn(buildAppProductPath(slug));
+                router.push(href, { scroll: href === buildAppSearchHref() });
+              }}
+              className="inline-flex min-h-12 min-w-0 flex-1 items-center justify-center gap-1 rounded-[1rem] border border-[#5e684f] bg-[#fffaf2] px-2 py-2 text-sm font-semibold leading-tight text-[#4f5942]"
+            >
+              <span>Continue shopping</span><span aria-hidden="true">→</span>
+            </button>
+            </>
           ) : (
             <button
               type="button"
@@ -1698,10 +1679,10 @@ export function MobileAppProductPage() {
 
                 addItem(product, 1);
               }}
-              disabled={product.status !== "out_of_stock" && !isProductPurchasable(product)}
+              disabled={(product.availableStock === 0 && (product.reservedStock ?? 0) > 0) || (product.status !== "out_of_stock" && !isProductPurchasable(product))}
               className="brand-caption inline-flex w-full items-center justify-center rounded-[1rem] bg-[#5e684f] px-4 py-3.5 text-[0.6rem] font-semibold tracking-[0.14em] text-[#fbf4e8] disabled:opacity-55"
             >
-              {product.status === "out_of_stock" ? "NOTIFY ME" : "ADD TO CART"}
+              {(product.reservedStock ?? 0) > 0 && product.availableStock === 0 ? "TEMPORARILY RESERVED" : product.status === "out_of_stock" ? "NOTIFY ME" : "ADD TO CART"}
             </button>
           )}
         </div>
@@ -1718,7 +1699,7 @@ export function MobileAppProductPage() {
 
 export function MobileAppCheckoutPage() {
   const router = useRouter();
-  const { items, subtotal, savings, shippingFee, packagingFee, total, totalItems, updateQuantity, removeItem, clearCart, isReady } = useCart();
+  const { items, subtotal, savings, shippingFee, packagingFee, total, totalItems, updateQuantity, removeItem, clearCart, isReady, stockReady, isSyncing } = useCart();
   const { user, signIn } = useAuthSession();
   const [savedAddress, setSavedAddress] = useState<CustomerAddress | null>(null);
   const [addressSheetOpen, setAddressSheetOpen] = useState(false);
@@ -1740,7 +1721,7 @@ export function MobileAppCheckoutPage() {
   const [products, setProducts] = useState<Saree[]>([]);
   const hasUnavailableItems = items.some((item) => isCartItemUnavailable(item));
   const activeAddress = user ? savedAddress : null;
-  const canProceed = items.length > 0 && !hasUnavailableItems && Boolean(activeAddress);
+  const canProceed = !isSyncing && stockReady && items.length > 0 && !hasUnavailableItems && Boolean(activeAddress);
   const showVerificationStep = checkoutStep === "delivery";
   const showAddressStep = checkoutStep === "address";
 
@@ -1749,10 +1730,10 @@ export function MobileAppCheckoutPage() {
       return;
     }
 
-    if (items.length === 0 && !redirectRef.current) {
+    if (items.length === 0 && !redirectRef.current && !paymentSubmitting) {
       router.replace(buildAppSearchHref());
     }
-  }, [isReady, items.length, router]);
+  }, [isReady, items.length, router, paymentSubmitting]);
 
   useEffect(() => {
     return subscribeToSarees(
@@ -1776,73 +1757,21 @@ export function MobileAppCheckoutPage() {
     }
   }, [checkoutStep, user?.uid]);
 
+  const addressBaselineRef = useRef<CustomerAddress | null>(null);
+  const wasAddressSheetOpen = useRef(false);
+  useEffect(() => { if (addressSheetOpen && !wasAddressSheetOpen.current) addressBaselineRef.current = savedAddress; wasAddressSheetOpen.current = addressSheetOpen; }, [addressSheetOpen, savedAddress]);
   useEffect(() => {
-    if (!user?.uid) {
-      setSavedAddress(null);
+    if (!user) { setSavedAddress(null); setProfileLoading(false); return; }
+    setProfileLoading(true);
+    return subscribeToCustomerProfile(user.uid, profile => {
+      const address = getSelectedAddress(profile);
+      setSavedAddress(address);
+      if (!addressSheetOpen) setAddressForm(address ? { address: address.address, city: address.city, email: address.email, fullName: address.fullName, phone: resolveVerifiedPhone(user.phoneNumber,address.phone), pincode: address.pincode, state: address.state } : { address: "", city: "", email: user.email || "", fullName: user.displayName || "", phone: resolveVerifiedPhone(user.phoneNumber), pincode: "", state: "" });
       setProfileLoading(false);
-      setProfileResolvedUserId("");
-      autoPromptedAddressUserIdRef.current = "";
-      return;
-    }
+      setProfileResolvedUserId(user.uid);
+    }, error => { setProfileLoading(false); setProfileError(error.message); });
+  }, [user, addressSheetOpen]);
 
-    let cancelled = false;
-    const userId = user.uid;
-    const userDisplayName = user.displayName ?? "";
-    const userEmail = user.email ?? "";
-    const userPhone = user.phoneNumber ?? "";
-
-    async function loadProfile() {
-      setProfileLoading(true);
-      setProfileResolvedUserId("");
-
-      try {
-        const profile = await getCustomerProfile(userId);
-
-        if (cancelled) {
-          return;
-        }
-
-        const address = profile?.addresses?.[0]
-          ? applyVerifiedPhoneToAddress(profile.addresses[0], userPhone)
-          : null;
-        setSavedAddress(address);
-        setAddressForm(
-          address
-            ? {
-                address: address.address,
-                city: address.city,
-                email: address.email,
-                fullName: address.fullName,
-                phone: resolveVerifiedPhone(userPhone, address.phone),
-                pincode: address.pincode,
-                state: address.state
-              }
-            : {
-                ...emptyAddressForm,
-                fullName: userDisplayName,
-                email: userEmail,
-                phone: resolveVerifiedPhone(userPhone)
-              }
-        );
-        setProfileError(null);
-      } catch (error) {
-        if (!cancelled) {
-          setProfileError(error instanceof Error ? error.message : "Address could not be loaded.");
-        }
-      } finally {
-        if (!cancelled) {
-          setProfileLoading(false);
-          setProfileResolvedUserId(userId);
-        }
-      }
-    }
-
-    void loadProfile();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.displayName, user?.email, user?.phoneNumber, user?.uid]);
 
   const recommendations = useMemo(() => buildMobileCheckoutRecommendations(products, items), [items, products]);
   const visibleRecommendations = useMemo(() => recommendations.slice(0, 4), [recommendations]);
@@ -1904,17 +1833,8 @@ export function MobileAppCheckoutPage() {
 
     try {
       await syncCustomerDisplayName(nextAddress.fullName);
-      await saveCustomerProfile(userId, {
-        fullName: nextAddress.fullName,
-        email: nextAddress.email,
-        phone: nextAddress.phone,
-        address: nextAddress.address,
-        city: nextAddress.city,
-        state: nextAddress.state,
-        pincode: nextAddress.pincode,
-        selectedAddressId: nextAddress.id,
-        addresses: [nextAddress]
-      });
+      nextAddress.id = addressBaselineRef.current?.id || savedAddress?.id || crypto.randomUUID();
+      await saveCustomerAddress(userId, nextAddress, addressBaselineRef.current);
       setSavedAddress(nextAddress);
       setAddressSheetOpen(false);
       setProfileError(null);
@@ -1926,6 +1846,7 @@ export function MobileAppCheckoutPage() {
   }
 
   async function handleProceedToPayment() {
+    if (isSyncing) return;
     if (!user) {
       setProfileError("Verify your mobile number to continue.");
       return;
@@ -2063,102 +1984,16 @@ export function MobileAppCheckoutPage() {
           : "PAY NOW";
 
   async function startRazorpayCheckout(deliveryAddress: PaymentFormState) {
-    setPaymentSubmitting(true);
-    setPaymentMessage("Redirecting to secure payment");
-
+    setPaymentSubmitting(true); setProfileError(null);
     try {
-      const order = await createOrder(items, deliveryAddress, orderNotes.trim());
-
-      if (!window.Razorpay) {
-        await loadRazorpayCheckoutScript();
-      }
-
-      let checkoutFinished = false;
-
-      if (!window.Razorpay) {
-        throw new Error("Razorpay checkout is unavailable right now.");
-      }
-
-      const checkoutOptions: RazorpayCheckoutOptions = {
-        key: order.keyId,
-        amount: order.amount,
-        currency: order.currency,
-        description: `Secure checkout for ${order.lineItems.length} item${order.lineItems.length === 1 ? "" : "s"}`,
-        order_id: order.razorpayOrderId,
-        prefill: {
-          name: deliveryAddress.fullName,
-          email: deliveryAddress.email,
-          contact: deliveryAddress.phone
-        },
-        notes: {
-          internalOrderId: order.internalOrderId,
-          customerPhone: deliveryAddress.phone
-        },
-        modal: {
-          ondismiss: () => {
-            if (checkoutFinished) {
-              return;
-            }
-
-            setCheckoutStep("delivery");
-            setPaymentOverlayStep(null);
-            setPaymentSubmitting(false);
-            setPaymentMessage(null);
-          }
-        },
-        handler: async (paymentResponse) => {
-          checkoutFinished = true;
-          setPaymentSubmitting(true);
-          setPaymentOverlayStep("verifying");
-          setPaymentMessage("Preparing your receipt...");
-
-          try {
-            await verifyPayment(order.internalOrderId, paymentResponse);
-            const confirmation = buildOrderConfirmationFromCheckout({
-              deliveryAddress,
-              items,
-              order,
-              orderNotes,
-              packagingFee,
-              paymentResponse,
-              savings,
-              shippingFee,
-              subtotal,
-              total
-            });
-
-            redirectRef.current = true;
-            saveLatestOrderConfirmation(confirmation);
-            clearCart();
-            router.replace("/app/order-confirmation/");
-          } catch (error) {
-            setPaymentOverlayStep(null);
-            setPaymentMessage(error instanceof Error ? error.message : "Payment verification failed.");
-          } finally {
-            setPaymentSubmitting(false);
-          }
-        }
-      };
-
-      const razorpay = new window.Razorpay(checkoutOptions);
-      razorpay.on("payment.failed", (response: RazorpayEventResponse) => {
-        checkoutFinished = true;
-        setCheckoutStep("delivery");
-        setPaymentSubmitting(false);
-        setPaymentOverlayStep(null);
-        setProfileError(getPaymentFailureMessage(response));
-        setPaymentMessage(null);
-      });
-
-      razorpay.open();
-      setPaymentSubmitting(false);
-      setPaymentMessage(null);
-    } catch (error) {
-      setCheckoutStep("delivery");
-      setPaymentOverlayStep(null);
-      setPaymentSubmitting(false);
-      setPaymentMessage(null);
-      setProfileError(error instanceof Error ? error.message : "Unable to start payment.");
+      const order = await createCheckout(items, deliveryAddress, orderNotes.trim());
+      await openCheckout(order, id => {
+        redirectRef.current = true;
+        router.replace(`/app/order-confirmation/?order=${encodeURIComponent(id)}`);
+      }, () => { setPaymentSubmitting(false); setPaymentOverlayStep(null); }, message => { setPaymentSubmitting(false); setProfileError(message); });
+    } catch(error) {
+      setPaymentSubmitting(false); setPaymentOverlayStep(null);
+      setProfileError(error instanceof Error ? error.message : "Check your existing payment before trying again.");
     }
   }
 
@@ -2291,6 +2126,7 @@ export function MobileAppCheckoutPage() {
                 <p className="mt-2 text-[0.95rem] text-[#68735e]">Enter your mobile number to continue.</p>
               </div>
 
+              {user ? <SavedAddressSelector key={user.uid} userId={user.uid} /> : null}
               {profileError ? <p className="mt-3 text-[0.9rem] text-[#a8574d]">{profileError}</p> : null}
 
               <div className="mt-4 rounded-2xl border border-[#eee4d6] bg-[linear-gradient(180deg,#fffdf8_0%,#faf6ef_100%)] px-4 py-4 text-[0.94rem] leading-7 text-[#54604c]">
@@ -2341,6 +2177,7 @@ export function MobileAppCheckoutPage() {
                 ) : null}
               </div>
 
+              {user ? <SavedAddressSelector key={user.uid} userId={user.uid} /> : null}
               {profileError ? <p className="mt-3 text-[0.9rem] text-[#a8574d]">{profileError}</p> : null}
 
               {user ? (
@@ -2471,7 +2308,7 @@ export function MobileAppCheckoutPage() {
             }
             className="brand-caption inline-flex h-14 w-full items-center justify-center rounded-[1.15rem] bg-[#5e684f] px-5 text-[0.66rem] font-semibold tracking-[0.15em] text-[#fbf4e8] disabled:opacity-55"
           >
-            {primaryButtonLabel}
+            {checkoutStep === "pay" && isSyncing ? "SAVING BAG…" : primaryButtonLabel}
           </button>
         </div>
       </div>
@@ -2495,98 +2332,7 @@ export function MobileAppCheckoutPage() {
   );
 }
 
-export function MobileAppOrderConfirmationPage() {
-  const [confirmation, setConfirmation] = useState<OrderConfirmationData | null>(null);
-  const displayOrderId = confirmation ? formatOrderConfirmationId(confirmation.internalOrderId) : "-";
-
-  useEffect(() => {
-    setConfirmation(readLatestOrderConfirmation());
-  }, []);
-
-  return (
-    <MobileAppShell showBottomNav={false}>
-      <div className="px-4 pb-8 pt-[calc(env(safe-area-inset-top)+1rem)]">
-        <div className="rounded-[2rem] border border-[#eadfce] bg-white/90 p-6 text-center shadow-none">
-          <span className="mx-auto inline-flex h-20 w-20 items-center justify-center rounded-full bg-[#eef4e7] text-[#5e684f]">
-            <CheckIcon />
-          </span>
-          <p className="brand-caption mt-5 text-[0.68rem] font-semibold tracking-[0.18em] text-[#7d876f]">ORDER CONFIRMED</p>
-          <h1 className="brand-copy mt-4 text-[2rem] leading-tight text-[#2f342d]">Thank you for your order.</h1>
-          <p className="mt-3 text-[0.98rem] leading-7 text-[#68735e]">
-            {confirmation
-              ? `Paid on ${formatOrderConfirmationDateOnly(confirmation.createdAtIso)}.`
-              : "Your latest receipt snapshot is not available in this tab."}
-          </p>
-        </div>
-
-        {confirmation ? (
-          <>
-            <section className="mt-4 rounded-2xl border border-[#eadfce] bg-white/88 p-5 shadow-none">
-              <div className="grid grid-cols-2 gap-3">
-                <InfoCard label="Order ID" value={displayOrderId} />
-                <InfoCard label="Status" value={formatOrderConfirmationPaymentStatus(confirmation.paymentStatus)} />
-                <InfoCard label="Placed" value={formatOrderConfirmationDateOnly(confirmation.createdAtIso)} />
-                <InfoCard label="Items" value={`${confirmation.items.length}`} />
-              </div>
-
-              <div className="mt-5 rounded-2xl bg-[#faf6ef] px-4 py-4 text-left text-[0.96rem] leading-7 text-[#54604c]">
-                <p className="brand-copy text-[1.25rem] text-[#2f342d]">{confirmation.customer.fullName}</p>
-                <p className="mt-2">{confirmation.customer.address}</p>
-                <p>
-                  {confirmation.customer.city}, {confirmation.customer.state} - {confirmation.customer.pincode}
-                </p>
-                <p>{confirmation.customer.phone}</p>
-              </div>
-
-              <div className="mt-5 space-y-3">
-                {confirmation.items.map((item) => (
-                  <div key={`${item.sku}-${item.quantity}`} className="rounded-[1.2rem] bg-[#faf6ef] px-4 py-4 text-left">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="brand-copy text-[1.1rem] text-[#2f342d]">{item.name}</p>
-                        <p className="mt-1 text-[0.9rem] text-[#68735e]">
-                          {item.sku}
-                          {item.color ? ` · ${item.color}` : ""}
-                        </p>
-                      </div>
-                      <p className="text-[1rem] font-semibold text-[#2b2a29]">
-                        {formatCurrency((item.unitPrice ?? 0) * item.quantity)}
-                      </p>
-                    </div>
-                    <p className="mt-2 text-[0.9rem] text-[#68735e]">Qty {item.quantity}</p>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-5 flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => openOrderReceiptPreview(confirmation)}
-                  className="brand-caption inline-flex flex-1 items-center justify-center rounded-[1.1rem] bg-[#5e684f] px-5 py-3.5 text-[0.66rem] font-semibold tracking-[0.14em] text-[#fbf4e8]"
-                >
-                  VIEW RECEIPT
-                </button>
-                <Link
-                  href={buildAppHomeHref()}
-                  className="brand-caption inline-flex flex-1 items-center justify-center rounded-[1.1rem] border border-[#d7ccb9] px-5 py-3.5 text-[0.66rem] font-semibold tracking-[0.14em] text-[#56624d]"
-                >
-                  CONTINUE
-                </Link>
-              </div>
-            </section>
-          </>
-        ) : (
-          <EmptyStateCard
-            title="Confirmation loaded without receipt details"
-            description="If you just completed checkout, go back to the collection and place the order again after refreshing the session."
-            actionHref={buildAppHomeHref()}
-            actionLabel="Back to home"
-          />
-        )}
-      </div>
-    </MobileAppShell>
-  );
-}
+export function MobileAppOrderConfirmationPage() { return <OrderStatusPage mobile />; }
 
 function MobileHomeHeader({
   totalItems,
@@ -2754,6 +2500,7 @@ function MobileProductCard({
       <div className="mobile-app-product-info px-3 pb-3 pt-3">
         <Link href={buildAppProductHref(product.slug)} className="block">
           <h3 className="mobile-app-product-name text-[#2f342d]">{product.name}</h3>
+          {product.availableStock <= 2 ? <p className="mt-1 text-xs text-[#5e684f]">{getStockMessage(product)}</p> : null}
           <p className="mt-1 text-[0.8rem] leading-5 text-[#68735e]">{getMobileProductLabel(product)}</p>
         </Link>
 
@@ -2768,10 +2515,11 @@ function MobileProductCard({
           {product.status === "out_of_stock" ? (
             <button
               type="button"
+              disabled={(product.reservedStock ?? 0) > 0}
               onClick={() => setWaitlistDialogOpen(true)}
               className={`brand-caption inline-flex w-full items-center justify-center rounded-full bg-[#3f4738] px-3.5 font-semibold tracking-[0.11em] text-[#fbf4e8] ${slim ? "h-8.5 text-[0.48rem]" : "h-9 text-[0.5rem]"}`}
             >
-              NOTIFY ME
+              {(product.reservedStock ?? 0) > 0 ? "RESERVED" : "NOTIFY ME"}
             </button>
           ) : cartQuantity > 0 ? (
             <div className={`grid w-full items-center rounded-full bg-[#5e684f] px-1.5 text-[#fbf4e8] ${slim ? "h-8.5 grid-cols-[1.9rem_1fr_1.9rem]" : "h-9 grid-cols-[2rem_1fr_2rem]"}`}>
@@ -3736,132 +3484,6 @@ function applyVerifiedPhoneToAddress(address: CustomerAddress, verifiedPhone: st
   };
 }
 
-async function createOrder(items: CartItem[], deliveryAddress: PaymentFormState, orderNotes: string): Promise<CreateOrderResponse> {
-  let response: Response;
-  const requestUrl = getRazorpayApiUrl("create-order");
-  const headers = await buildProtectedJsonHeadersForPath(requestUrl);
-
-  try {
-    response = await fetch(requestUrl, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        items: items.map((item) => ({
-          sku: item.sku,
-          quantity: item.quantity
-        })),
-        customer: deliveryAddress,
-        notes: orderNotes,
-        sourcePath: "/app/checkout/"
-      })
-    });
-  } catch (error) {
-    throw new Error(
-      error instanceof Error
-        ? error.message
-        : "Unable to reach the payment server. Check your connection and try again."
-    );
-  }
-
-  const result = (await response.json().catch(() => ({}))) as Partial<CreateOrderResponse> & { error?: string };
-
-  if (!response.ok) {
-    throw new Error(result.error || "Unable to create payment order.");
-  }
-
-  if (
-    !result ||
-    typeof result.keyId !== "string" ||
-    typeof result.razorpayOrderId !== "string" ||
-    typeof result.internalOrderId !== "string" ||
-    typeof result.amount !== "number" ||
-    typeof result.currency !== "string" ||
-    !Array.isArray(result.lineItems)
-  ) {
-    throw new Error("Payment order response is invalid.");
-  }
-
-  return result as CreateOrderResponse;
-}
-
-async function verifyPayment(internalOrderId: string, paymentResponse: RazorpayHandlerResponse) {
-  const requestUrl = getRazorpayApiUrl("verify-payment");
-  const headers = await buildProtectedJsonHeadersForPath(requestUrl);
-  const response = await fetch(requestUrl, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({
-      internalOrderId,
-      ...paymentResponse
-    })
-  });
-
-  const result = (await response.json().catch(() => ({}))) as { error?: string; success?: boolean };
-
-  if (!response.ok || !result.success) {
-    throw new Error(result.error || "Payment verification failed.");
-  }
-}
-
-function buildOrderConfirmationFromCheckout({
-  deliveryAddress,
-  items,
-  order,
-  orderNotes,
-  packagingFee,
-  paymentResponse,
-  savings,
-  shippingFee,
-  subtotal,
-  total
-}: {
-  deliveryAddress: PaymentFormState;
-  items: CartItem[];
-  order: CreateOrderResponse;
-  orderNotes: string;
-  packagingFee: number;
-  paymentResponse: RazorpayHandlerResponse;
-  savings: number;
-  shippingFee: number;
-  subtotal: number;
-  total: number;
-}) {
-  return {
-    createdAtIso: new Date().toISOString(),
-    customer: {
-      address: deliveryAddress.address,
-      city: deliveryAddress.city,
-      email: deliveryAddress.email,
-      fullName: deliveryAddress.fullName,
-      phone: deliveryAddress.phone,
-      pincode: deliveryAddress.pincode,
-      state: deliveryAddress.state
-    },
-    internalOrderId: order.internalOrderId,
-    items: order.lineItems.map((item) => ({
-      color: item.color,
-      name: item.name,
-      primaryImageUrl: item.primaryImageUrl,
-      quantity: item.quantity,
-      sku: item.sku,
-      unitOriginalPrice: item.unitOriginalPrice,
-      unitPrice: item.unitPrice
-    })),
-    notes: orderNotes.trim(),
-    paymentStatus: "captured",
-    razorpayOrderId: paymentResponse.razorpay_order_id,
-    razorpayPaymentId: paymentResponse.razorpay_payment_id,
-    summary: {
-      currency: order.currency,
-      packagingFee,
-      savings,
-      shippingFee,
-      subtotal,
-      total
-    }
-  } satisfies OrderConfirmationData;
-}
-
 function buildOrderConfirmationFromOrder(order: CheckoutOrder) {
   return {
     createdAtIso: toIsoDate(order.createdAt),
@@ -3875,6 +3497,8 @@ function buildOrderConfirmationFromOrder(order: CheckoutOrder) {
       state: order.customer?.state ?? ""
     },
     internalOrderId: order.id,
+    userId: order.userId || undefined,
+    refundStatus: order.refundStatus,
     items: (order.cartItems ?? []).map((item) => ({
       color: item.color,
       name: item.name,
@@ -3885,7 +3509,7 @@ function buildOrderConfirmationFromOrder(order: CheckoutOrder) {
       unitPrice: item.unitPrice
     })),
     notes: order.notes ?? "",
-    paymentStatus: order.paymentStatus ?? "captured",
+    paymentStatus: order.paymentStatus ?? "pending",
     razorpayOrderId: order.razorpayOrderId ?? order.receipt ?? "",
     razorpayPaymentId: order.razorpayPaymentId ?? "",
     summary: {

@@ -10,7 +10,7 @@ import { useCart } from "@/components/cart-provider";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { getCustomerAuthDisplayLabel, syncCustomerDisplayName } from "@/lib/auth";
 import { sendCustomerOtp, verifyCustomerOtp } from "@/lib/customer-auth";
-import { getCustomerProfile, saveCustomerProfile } from "@/lib/customer-profiles";
+import { subscribeToCustomerProfile, saveCustomerAddress } from "@/lib/customer-profiles";
 import { createCustomerMessage } from "@/lib/customer-messages";
 import { subscribeToCategoryCards } from "@/lib/homepage";
 import { buildShopHref } from "@/lib/storefront-routes";
@@ -142,30 +142,7 @@ export function StorefrontHeader({
       return;
     }
 
-    const userId = user.uid;
-    let cancelled = false;
-
-    async function loadCustomerProfileName() {
-      try {
-        const customerProfile = await getCustomerProfile(userId);
-
-        if (cancelled) {
-          return;
-        }
-
-        setCustomerProfileName(customerProfile?.fullName?.trim() ?? "");
-      } catch {
-        if (!cancelled) {
-          setCustomerProfileName("");
-        }
-      }
-    }
-
-    void loadCustomerProfileName();
-
-    return () => {
-      cancelled = true;
-    };
+    return subscribeToCustomerProfile(user.uid, profile => setCustomerProfileName(profile?.fullName?.trim() ?? ""), () => setCustomerProfileName(""));
   }, [user?.displayName, user?.uid]);
 
   async function handleContactSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -349,21 +326,7 @@ export function StorefrontHeader({
       const phone = signedInUser.phoneNumber?.trim() || normalizedForm.phone;
 
       await syncCustomerDisplayName(normalizedForm.fullName);
-      await saveCustomerProfile(signedInUser.uid, {
-        ...normalizedForm,
-        phone,
-        email,
-        selectedAddressId: addressId,
-        addresses: [
-          {
-            id: addressId,
-            label: "Primary Address",
-            ...normalizedForm,
-            phone,
-            email
-          }
-        ]
-      });
+      await saveCustomerAddress(signedInUser.uid, { id: addressId, label: "Primary Address", ...normalizedForm, phone, email });
 
       closeCreateAccountDialog();
     } catch (error) {
@@ -449,6 +412,9 @@ export function StorefrontHeader({
               </div>
 
               <nav className="flex shrink-0 items-center gap-2 text-[#667056]">
+                <a href="https://www.indiapost.gov.in/" target="_blank" rel="noopener noreferrer" aria-label="Track order with India Post (opens in a new tab)" className="shrink-0 rounded-full border border-[#d6ccb9] px-3 py-2 text-xs font-semibold transition-colors hover:bg-[#efe7d9] sm:text-sm">
+                  Track order ↗
+                </a>
                 <HeaderActionButton
                   label="Search"
                   icon={<HeaderSearchIcon />}

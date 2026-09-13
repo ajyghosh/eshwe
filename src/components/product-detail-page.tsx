@@ -11,7 +11,7 @@ import { NotifyWaitlistDialog } from "@/components/notify-waitlist-dialog";
 import { ProductCardCarousel } from "@/components/product-card-carousel";
 import { SiteFooter } from "@/components/site-footer";
 import { StorefrontHeader } from "@/components/storefront-header";
-import { compareProductsByAvailability, getPurchasableQuantityLimit, isProductPurchasable } from "@/lib/inventory";
+import { getStockMessage, compareProductsByAvailability, getPurchasableQuantityLimit, isProductPurchasable } from "@/lib/inventory";
 import { getProductDiscoveryTags } from "@/lib/product-discovery";
 import {
   defaultDryingTips,
@@ -34,6 +34,7 @@ export function ProductDetailPage() {
   const searchSlug = (searchParams ?? new URLSearchParams()).get("slug");
   const { addItem, items, updateQuantity } = useCart();
   const [products, setProducts] = useState<Saree[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [currentUrl, setCurrentUrl] = useState("");
@@ -52,7 +53,8 @@ export function ProductDetailPage() {
         setProducts(nextProducts.filter((product) => product.status !== "draft"));
         setLoading(false);
       },
-      { status: ["active", "out_of_stock"] }
+      { status: ["active", "out_of_stock"] },
+      error => { setLoading(false); setLoadError(error.message); }
     );
   }, []);
 
@@ -251,6 +253,7 @@ export function ProductDetailPage() {
   return (
     <main className="web-storefront web-product-page min-h-screen bg-[#fbf4e8] text-[#4f5942]">
       <StorefrontHeader />
+      {loadError ? <p role="alert" className="p-5">Could not load this saree. <button className="underline" onClick={() => location.reload()}>Retry</button></p> : null}
 
       <section className="px-6 py-10 sm:px-10 lg:px-12">
         <div className="mx-auto max-w-7xl">
@@ -325,7 +328,7 @@ export function ProductDetailPage() {
                       ) : null}
                       {product.status === "out_of_stock" ? (
                         <span className="brand-caption rounded-[0.85rem] bg-[#3f4738] px-4 py-2 text-[0.56rem] font-semibold tracking-[0.08em] text-[#fbf4e8]">
-                          OUT OF STOCK
+                          {(product.reservedStock ?? 0) > 0 ? "TEMPORARILY RESERVED" : "OUT OF STOCK"}
                         </span>
                       ) : null}
                     </div>
@@ -422,10 +425,11 @@ export function ProductDetailPage() {
                       {product.status === "out_of_stock" ? (
                         <button
                           type="button"
+                          disabled={(product.reservedStock ?? 0) > 0}
                           onClick={() => setWaitlistDialogOpen(true)}
                           className="brand-caption inline-flex h-[46px] min-w-[180px] items-center justify-center rounded-2xl bg-[#3f4738] px-5 text-[0.58rem] font-semibold tracking-[0.08em] text-[#fbf4e8]"
                         >
-                          NOTIFY ME
+                          {(product.reservedStock ?? 0) > 0 ? "TEMPORARILY RESERVED" : "NOTIFY ME"}
                         </button>
                       ) : cartQuantity > 0 ? (
                         <div className="grid h-[46px] min-w-[180px] grid-cols-[32px_1fr_32px] items-center rounded-2xl border border-[#d6ccb9] bg-[#5e684f] px-2 text-[#fbf4e8]">
@@ -462,11 +466,7 @@ export function ProductDetailPage() {
                       <TrustPill
                         title={product.status === "active" ? "Ready to ship" : "Back soon"}
                         description={
-                          product.status === "active"
-                            ? product.availableStock <= 2
-                              ? `Only ${product.availableStock} left in stock`
-                              : "In-stock pieces are reserved at checkout"
-                            : "Join the waitlist for the next restock"
+                          getStockMessage(product)
                         }
                       />
                       <TrustPill title="Secure payment" description="Checkout continues with Razorpay" />

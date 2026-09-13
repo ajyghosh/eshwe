@@ -7,6 +7,8 @@ import {
   type User
 } from "firebase/auth";
 
+import { clearReceiptCache } from "@/lib/order-confirmation";
+
 import { auth } from "@/lib/firebase";
 
 const OWNER_EMAIL = "ajyghosh@gmail.com";
@@ -22,7 +24,12 @@ export function subscribeToAuth(callback: (user: User | null) => void) {
     return () => undefined;
   }
 
-  return onAuthStateChanged(auth, callback);
+  let previousUid: string | null | undefined;
+  return onAuthStateChanged(auth, user => {
+    if (previousUid !== user?.uid) clearReceiptCache();
+    previousUid = user?.uid;
+    callback(user);
+  });
 }
 
 export async function signInWithGoogle() {
@@ -39,6 +46,7 @@ export async function signOutCurrentUser() {
     return;
   }
 
+  clearReceiptCache();
   await signOut(auth);
 }
 

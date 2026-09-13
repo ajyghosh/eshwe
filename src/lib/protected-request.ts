@@ -7,14 +7,10 @@ export async function buildProtectedJsonHeaders() {
   return buildProtectedJsonHeadersForPath();
 }
 
-export async function buildProtectedJsonHeadersForPath(targetUrl?: string) {
+export async function buildProtectedJsonHeadersForPath(_targetUrl?: string) {
   const headers: Record<string, string> = {
     "Content-Type": "application/json"
   };
-
-  if (shouldSkipProtectedHeaders(targetUrl)) {
-    return headers;
-  }
 
   const [appCheckToken, authToken] = await Promise.all([getOptionalAppCheckToken(), getOptionalAuthToken()]);
 
@@ -27,24 +23,6 @@ export async function buildProtectedJsonHeadersForPath(targetUrl?: string) {
   }
 
   return headers;
-}
-
-function shouldSkipProtectedHeaders(targetUrl?: string) {
-  if (typeof window === "undefined") {
-    return false;
-  }
-
-  const isLocalhost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-
-  if (!isLocalhost || !targetUrl) {
-    return false;
-  }
-
-  try {
-    return new URL(targetUrl, window.location.origin).origin !== window.location.origin;
-  } catch {
-    return false;
-  }
 }
 
 async function getOptionalAppCheckToken() {

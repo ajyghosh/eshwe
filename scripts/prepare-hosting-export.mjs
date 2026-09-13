@@ -21,14 +21,6 @@ const routeCopies = [
 ];
 
 const legacyArtifactsToRemove = [
-  join(outDir, "index.txt"),
-  join(outDir, "shop", "index.txt"),
-  join(outDir, "checkout", "index.txt"),
-  join(outDir, "payment", "index.txt"),
-  join(outDir, "contact", "index.txt"),
-  join(outDir, "owner", "index.txt"),
-  join(outDir, "owner", "messages", "index.txt"),
-  join(outDir, "product", "index.txt"),
   join(outDir, "_next", "static", "development"),
   join(outDir, "_next", "static", "webpack")
 ];

@@ -1,0 +1,46 @@
+{
+  "testedAt": "2026-09-12T13:53:42.159Z",
+  "environment": "Local static build, Auth/Firestore emulators, simulated OTP and Razorpay",
+  "results": [
+    {
+      "name": "PWA login loads the address selected on the web",
+      "status": "passed"
+    },
+    {
+      "name": "PWA selected-address change synchronizes to another tab",
+      "status": "passed"
+    },
+    {
+      "name": "Guest cart changes synchronize across tabs and login does not double quantity",
+      "status": "passed"
+    },
+    {
+      "name": "Last available piece is shown live to another web customer",
+      "status": "passed"
+    },
+    {
+      "name": "Interrupted checkout can be recovered without creating a second payment",
+      "status": "passed"
+    },
+    {
+      "name": "Payment confirmation uses server amount and removes purchased cart once",
+      "status": "passed"
+    },
+    {
+      "name": "Receipt storage and account switching do not expose previous customer order",
+      "status": "passed"
+    },
+    {
+      "name": "Static product metadata, sitemap and navigation payloads are present",
+      "status": "passed"
+    },
+    {
+      "name": "PWA offline navigation shows reconnect screen and does not cache customer pages",
+      "status": "passed"
+    },
+    {
+      "name": "No browser runtime errors",
+      "status": "passed"
+    }
+  ]
+}

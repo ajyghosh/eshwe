@@ -1,4 +1,6 @@
 export type CartItem = {
+  productId?: string;
+  reservedStock?: number;
   sku: string;
   slug: string;
   name: string;

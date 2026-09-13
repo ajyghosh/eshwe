@@ -1,0 +1,4 @@
+{"route":"/shop/","cpuRate":1,"milliseconds":5}
+{"route":"/app/search/","cpuRate":1,"milliseconds":43}
+{"route":"/shop/","cpuRate":4,"milliseconds":9}
+{"route":"/app/search/","cpuRate":4,"milliseconds":69}

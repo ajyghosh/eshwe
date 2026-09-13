@@ -51,4 +51,16 @@ export type CheckoutOrder = {
   updatedAt?: unknown;
   userId?: string | null;
   verifiedAt?: unknown;
+  reservationState?: string;
+  reservationExpiresAt?: number;
+  inventoryCommitted?: boolean;
+  inventoryRestocked?: boolean;
+  attentionRequired?: boolean;
+  attentionReason?: string;
+  refundStatus?: string;
+  refundedAmountPaise?: number;
+  refundId?: string;
+  activeRefundRequestId?: string;
+  activeRefundEntityId?: string | null;
+  refundAmountPaise?: number;
 };

@@ -1,0 +1,245 @@
+{
+  "environment": "Local static production-mode build; demo Firebase Auth/Firestore; Chrome desktop/mobile viewports; simulated OTP/Razorpay",
+  "passed": 56,
+  "failed": 2,
+  "productionChanged": false,
+  "applicationCodeChanged": false,
+  "physicalDeviceTested": false,
+  "liveProvidersTested": false,
+  "results": [
+    {
+      "name": "Web route and layout /",
+      "status": "passed"
+    },
+    {
+      "name": "Web route and layout /shop/",
+      "status": "passed"
+    },
+    {
+      "name": "Web route and layout /product/golden-checkered-mul-cotton-test-saree-068-dummy-mul-cotton-068/",
+      "status": "passed"
+    },
+    {
+      "name": "Web route and layout /checkout/",
+      "status": "passed"
+    },
+    {
+      "name": "Web route and layout /account/",
+      "status": "passed"
+    },
+    {
+      "name": "Web route and layout /orders/",
+      "status": "passed"
+    },
+    {
+      "name": "Web route and layout /saved/",
+      "status": "passed"
+    },
+    {
+      "name": "Web route and layout /contact/",
+      "status": "passed"
+    },
+    {
+      "name": "Web route and layout /terms-and-conditions/",
+      "status": "passed"
+    },
+    {
+      "name": "Web route and layout /privacy-policy/",
+      "status": "passed"
+    },
+    {
+      "name": "Web route and layout /return-policy/",
+      "status": "passed"
+    },
+    {
+      "name": "PWA route and layout /app/",
+      "status": "passed"
+    },
+    {
+      "name": "PWA route and layout /app/search/",
+      "status": "passed"
+    },
+    {
+      "name": "PWA route and layout /app/product/?slug=golden-checkered-mul-cotton-test-saree-068-dummy-mul-cotton-068",
+      "status": "passed"
+    },
+    {
+      "name": "PWA route and layout /app/checkout/",
+      "status": "passed"
+    },
+    {
+      "name": "PWA route and layout /app/account/",
+      "status": "passed"
+    },
+    {
+      "name": "PWA route and layout /app/orders/",
+      "status": "passed"
+    },
+    {
+      "name": "PWA route and layout /app/favorites/",
+      "status": "passed"
+    },
+    {
+      "name": "PWA route and layout /app/terms-and-conditions/",
+      "status": "passed"
+    },
+    {
+      "name": "PWA route and layout /app/privacy-policy/",
+      "status": "passed"
+    },
+    {
+      "name": "PWA route and layout /app/return-policy/",
+      "status": "passed"
+    },
+    {
+      "name": "Web search submits query, narrows products and clears an empty result",
+      "status": "passed"
+    },
+    {
+      "name": "Web price sort changes product order",
+      "status": "passed"
+    },
+    {
+      "name": "Web header SMS sign-in validates phone and recovers from incorrect OTP",
+      "status": "passed"
+    },
+    {
+      "name": "Wishlist added on web appears on PWA and removal syncs back",
+      "status": "passed"
+    },
+    {
+      "name": "PWA address edit updates web and preserves another saved address",
+      "status": "passed"
+    },
+    {
+      "name": "PWA search submits, clears and opens filter controls",
+      "status": "passed"
+    },
+    {
+      "name": "Web contact validates fields and stores the support request",
+      "status": "passed"
+    },
+    {
+      "name": "PWA contact sheet submits without leaving the app",
+      "status": "passed"
+    },
+    {
+      "name": "Sold-out product waitlist accepts customer contact",
+      "status": "passed"
+    },
+    {
+      "name": "PWA manifest and worker register with same-origin install assets",
+      "status": "passed"
+    },
+    {
+      "name": "Web navigation at 360px has no horizontal page overflow",
+      "status": "passed"
+    },
+    {
+      "name": "Web navigation at 768px has no horizontal page overflow",
+      "status": "passed"
+    },
+    {
+      "name": "Web navigation at 1024px has no horizontal page overflow",
+      "status": "passed"
+    },
+    {
+      "name": "No unexpected customer UI JavaScript exceptions",
+      "status": "passed"
+    },
+    {
+      "name": "PWA login loads the address selected on the web",
+      "status": "passed"
+    },
+    {
+      "name": "PWA selected-address change synchronizes to another tab",
+      "status": "passed"
+    },
+    {
+      "name": "Guest cart changes synchronize across tabs and login does not double quantity",
+      "status": "passed"
+    },
+    {
+      "name": "Last available piece is shown live to another web customer",
+      "status": "passed"
+    },
+    {
+      "name": "Interrupted checkout can be recovered without creating a second payment",
+      "status": "passed"
+    },
+    {
+      "name": "Payment confirmation uses server amount and removes purchased cart once",
+      "status": "passed"
+    },
+    {
+      "name": "Receipt storage and account switching do not expose previous customer order",
+      "status": "passed"
+    },
+    {
+      "name": "Static product metadata, sitemap and navigation payloads are present",
+      "status": "passed"
+    },
+    {
+      "name": "PWA offline navigation shows reconnect screen and does not cache customer pages",
+      "status": "passed"
+    },
+    {
+      "name": "No browser runtime errors",
+      "status": "passed"
+    },
+    {
+      "name": "Desktop web checkout opens server-priced payment using selected saved address",
+      "status": "passed"
+    },
+    {
+      "name": "Web verification shows authorized as pending capture, never prematurely paid",
+      "status": "passed"
+    },
+    {
+      "name": "Web reconciliation confirms capture, authoritative total and receipt access",
+      "status": "passed"
+    },
+    {
+      "name": "Web top navigation opens India Post in a new tab",
+      "status": "passed"
+    },
+    {
+      "name": "PWA account tracking link is visible without sign-in and fits a 390px screen",
+      "status": "passed"
+    },
+    {
+      "name": "Tracking remains available in the signed-in PWA account",
+      "status": "passed"
+    },
+    {
+      "name": "Admin refund dialog rejects zero, excessive and malformed amounts",
+      "status": "passed"
+    },
+    {
+      "name": "Admin submits \u20b925.25 through the real API handler and displays the \u20b974.75 balance",
+      "status": "passed"
+    },
+    {
+      "name": "Refunding the remaining amount completes the refund and removes the refund button",
+      "status": "passed"
+    },
+    {
+      "name": "No browser runtime errors",
+      "status": "passed"
+    },
+    {
+      "name": "Live stock update preserves an unfinished web search",
+      "status": "failed",
+      "error": "Expected values to be strictly equal:\n+ actual - expected\n\n+ ''\n- 'DUMMY-MUL-COTTON-068'\n"
+    },
+    {
+      "name": "Live stock update preserves an applied web availability filter",
+      "status": "failed",
+      "error": "Expected values to be strictly equal:\n\n'ALL' !== 'AVAILABLE'\n"
+    },
+    {
+      "name": "Guest cart quantity changes sync between web and PWA and remove cleanly",
+      "status": "passed"
+    }
+  ]
+}

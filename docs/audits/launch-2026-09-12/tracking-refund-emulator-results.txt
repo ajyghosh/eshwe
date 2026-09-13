@@ -1,0 +1,28 @@
+
+> eshwe@0.1.0 test:emulator
+> node --test tests/emulator/*.test.cjs
+
+✔ real Firestore: last item race, two-product capture, replay and stale admin edit (13322.469538ms)
+[2026-09-12T15:01:50.763Z]  @firebase/firestore: Firestore (12.17.0): GrpcConnection RPC 'Write' stream 0x7423fe9c error. Code: 7 Message: 7 PERMISSION_DENIED:
+false for 'update' @ L130
+[2026-09-12T15:01:50.815Z]  @firebase/firestore: Firestore (12.17.0): GrpcConnection RPC 'Write' stream 0x7423fe9d error. Code: 7 Message: 7 PERMISSION_DENIED:
+false for 'update' @ L130
+✔ real rules: public catalogue is readable, drafts and direct stock changes are blocked (1102.621074ms)
+[2026-09-12T15:01:51.016Z]  @firebase/firestore: Firestore (12.17.0): GrpcConnection RPC 'Write' stream 0x7423fea0 error. Code: 7 Message: 7 PERMISSION_DENIED:
+false for 'update' @ L57
+[2026-09-12T15:01:51.061Z]  @firebase/firestore: Firestore (12.17.0): GrpcConnection RPC 'Write' stream 0x7423fea1 error. Code: 7 Message: 7 PERMISSION_DENIED:
+false for 'update' @ L57
+[2026-09-12T15:01:51.083Z]  @firebase/firestore: Firestore (12.17.0): GrpcConnection RPC 'Write' stream 0x7423fea2 error. Code: 7 Message: 7 PERMISSION_DENIED: No matching allow statements
+✔ real rules: customer data and orders are isolated; owners cannot forge payment or stock commits (270.392605ms)
+✔ real customer history orders on the server before limiting and supports older pages (776.183348ms)
+[2026-09-12T15:01:58.763Z]  @firebase/firestore: Firestore (12.17.0): GrpcConnection RPC 'Write' stream 0x7423fea4 error. Code: 7 Message: 7 PERMISSION_DENIED: No matching allow statements
+[2026-09-12T15:01:58.804Z]  @firebase/firestore: Firestore (12.17.0): GrpcConnection RPC 'Write' stream 0x7423fea5 error. Code: 7 Message: 7 PERMISSION_DENIED: No matching allow statements
+✔ real Firestore: concurrent partial refunds, replay, remainder and protected refund ledger (6942.258798ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 23103.294186

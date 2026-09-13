@@ -3,6 +3,7 @@ import type { CheckoutOrder } from "@/types/order";
 import type { Saree } from "@/types/saree";
 
 export function buildOwnerOverviewMetrics(orders: CheckoutOrder[], products: Saree[], now = new Date()) {
+  orders = orders.filter(order => order.paymentStatus === "captured" || order.status === "paid" || order.paymentCaptured === true || (!order.paymentStatus && !order.status && !order.attentionRequired));
   const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
   const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1).getTime();
   const previousMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).getTime();
@@ -13,7 +14,7 @@ export function buildOwnerOverviewMetrics(orders: CheckoutOrder[], products: Sar
   const previousMonthRevenue = sumOrdersByRange(orders, previousMonthStart, previousMonthEnd);
   const currentMonthOrders = countOrdersByRange(orders, currentMonthStart, nextMonthStart);
   const previousMonthOrders = countOrdersByRange(orders, previousMonthStart, previousMonthEnd);
-  const pendingDispatch = orders.filter((order) => order.dispatchStatus !== "completed").length;
+  const pendingDispatch = orders.filter((order) => order.dispatchStatus !== "completed" && !order.refundStatus && !order.attentionRequired).length;
   const activeProducts = products.filter((product) => product.status === "active").length;
   const featuredProducts = products.filter((product) => product.featured).length;
   const outOfStockProducts = products.filter((product) => product.status === "out_of_stock").length;
@@ -114,18 +115,12 @@ function countOrdersByRange(orders: CheckoutOrder[], start: number, end: number)
 }
 
 export function getOrderTotal(order: CheckoutOrder) {
-  if (typeof order.amountBreakdown?.total === "number") {
-    return order.amountBreakdown.total;
-  }
-
-  if (typeof order.amountPaise === "number") {
-    return order.amountPaise / 100;
-  }
-
-  return (order.cartItems ?? []).reduce((sum, item) => sum + (item.unitPrice ?? 0) * item.quantity, 0);
+  const gross = typeof order.amountBreakdown?.total === "number" ? order.amountBreakdown.total : typeof order.amountPaise === "number" ? order.amountPaise / 100 : (order.cartItems ?? []).reduce((sum,item)=>sum+(item.unitPrice??0)*item.quantity,0);
+  return Math.max(0, gross - (order.refundedAmountPaise ?? 0) / 100);
 }
 
 function getOrderUnits(order: CheckoutOrder) {
+  if (order.inventoryRestocked) return 0;
   return (order.cartItems ?? []).reduce((sum, item) => sum + item.quantity, 0);
 }
 

@@ -1,0 +1,6 @@
+{
+  "name": "projects/eshwesareestudio/locations/asia-south1/jobs/firebase-schedule-reconcileCheckoutOrders-asia-south1",
+  "state": "ENABLED",
+  "schedule": "every 5 minutes",
+  "timeZone": "UTC"
+}

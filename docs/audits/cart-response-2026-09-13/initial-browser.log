@@ -1,0 +1,39 @@
+PASS Guest web: add, quantity and favourite respond within 300 ms
+PASS Guest web: persisted values and web/PWA bag agree without doubling
+PASS Guest web: stock limits still prevent extra quantities
+PASS Guest web: no uncaught browser errors
+PASS Guest PWA: add, quantity and favourite respond within 300 ms
+FAIL Guest PWA: persisted values and web/PWA bag agree without doubling locator.waitFor: Timeout 15000ms exceeded.
+Call log:
+[2m  - waiting for locator('.mobile-app-action-bar').getByRole('button', { name: 'Decrease quantity', exact: true }) to be visible[22m
+
+FAIL Guest PWA: stock limits still prevent extra quantities locator.click: Timeout 15000ms exceeded.
+Call log:
+[2m  - waiting for locator('.mobile-app-action-bar').getByRole('button', { name: 'Increase quantity', exact: true })[22m
+
+PASS Guest PWA: no uncaught browser errors
+FAIL Signed-in web: add, quantity and favourite respond within 300 ms Cart and favourite commits must actually be held
+PASS Signed-in web: persisted values and web/PWA bag agree without doubling
+FAIL Signed-in web: failed saves roll back and show a message locator.waitFor: Error: strict mode violation: getByText('Your bag change could not be saved. Please try again.', { exact: true }) resolved to 2 elements:
+    1) <p>Your bag change could not be saved. Please try ag…</p> aka getByRole('status').getByText('Your bag change could not be')
+    2) <span>Your bag change could not be saved. Please try ag…</span> aka locator('span').filter({ hasText: 'Your bag change could not be' })
+
+Call log:
+[2m  - waiting for getByText('Your bag change could not be saved. Please try again.', { exact: true }) to be visible[22m
+
+FAIL Signed-in web: stock limits still prevent extra quantities The expression evaluated to a falsy value:
+
+  assert.ok(await plus.isDisabled())
+
+PASS Signed-in web: no uncaught browser errors
+FAIL Signed-in PWA: add, quantity and favourite respond within 300 ms Cart and favourite commits must actually be held
+FAIL Signed-in PWA: persisted values and web/PWA bag agree without doubling locator.waitFor: Timeout 15000ms exceeded.
+Call log:
+[2m  - waiting for locator('.mobile-app-action-bar').getByRole('button', { name: 'Decrease quantity', exact: true }) to be visible[22m
+
+FAIL Signed-in PWA: failed saves roll back and show a message Server cart/wishlist did not settle
+FAIL Signed-in PWA: stock limits still prevent extra quantities locator.click: Timeout 15000ms exceeded.
+Call log:
+[2m  - waiting for locator('.mobile-app-action-bar').getByRole('button', { name: 'Increase quantity', exact: true })[22m
+
+PASS Signed-in PWA: no uncaught browser errors

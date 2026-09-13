@@ -1,0 +1,35 @@
+PASS Web route and layout /
+PASS Web route and layout /shop/
+PASS Web route and layout /product/golden-checkered-mul-cotton-test-saree-068-dummy-mul-cotton-068/
+PASS Web route and layout /checkout/
+PASS Web route and layout /account/
+PASS Web route and layout /orders/
+PASS Web route and layout /saved/
+PASS Web route and layout /contact/
+PASS Web route and layout /terms-and-conditions/
+PASS Web route and layout /privacy-policy/
+PASS Web route and layout /return-policy/
+PASS PWA route and layout /app/
+PASS PWA route and layout /app/search/
+PASS PWA route and layout /app/product/?slug=golden-checkered-mul-cotton-test-saree-068-dummy-mul-cotton-068
+PASS PWA route and layout /app/checkout/
+PASS PWA route and layout /app/account/
+PASS PWA route and layout /app/orders/
+PASS PWA route and layout /app/favorites/
+PASS PWA route and layout /app/terms-and-conditions/
+PASS PWA route and layout /app/privacy-policy/
+PASS PWA route and layout /app/return-policy/
+FAIL Web search submits query, narrows products and clears an empty result Expected values to be strictly equal:
+FAIL Web price sort changes product order locator.selectOption: Timeout 12000ms exceeded.
+FAIL Web header SMS sign-in validates phone and recovers from incorrect OTP locator.waitFor: Timeout 12000ms exceeded.
+FAIL Wishlist added on web appears on PWA and removal syncs back locator.click: Timeout 12000ms exceeded.
+FAIL PWA address edit updates web and preserves another saved address locator.waitFor: Timeout 12000ms exceeded.
+PASS PWA search submits, clears and opens filter controls
+PASS Web contact validates fields and stores the support request
+PASS PWA contact sheet submits without leaving the app
+PASS Sold-out product waitlist accepts customer contact
+PASS PWA manifest and worker register with same-origin install assets
+PASS Web navigation at 360px has no horizontal page overflow
+PASS Web navigation at 768px has no horizontal page overflow
+PASS Web navigation at 1024px has no horizontal page overflow
+PASS No unexpected customer UI JavaScript exceptions

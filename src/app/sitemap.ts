@@ -1,9 +1,11 @@
 import type { MetadataRoute } from "next";
+import { publishedCatalogue } from "@/lib/server-catalogue";
 
 export const dynamic = "force-static";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
+    ...publishedCatalogue().map(product => ({ url: `https://eshwe.com/product/${product.slug}/`, lastModified: product.updatedAt || undefined, changeFrequency: "weekly" as const, priority: 0.8 })),
     {
       url: "https://eshwe.com/",
       lastModified: "2026-08-06",

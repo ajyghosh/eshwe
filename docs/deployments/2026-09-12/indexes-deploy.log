@@ -1,0 +1,75 @@
+[2026-09-12T16:09:43.167Z] ----------------------------------------------------------------------
+[2026-09-12T16:09:43.171Z] Command:       /Users/ajayghosh/.nvm/versions/node/v24.14.0/bin/node /Users/ajayghosh/.npm/_npx/7c2857124020ee0d/node_modules/firebase-tools/lib/bin/firebase.js deploy --only firestore:indexes --project eshwesareestudio --config firebase.release.json --non-interactive
+[2026-09-12T16:09:43.172Z] CLI Version:   15.29.0
+[2026-09-12T16:09:43.172Z] Platform:      darwin
+[2026-09-12T16:09:43.172Z] Node Version:  v24.14.0
+[2026-09-12T16:09:43.172Z] Detected Agent: codex_cli
+[2026-09-12T16:09:43.173Z] Time:          Sat Sep 12 2026 21:39:43 GMT+0530 (India Standard Time)
+[2026-09-12T16:09:43.173Z] ----------------------------------------------------------------------
+
+[2026-09-12T16:09:45.927Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[2026-09-12T16:09:45.927Z] > authorizing via signed-in user (ajyghosh@gmail.com)
+[2026-09-12T16:09:45.928Z] [iam] checking project eshwesareestudio for permissions ["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get"]
+[2026-09-12T16:09:45.945Z] Checked if tokens are valid: true, expires at: 1789232947367
+[2026-09-12T16:09:45.945Z] Checked if tokens are valid: true, expires at: 1789232947367
+[2026-09-12T16:09:45.946Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/eshwesareestudio:testIamPermissions [none]
+[2026-09-12T16:09:45.946Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/eshwesareestudio:testIamPermissions  x-goog-user-project=eshwesareestudio
+[2026-09-12T16:09:45.946Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/eshwesareestudio:testIamPermissions {"permissions":["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get"]}
+[2026-09-12T16:09:47.305Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/eshwesareestudio:testIamPermissions 200
+[2026-09-12T16:09:47.305Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/eshwesareestudio:testIamPermissions {"permissions":["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get"]}
+
+=== Deploying to 'eshwesareestudio'...
+
+i  deploying firestore
+i  firestore: ensuring required API firestore.googleapis.com is enabled...
+i  firestore: ensuring required API firestore.googleapis.com is enabled...
+[2026-09-12T16:09:47.308Z] Checked if tokens are valid: true, expires at: 1789232947367
+[2026-09-12T16:09:47.309Z] Checked if tokens are valid: true, expires at: 1789232947367
+[2026-09-12T16:09:47.309Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/eshwesareestudio/databases/(default) [none]
+[2026-09-12T16:09:49.036Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/eshwesareestudio/databases/(default) 200
+[2026-09-12T16:09:49.036Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/eshwesareestudio/databases/(default) {"name":"projects/eshwesareestudio/databases/(default)","uid":"98a0a22f-5f1f-4203-a639-f4ad5cbebc46","createTime":"2026-08-06T14:29:20.329319Z","updateTime":"2026-08-06T14:29:20.329319Z","locationId":"nam5","type":"FIRESTORE_NATIVE","concurrencyMode":"PESSIMISTIC","versionRetentionPeriod":"3600s","earliestVersionTime":"2026-09-12T15:09:48.961999Z","appEngineIntegrationMode":"DISABLED","keyPrefix":"s","pointInTimeRecoveryEnablement":"POINT_IN_TIME_RECOVERY_DISABLED","deleteProtectionState":"DELETE_PROTECTION_DISABLED","databaseEdition":"STANDARD","freeTier":true,"realtimeUpdatesMode":"REALTIME_UPDATES_MODE_ENABLED","enhancedTextSearchQueryMode":"ENHANCED_QUERY_MODE_ENABLED","etag":"IMqpmvG26ZYDMJmPp7qbjJYD"}
+i  firestore: reading indexes from firestore.indexes.json...
+i  cloud.firestore: checking firestore.rules for compilation errors...
+[2026-09-12T16:09:49.038Z] Checked if tokens are valid: true, expires at: 1789232947367
+[2026-09-12T16:09:49.039Z] Checked if tokens are valid: true, expires at: 1789232947367
+[2026-09-12T16:09:49.039Z] >>> [apiv2][query] POST https://firebaserules.googleapis.com/v1/projects/eshwesareestudio:test [none]
+[2026-09-12T16:09:49.039Z] >>> [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/eshwesareestudio:test [omitted]
+[2026-09-12T16:09:50.487Z] <<< [apiv2][status] POST https://firebaserules.googleapis.com/v1/projects/eshwesareestudio:test 200
+[2026-09-12T16:09:50.488Z] <<< [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/eshwesareestudio:test {}
+✔  cloud.firestore: rules file firestore.rules compiled successfully
+i  firestore: deploying indexes...
+[2026-09-12T16:09:50.491Z] Checked if tokens are valid: true, expires at: 1789232947367
+[2026-09-12T16:09:50.491Z] Checked if tokens are valid: true, expires at: 1789232947367
+[2026-09-12T16:09:50.491Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/eshwesareestudio/databases/(default)/collectionGroups/-/indexes [none]
+[2026-09-12T16:09:50.927Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/eshwesareestudio/databases/(default)/collectionGroups/-/indexes 200
+[2026-09-12T16:09:50.927Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/eshwesareestudio/databases/(default)/collectionGroups/-/indexes {"indexes":[{"name":"projects/eshwesareestudio/databases/(default)/collectionGroups/sarees/indexes/CICAgOjXh4EK","queryScope":"COLLECTION","fields":[{"fieldPath":"status","order":"ASCENDING"},{"fieldPath":"createdAt","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}],"state":"READY","density":"SPARSE_ALL"}]}
+[2026-09-12T16:09:50.928Z] Checked if tokens are valid: true, expires at: 1789232947367
+[2026-09-12T16:09:50.928Z] Checked if tokens are valid: true, expires at: 1789232947367
+[2026-09-12T16:09:50.928Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/eshwesareestudio/databases/(default)/collectionGroups/-/fields?filter=indexConfig.usesAncestorConfig=false OR ttlConfig:* [none]
+[2026-09-12T16:09:51.263Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/eshwesareestudio/databases/(default)/collectionGroups/-/fields?filter=indexConfig.usesAncestorConfig=false OR ttlConfig:* 200
+[2026-09-12T16:09:51.264Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/eshwesareestudio/databases/(default)/collectionGroups/-/fields?filter=indexConfig.usesAncestorConfig=false OR ttlConfig:* {"fields":[{"name":"projects/eshwesareestudio/databases/(default)/collectionGroups/__default__/fields/*","indexConfig":{"indexes":[{"queryScope":"COLLECTION","fields":[{"fieldPath":"*","order":"ASCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"*","order":"DESCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"*","arrayConfig":"CONTAINS"}],"state":"READY"}]}}]}
+[2026-09-12T16:09:51.265Z] Checked if tokens are valid: true, expires at: 1789232947367
+[2026-09-12T16:09:51.265Z] Checked if tokens are valid: true, expires at: 1789232947367
+[2026-09-12T16:09:51.265Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/eshwesareestudio/databases/(default) [none]
+[2026-09-12T16:09:51.679Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/eshwesareestudio/databases/(default) 200
+[2026-09-12T16:09:51.684Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/eshwesareestudio/databases/(default) {"name":"projects/eshwesareestudio/databases/(default)","uid":"98a0a22f-5f1f-4203-a639-f4ad5cbebc46","createTime":"2026-08-06T14:29:20.329319Z","updateTime":"2026-08-06T14:29:20.329319Z","locationId":"nam5","type":"FIRESTORE_NATIVE","concurrencyMode":"PESSIMISTIC","versionRetentionPeriod":"3600s","earliestVersionTime":"2026-09-12T15:09:51.550010Z","appEngineIntegrationMode":"DISABLED","keyPrefix":"s","pointInTimeRecoveryEnablement":"POINT_IN_TIME_RECOVERY_DISABLED","deleteProtectionState":"DELETE_PROTECTION_DISABLED","databaseEdition":"STANDARD","freeTier":true,"realtimeUpdatesMode":"REALTIME_UPDATES_MODE_ENABLED","enhancedTextSearchQueryMode":"ENHANCED_QUERY_MODE_ENABLED","etag":"IOCluPK26ZYDMJmPp7qbjJYD"}
+[2026-09-12T16:09:51.686Z] Skipping existing index: {"collectionGroup":"sarees","queryScope":"COLLECTION","fields":[{"fieldPath":"status","order":"ASCENDING"},{"fieldPath":"createdAt","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}]}
+[2026-09-12T16:09:51.686Z] Creating new index: {"collectionGroup":"checkoutOrders","queryScope":"COLLECTION","fields":[{"fieldPath":"userId","order":"ASCENDING"},{"fieldPath":"createdAt","order":"DESCENDING"}]}
+[2026-09-12T16:09:51.687Z] Checked if tokens are valid: true, expires at: 1789232947367
+[2026-09-12T16:09:51.687Z] Checked if tokens are valid: true, expires at: 1789232947367
+[2026-09-12T16:09:51.687Z] >>> [apiv2][query] POST https://firestore.googleapis.com/v1/projects/eshwesareestudio/databases/(default)/collectionGroups/checkoutOrders/indexes [none]
+[2026-09-12T16:09:51.687Z] >>> [apiv2][body] POST https://firestore.googleapis.com/v1/projects/eshwesareestudio/databases/(default)/collectionGroups/checkoutOrders/indexes {"fields":[{"fieldPath":"userId","order":"ASCENDING"},{"fieldPath":"createdAt","order":"DESCENDING"}],"queryScope":"COLLECTION"}
+[2026-09-12T16:09:52.297Z] <<< [apiv2][status] POST https://firestore.googleapis.com/v1/projects/eshwesareestudio/databases/(default)/collectionGroups/checkoutOrders/indexes 200
+[2026-09-12T16:09:52.297Z] <<< [apiv2][body] POST https://firestore.googleapis.com/v1/projects/eshwesareestudio/databases/(default)/collectionGroups/checkoutOrders/indexes {"name":"projects/eshwesareestudio/databases/(default)/operations/S01vcFVpSmdBQ0lDDCoDIDhiNDU5YzdhZDA1ZS03M2NhLTk2NTQtZWNhMS1iOTJjNDk2YiQac2VuaWxlcGlwCQpBEg","metadata":{"@type":"type.googleapis.com/google.firestore.admin.v1.IndexOperationMetadata","startTime":"2026-09-12T16:09:52.091524Z","index":"projects/eshwesareestudio/databases/(default)/collectionGroups/checkoutOrders/indexes/CICAgJiUpoMK","state":"INITIALIZING"}}
+[2026-09-12T16:09:52.297Z] Creating new index: {"collectionGroup":"checkoutOrders","queryScope":"COLLECTION","fields":[{"fieldPath":"reservationState","order":"ASCENDING"},{"fieldPath":"reservationExpiresAt","order":"ASCENDING"}]}
+[2026-09-12T16:09:52.297Z] Checked if tokens are valid: true, expires at: 1789232947367
+[2026-09-12T16:09:52.297Z] Checked if tokens are valid: true, expires at: 1789232947367
+[2026-09-12T16:09:52.297Z] >>> [apiv2][query] POST https://firestore.googleapis.com/v1/projects/eshwesareestudio/databases/(default)/collectionGroups/checkoutOrders/indexes [none]
+[2026-09-12T16:09:52.297Z] >>> [apiv2][body] POST https://firestore.googleapis.com/v1/projects/eshwesareestudio/databases/(default)/collectionGroups/checkoutOrders/indexes {"fields":[{"fieldPath":"reservationState","order":"ASCENDING"},{"fieldPath":"reservationExpiresAt","order":"ASCENDING"}],"queryScope":"COLLECTION"}
+[2026-09-12T16:09:52.876Z] <<< [apiv2][status] POST https://firestore.googleapis.com/v1/projects/eshwesareestudio/databases/(default)/collectionGroups/checkoutOrders/indexes 200
+[2026-09-12T16:09:52.876Z] <<< [apiv2][body] POST https://firestore.googleapis.com/v1/projects/eshwesareestudio/databases/(default)/collectionGroups/checkoutOrders/indexes {"name":"projects/eshwesareestudio/databases/(default)/operations/S0E0MW1pSmdBQ0lDDCoDIDA3MGE1MjBmODZlOC0zNTY4LWUwZDQtOGIwMi0xMzEwYzA0ZSQac2VuaWxlcGlwCQpBEg","metadata":{"@type":"type.googleapis.com/google.firestore.admin.v1.IndexOperationMetadata","startTime":"2026-09-12T16:09:52.674278Z","index":"projects/eshwesareestudio/databases/(default)/collectionGroups/checkoutOrders/indexes/CICAgJim14AK","state":"INITIALIZING"}}
+✔  firestore: deployed indexes in firestore.indexes.json successfully for (default) database
+
+✔  Deploy complete!
+
+Project Console: https://console.firebase.google.com/project/eshwesareestudio/overview

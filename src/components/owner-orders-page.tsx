@@ -1,4 +1,6 @@
 "use client";
+import { paymentLabel, fulfilmentLabel } from "@/lib/order-status";
+import { OwnerOrderActions } from "@/components/owner-order-actions";
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -322,7 +324,7 @@ export function OwnerOrdersPage() {
               <section className="rounded-[1.8rem] border border-[#e3d8c9] bg-white/70 p-7 sm:p-8">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <h2 className="brand-copy text-2xl text-[#3f4738]">Paid orders</h2>
+                  <h2 className="brand-copy text-2xl text-[#3f4738]">Paid orders and payment exceptions</h2>
                     <p className="mt-2 text-sm leading-7 text-[#667056]">
                       Clean queue for viewing slips, printing address labels, and marking dispatch.
                     </p>
@@ -422,13 +424,14 @@ export function OwnerOrdersPage() {
                                 <button
                                   type="button"
                                   onClick={() => handleMarkComplete(order.id)}
-                                  disabled={updatingOrderId === order.id}
+                                  disabled={updatingOrderId === order.id || Boolean(order.refundStatus) || Boolean(order.attentionRequired)}
                                   className="brand-caption inline-flex rounded-full border border-[#7d876f] px-3 py-1.5 text-[0.5rem] font-semibold tracking-[0.08em] text-[#5e684f] disabled:cursor-not-allowed disabled:opacity-60"
                                 >
                                   {updatingOrderId === order.id ? "UPDATING..." : "MARK COMPLETE"}
                                 </button>
                               )}
                             </div>
+                            <OwnerOrderActions order={order} />
                           </article>
                         ))}
                       </div>
@@ -957,15 +960,7 @@ function buildOwnerAddressPrintHtml(order: CheckoutOrder, origin: string) {
 }
 
 function formatPrintStatus(order: CheckoutOrder) {
-  if (order.dispatchStatus === "completed") {
-    return "Dispatched";
-  }
-
-  if (order.paymentStatus === "captured" || order.status === "paid" || order.paymentCaptured === true) {
-    return "Success";
-  }
-
-  return "Pending";
+  return `${paymentLabel(order)} · ${fulfilmentLabel(order)}`;
 }
 
 function escapeHtml(value: string) {

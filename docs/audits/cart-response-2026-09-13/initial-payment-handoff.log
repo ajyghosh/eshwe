@@ -1,0 +1,4 @@
+PASS web waits for bag save before enabling payment
+FAIL PWA locator.waitFor: Timeout 15000ms exceeded.
+Call log:
+[2m  - waiting for getByLabel('Saved delivery address') to be visible[22m

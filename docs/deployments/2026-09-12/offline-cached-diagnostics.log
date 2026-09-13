@@ -1,0 +1,97 @@
+immediate {
+  status: 200,
+  worker: true,
+  title: 'eshwe | Premium Saree Studio | eshwe',
+  text: 'Loading the collection…\n' +
+    'Contact\n' +
+    'Terms\n' +
+    'Privacy\n' +
+    'Shipping & Returns\n' +
+    '\n' +
+    '© 2026 eshwe Saree Studio\n' +
+    '\n' +
+    'Home\n' +
+    'Categories\n' +
+    'Wishlist\n' +
+    'Account'
+}
+settled {
+  title: 'eshwe | Premium Saree Studio | eshwe',
+  text: 'Loading the collection…\n' +
+    'Contact\n' +
+    'Terms\n' +
+    'Privacy\n' +
+    'Shipping & Returns\n' +
+    '\n' +
+    '© 2026 eshwe Saree Studio\n' +
+    '\n' +
+    'Home\n' +
+    'Categories\n' +
+    'Wishlist\n' +
+    'Account'
+}
+auto-reconnect {
+  title: 'eshwe | Premium Saree Studio | eshwe',
+  text: 'Popular searches\n' +
+    '\n' +
+    '95 results\n' +
+    '\n' +
+    'Mul Cotton\n' +
+    'Kanchi Cotton\n' +
+    'Tissue Silk\n' +
+    'Soft Silk\n' +
+    'Wedding\n' +
+    '-13%\n' +
+    'Golden Checkered Mul Cotton 036\n' +
+    '\n' +
+    'Mul Cotton\n' +
+    '\n' +
+    '₹1.00\n' +
+    '₹3,749.00\n' +
+    'ADD TO CART\n' +
+    '-15%\n' +
+    'Golden Checkered Mul Cotton 064\n' +
+    '\n' +
+    'Mul Cotton\n' +
+    '\n' +
+    '₹1.00\n' +
+    '₹3,249.00\n' +
+    'ADD TO CART\n' +
+    '-11%\n' +
+    'Golden Checkered Mul Cotton 015\n' +
+    '\n' +
+    'Only 2 left in stock\n' +
+    '\n' +
+    'Mul Cotton\n' +
+    '\n' +
+    '₹1.00\n' +
+    '₹3,499.00\n' +
+    'ADD TO CART\n' +
+    '-16%\n' +
+    'Golden Checkered Mul Cotton 071\n' +
+    '\n' +
+    'Mul Cotton\n' +
+    '\n' +
+    '₹1.00\n' +
+    '₹2,499.00\n' +
+    'ADD TO CART\n' +
+    '-9%\n' +
+    'Golden Checkered Mul Cotton 099\n' +
+    '\n' +
+    'Only 2 left in stock\n' +
+    '\n' +
+    'Mul Cotton\n' +
+    '\n' +
+    '₹1.00\n' +
+    '₹4,499.00\n' +
+    'ADD TO CART\n' +
+    '-11%\n' +
+    'Golden Checkered Mul Cotton 022\n' +
+    '\n' +
+    'Mul Cotton\n' +
+    '\n' +
+    '₹1.00\n' +
+    '₹2,749.00\n' +
+    'ADD TO CART\n' +
+    '-7%\n'
+}

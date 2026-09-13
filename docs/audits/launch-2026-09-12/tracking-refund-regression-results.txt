@@ -1,0 +1,65 @@
+
+> eshwe@0.1.0 test
+> node --test tests/*.test.cjs
+
+✔ incorrect OTP attempts commit before error; fifth attempt locks even the correct code (767.073137ms)
+✔ valid OTP is consumed once; expired OTP deletion commits (65.633611ms)
+✔ forged payment signature cannot mutate a paid or pending order (4.320878ms)
+✔ checkout and owner APIs reject unauthenticated/non-owner access and cross-account order reads (98.081926ms)
+✔ old signed webhook event reconciles current provider capture and never downgrades payment (134.821648ms)
+✔ empty cache snapshot does not masquerade as an empty catalogue or missing product (614.032393ms)
+✔ two-product reservation and capture commit atomically and replay only once (135.30245ms)
+✔ ten customers racing one piece yield exactly one reservation and one gateway order (18.28153ms)
+✔ same checkout key retries do not reserve or create a gateway order twice (5.64106ms)
+✔ same customer cannot start a second active checkout across devices (11.00545ms)
+✔ insufficient final line rolls back the whole reservation (0.988681ms)
+✔ duplicate quantities are aggregated and unknown stock is unavailable (1.430964ms)
+✔ expiry reconciles provider before releasing and repeated expiry does not inflate stock (3.008091ms)
+✔ captured/authorized provider payments are protected when reservation expires (30.705893ms)
+✔ provider outage keeps stock held; no unsafe release (2.637045ms)
+✔ late capture after expiry and resale records money, flags fulfilment exception and refunds once (7.034133ms)
+✔ old failed/authorized states never downgrade a capture; mismatched money is rejected (3.801342ms)
+✔ a refund needs an explicit, once-only physical restock; dispatch blocked after refund (6.315228ms)
+✔ unknown gateway-create outcome is never retried as a new charge/order (1.457742ms)
+✔ capture removes purchased cart units once and preserves later additions and other products (6.426712ms)
+✔ pending refund stays discoverable for reconciliation; processed refunds never downgrade (2.521334ms)
+✔ a payment already fully refunded before reconciliation never consumes inventory (3.685737ms)
+✔ late failed duplicate refund request cannot downgrade a concurrent processed refund (111.754392ms)
+✔ admin can explicitly retry a confirmed failed refund with a new idempotent attempt (11.841619ms)
+✔ PWA address edit preserves other web addresses and selected address (899.971848ms)
+✔ two devices saving different addresses preserve both; same-address stale edit is rejected (284.971303ms)
+✔ concurrent wishlist additions/removal do not overwrite unrelated items (272.398712ms)
+✔ guest migration is once only, merges snapshots without doubling, and matches legacy SKU to ID (196.627729ms)
+✔ cart edits from two devices and different accounts stay isolated (224.636451ms)
+✔ missing, draft and deleted products become unavailable; stock caps displayed quantities (38.883764ms)
+✔ interrupted guest migration belongs to first account and is never imported by the next customer (33.55077ms)
+✔ wishlist migration retry cannot restore an item removed after successful import (249.191802ms)
+✔ owner history includes paid orders beyond the newest 100 documents and legacy payment flags (208.183683ms)
+✔ all-time totals cover more than 100 paid orders without double counting (330.237732ms)
+✔ zero and small monthly revenue remain proportional instead of showing a minimum bar (35.495504ms)
+✔ subscription errors are surfaced to the owner UI (114.069835ms)
+✔ stale admin form cannot restore reserved/sold stock (17.418104ms)
+✔ content-only admin save preserves stock and archive retains image history (3.554094ms)
+✔ concurrent product creation enforces unique SKU and URL atomically (6.420405ms)
+✔ legacy SKU/slug conflicts, stock tampering and SKU edits rejected (5.572291ms)
+✔ receipt cache is account scoped and stores no receipt PII in browser storage (740.137319ms)
+✔ partial refund uses original payment, exact paise and preserves stock; remaining balance can be refunded (13.04487ms)
+✔ zero, negative, fractional paise, strings and excessive refunds never call the provider (1.407801ms)
+✔ concurrent same-reference requests and later replays create one provider refund (12.887885ms)
+✔ two admins with different references cannot both refund a stale displayed balance (1.955893ms)
+✔ response loss retries the same body/key and cannot accept a second request meanwhile (2.698133ms)
+✔ pending partial refund is polled by refund ID; a later processed event permits another amount (1.365104ms)
+✔ second pending/failed partial refund is visible despite earlier processed money; old webhook cannot hide it (4.406884ms)
+✔ processed webhook arriving before a failed HTTP response cannot be downgraded or counted twice (13.52106ms)
+✔ legacy aggregate refund balances are retained when adding a new partial refund (12.897559ms)
+✔ uncaptured orders and mismatched provider responses are rejected (1.767983ms)
+✔ refund amount entry converts exact decimal rupees and rejects malformed values (132.240585ms)
+✔ owner API enforces authorization, forwards amount and refunds the stored original payment only (80.468794ms)
+ℹ tests 53
+ℹ suites 0
+ℹ pass 53
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6943.851427

@@ -1,0 +1,66 @@
+{
+  "environment": "Local static build; real Auth/Firestore emulators; simulated SMS/payment; Chrome desktop/mobile viewports",
+  "results": [
+    {
+      "name": "Web search submits query, narrows products and clears an empty result",
+      "status": "failed",
+      "error": "locator.waitFor: Timeout 12000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.web-product-grid').getByText('Golden Checkered Mul Cotton 068', { exact: true }) to be visible\u001b[22m\n",
+      "url": "http://127.0.0.1:3000/shop/search/dummy-mul-cotton-068/",
+      "screenshot": "web-search-submits-query-narrows-products-and-clears-an-empty-result-failure.png"
+    },
+    {
+      "name": "Web price sort changes product order",
+      "status": "passed"
+    },
+    {
+      "name": "Web header SMS sign-in validates phone and recovers from incorrect OTP",
+      "status": "passed"
+    },
+    {
+      "name": "Wishlist added on web appears on PWA and removal syncs back",
+      "status": "passed"
+    },
+    {
+      "name": "PWA address edit updates web and preserves another saved address",
+      "status": "passed"
+    },
+    {
+      "name": "PWA search submits, clears and opens filter controls",
+      "status": "passed"
+    },
+    {
+      "name": "Web contact validates fields and stores the support request",
+      "status": "passed"
+    },
+    {
+      "name": "PWA contact sheet submits without leaving the app",
+      "status": "passed"
+    },
+    {
+      "name": "Sold-out product waitlist accepts customer contact",
+      "status": "passed"
+    },
+    {
+      "name": "PWA manifest and worker register with same-origin install assets",
+      "status": "passed"
+    },
+    {
+      "name": "Web navigation at 360px has no horizontal page overflow",
+      "status": "passed"
+    },
+    {
+      "name": "Web navigation at 768px has no horizontal page overflow",
+      "status": "passed"
+    },
+    {
+      "name": "Web navigation at 1024px has no horizontal page overflow",
+      "status": "passed"
+    },
+    {
+      "name": "No unexpected customer UI JavaScript exceptions",
+      "status": "passed"
+    }
+  ],
+  "observations": [],
+  "runtimeErrors": []
+}

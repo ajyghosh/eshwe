@@ -1,0 +1,2 @@
+PASS web waits for bag save before enabling payment
+PASS PWA waits for bag save before enabling payment

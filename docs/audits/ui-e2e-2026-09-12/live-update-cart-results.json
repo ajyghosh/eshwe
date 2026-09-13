@@ -1,0 +1,16 @@
+[
+  {
+    "name": "Live stock update preserves an unfinished web search",
+    "status": "failed",
+    "error": "Expected values to be strictly equal:\n+ actual - expected\n\n+ ''\n- 'DUMMY-MUL-COTTON-068'\n"
+  },
+  {
+    "name": "Live stock update preserves an applied web availability filter",
+    "status": "failed",
+    "error": "Expected values to be strictly equal:\n\n'ALL' !== 'AVAILABLE'\n"
+  },
+  {
+    "name": "Guest cart quantity changes sync between web and PWA and remove cleanly",
+    "status": "passed"
+  }
+]

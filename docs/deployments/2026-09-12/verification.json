@@ -1,0 +1,18 @@
+{
+  "deployed": true,
+  "origin": "https://eshwe.com",
+  "hosting": {
+    "name": "sites/eshwesareestudio/releases/1789230207616000",
+    "type": "DEPLOY",
+    "releaseTime": "2026-09-12T16:23:27.616Z",
+    "version": "sites/eshwesareestudio/versions/c639c4c391606533"
+  },
+  "liveChecksPassed": 18,
+  "regressionTestsPassed": 54,
+  "pwaCacheBrowserChecksPassed": 2,
+  "activeFunctions": 11,
+  "readyIndexes": 3,
+  "schedulerEnabled": true,
+  "livePaymentsOrRefundsTested": false,
+  "physicalDevicesTested": false
+}

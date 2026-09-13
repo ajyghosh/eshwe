@@ -1,0 +1,75 @@
+
+> eshwe@0.1.0 build:hosting
+> npm run build && node scripts/prepare-hosting-export.mjs
+
+
+> eshwe@0.1.0 build
+> node scripts/snapshot-catalogue.cjs && next build
+
+   ▲ Next.js 15.5.22
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 14.2s
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/131) ...
+   Generating static pages (32/131)
+   Generating static pages (65/131)
+   Generating static pages (98/131)
+ ✓ Generating static pages (131/131)
+   Finalizing page optimization ...
+   Collecting build traces ...
+   Exporting (0/2) ...
+ ✓ Exporting (2/2)
+
+Route (app)                                                                        Size  First Load JS
+┌ ○ /                                                                           7.85 kB         322 kB
+├ ○ /_not-found                                                                   132 B         103 kB
+├ ○ /account                                                                    5.91 kB         314 kB
+├ ○ /app                                                                          200 B         338 kB
+├ ○ /app/account                                                                  199 B         338 kB
+├ ○ /app/categories                                                               204 B         338 kB
+├ ○ /app/checkout                                                                 201 B         338 kB
+├ ○ /app/favorites                                                                200 B         338 kB
+├ ○ /app/order-confirmation                                                       201 B         338 kB
+├ ○ /app/orders                                                                   199 B         338 kB
+├ ○ /app/privacy-policy                                                         1.25 kB         303 kB
+├ ○ /app/product                                                                  198 B         338 kB
+├ ○ /app/return-policy                                                          1.25 kB         303 kB
+├ ○ /app/search                                                                   204 B         338 kB
+├ ○ /app/terms-and-conditions                                                   1.25 kB         303 kB
+├ ○ /checkout                                                                   6.37 kB         321 kB
+├ ○ /contact                                                                    4.13 kB         312 kB
+├ ○ /order-confirmation                                                         3.18 kB         296 kB
+├ ○ /orders                                                                     5.99 kB         314 kB
+├ ○ /owner                                                                       8.3 kB         297 kB
+├ ○ /owner/access                                                               4.65 kB         294 kB
+├ ○ /owner/catalogue                                                            9.54 kB         304 kB
+├ ○ /owner/messages                                                             3.19 kB         296 kB
+├ ○ /owner/orders                                                                7.4 kB         300 kB
+├ ○ /owner/storefront                                                            9.8 kB         304 kB
+├ ○ /owner/waitlist                                                             6.65 kB         296 kB
+├ ○ /payment                                                                    8.35 kB         323 kB
+├ ○ /privacy-policy                                                             2.01 kB         310 kB
+├ ○ /product                                                                      160 B         324 kB
+├ ● /product/[slug]                                                               159 B         324 kB
+├   ├ /product/golden-checkered-mul-cotton-test-saree-051-dummy-mul-cotton-051
+├   ├ /product/golden-checkered-mul-cotton-test-saree-068-dummy-mul-cotton-068
+├   ├ /product/golden-checkered-mul-cotton-test-saree-057-dummy-mul-cotton-057
+├   └ [+92 more paths]
+├ ○ /return-policy                                                              2.01 kB         310 kB
+├ ○ /saved                                                                      6.44 kB         315 kB
+├ ○ /shop                                                                       7.36 kB         322 kB
+├ ○ /sitemap.xml                                                                  132 B         103 kB
+└ ○ /terms-and-conditions                                                       2.01 kB         310 kB
++ First Load JS shared by all                                                    103 kB
+  ├ chunks/1255-808fe195f5d6ccae.js                                             46.4 kB
+  ├ chunks/4bd1b696-f785427dddbba9fb.js                                         54.2 kB
+  └ other shared chunks (total)                                                 1.97 kB
+
+
+○  (Static)  prerendered as static content
+●  (SSG)     prerendered as static HTML (uses generateStaticParams)
+
+Prepared hosting export in out/.

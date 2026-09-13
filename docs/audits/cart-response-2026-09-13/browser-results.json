@@ -1,0 +1,126 @@
+{
+  "results": [
+    {
+      "name": "Guest web: add, quantity and favourite respond within 300 ms",
+      "status": "passed"
+    },
+    {
+      "name": "Guest web: persisted values and web/PWA bag agree without doubling",
+      "status": "passed"
+    },
+    {
+      "name": "Guest web: stock limits still prevent extra quantities",
+      "status": "passed"
+    },
+    {
+      "name": "Guest web: no uncaught browser errors",
+      "status": "passed"
+    },
+    {
+      "name": "Guest PWA: add, quantity and favourite respond within 300 ms",
+      "status": "passed"
+    },
+    {
+      "name": "Guest PWA: persisted values and web/PWA bag agree without doubling",
+      "status": "passed"
+    },
+    {
+      "name": "Guest PWA: stock limits still prevent extra quantities",
+      "status": "passed"
+    },
+    {
+      "name": "Guest PWA: no uncaught browser errors",
+      "status": "passed"
+    },
+    {
+      "name": "Signed-in web: add, quantity and favourite respond within 300 ms",
+      "status": "passed"
+    },
+    {
+      "name": "Signed-in web: persisted values and web/PWA bag agree without doubling",
+      "status": "passed"
+    },
+    {
+      "name": "Signed-in web: failed saves roll back and show a message",
+      "status": "passed"
+    },
+    {
+      "name": "Signed-in web: stock limits still prevent extra quantities",
+      "status": "passed"
+    },
+    {
+      "name": "Signed-in web: no uncaught browser errors",
+      "status": "passed"
+    },
+    {
+      "name": "Signed-in PWA: add, quantity and favourite respond within 300 ms",
+      "status": "passed"
+    },
+    {
+      "name": "Signed-in PWA: persisted values and web/PWA bag agree without doubling",
+      "status": "passed"
+    },
+    {
+      "name": "Signed-in PWA: failed saves roll back and show a message",
+      "status": "passed"
+    },
+    {
+      "name": "Signed-in PWA: stock limits still prevent extra quantities",
+      "status": "passed"
+    },
+    {
+      "name": "Signed-in PWA: no uncaught browser errors",
+      "status": "passed"
+    }
+  ],
+  "timings": [
+    {
+      "label": "Guest web add",
+      "milliseconds": 16
+    },
+    {
+      "label": "Guest web quantity",
+      "milliseconds": 6
+    },
+    {
+      "label": "Guest web favourite",
+      "milliseconds": 2
+    },
+    {
+      "label": "Guest PWA add",
+      "milliseconds": 20
+    },
+    {
+      "label": "Guest PWA quantity",
+      "milliseconds": 3
+    },
+    {
+      "label": "Guest PWA favourite",
+      "milliseconds": 2
+    },
+    {
+      "label": "Signed-in web add",
+      "milliseconds": 8
+    },
+    {
+      "label": "Signed-in web quantity",
+      "milliseconds": 4
+    },
+    {
+      "label": "Signed-in web favourite",
+      "milliseconds": 1
+    },
+    {
+      "label": "Signed-in PWA add",
+      "milliseconds": 10
+    },
+    {
+      "label": "Signed-in PWA quantity",
+      "milliseconds": 3
+    },
+    {
+      "label": "Signed-in PWA favourite",
+      "milliseconds": 2
+    }
+  ]
+}

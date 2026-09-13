@@ -1,4 +1,7 @@
 "use client";
+import Link from "next/link";
+import { paymentLabel, fulfilmentLabel } from "@/lib/order-status";
+
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -17,6 +20,7 @@ export function CustomerOrdersPage() {
   const router = useRouter();
   const { user, loading, signIn } = useAuthSession();
   const { addItem } = useCart();
+  const [orderLimit, setOrderLimit] = useState(50);
   const [orders, setOrders] = useState<CheckoutOrder[]>([]);
   const [catalogueProducts, setCatalogueProducts] = useState<Saree[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
@@ -44,9 +48,10 @@ export function CustomerOrdersPage() {
         setOrders([]);
         setOrdersLoading(false);
         setOrdersError(error.message);
-      }
+      },
+      orderLimit
     );
-  }, [user?.uid]);
+  }, [user?.uid, orderLimit]);
 
   useEffect(() => {
     if (!user?.uid) {
@@ -126,7 +131,7 @@ export function CustomerOrdersPage() {
               ) : orders.length === 0 ? (
                 <div className="rounded-[1.3rem] border border-dashed border-[#d8cbb7] bg-[#fbf4e8] p-6 text-sm leading-7 text-[#667056]">No orders linked to this account yet.</div>
               ) : (
-                <OrdersTable orders={orders} onShopAgain={handleShopAgain} />
+                <><OrdersTable orders={orders} onShopAgain={handleShopAgain} />{orders.length >= orderLimit ? <button className="mt-6 underline" onClick={() => setOrderLimit(count => count + 50)}>Load older orders</button> : null}</>
               )}
             </section>
           )}
@@ -153,6 +158,7 @@ function OrdersTable({ orders, onShopAgain }: { orders: CheckoutOrder[]; onShopA
             <OrderValue label="Items"><p className="text-sm text-[#4f5942]">{order.cartItems?.length || 0}</p></OrderValue>
             <OrderValue label="Status"><p className="text-sm font-medium text-[#5e684f]">{formatOrderStatus(order)}</p></OrderValue>
             <OrderValue label="Actions">
+              <Link className="underline" href={`/order-confirmation/?order=${encodeURIComponent(order.id)}`}>Check payment / resume</Link>
               <div className="flex flex-wrap gap-3 md:justify-end">
                 <button type="button" onClick={() => openOrderReceiptPreview(buildOrderConfirmation(order))} className="brand-caption inline-flex border-b border-[#7d876f] pb-0.5 text-[0.62rem] font-semibold tracking-[0.08em] text-[#4f5942]">VIEW RECEIPT</button>
                 <button type="button" onClick={() => onShopAgain(order)} className="brand-caption inline-flex border-b border-[#7d876f] pb-0.5 text-[0.62rem] font-semibold tracking-[0.08em] text-[#4f5942]">SHOP AGAIN</button>
@@ -178,18 +184,15 @@ function formatCurrency(value?: number | null) {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2, minimumFractionDigits: 2 }).format(value || 0);
 }
 
-function formatOrderStatus(order: CheckoutOrder) {
-  if (order.paymentStatus === "captured" || order.status === "paid") return "PAID";
-  if (order.paymentStatus === "failed" || order.status === "payment_failed") return "FAILED";
-  if (order.paymentStatus === "authorized" || order.status === "authorized") return "AUTHORIZED";
-  return "PENDING";
-}
+function formatOrderStatus(order: CheckoutOrder) { return `${paymentLabel(order)} · ${fulfilmentLabel(order)}`; }
 
 function buildOrderConfirmation(order: CheckoutOrder) {
   return {
     createdAtIso: orderCreatedAtIso(order.createdAt),
     customer: { address: order.customer?.address || "", city: order.customer?.city || "", email: order.customer?.email || "", fullName: order.customer?.fullName || "Customer", phone: order.customer?.phone || "", pincode: order.customer?.pincode || "", state: order.customer?.state || "" },
     internalOrderId: order.id,
+    userId: order.userId || undefined,
+    refundStatus: order.refundStatus,
     items: (order.cartItems ?? []).map((item) => ({ color: item.color, name: item.name, primaryImageUrl: item.primaryImageUrl, quantity: item.quantity, sku: item.sku, unitOriginalPrice: item.unitOriginalPrice, unitPrice: item.unitPrice })),
     notes: order.notes || "",
     paymentStatus: order.paymentStatus || order.status || "pending",

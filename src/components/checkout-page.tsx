@@ -23,12 +23,12 @@ import type { Saree } from "@/types/saree";
 const MAX_CHECKOUT_RECOMMENDATIONS = 6;
 
 export function CheckoutPage() {
-  const { items, subtotal, savings, shippingFee, packagingFee, total, updateQuantity, removeItem, clearCart } =
+  const { stockReady, items, subtotal, savings, shippingFee, packagingFee, total, updateQuantity, removeItem, clearCart } =
     useCart();
   const [products, setProducts] = useState<Saree[]>([]);
   const [recommendationsLoading, setRecommendationsLoading] = useState(true);
   const hasUnavailableItems = items.some((item) => isCartItemUnavailable(item));
-  const canContinueToPayment = items.length > 0 && !hasUnavailableItems;
+  const canContinueToPayment = stockReady && items.length > 0 && !hasUnavailableItems;
   const itemCount = items.reduce((count, item) => count + item.quantity, 0);
   const subtotalLabel = `Subtotal${itemCount > 0 ? ` (${itemCount} item${itemCount === 1 ? "" : "s"})` : ""}`;
 

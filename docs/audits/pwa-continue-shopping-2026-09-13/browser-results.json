@@ -1,0 +1,41 @@
+{
+  "origin": "http://127.0.0.1:64983",
+  "results": [
+    {
+      "name": "PWA add button becomes quantity controls and Continue shopping",
+      "status": "passed"
+    },
+    {
+      "name": "Split action bar fits 320 390 and 430 pixel screens",
+      "status": "passed"
+    },
+    {
+      "name": "Quantity caps remain enforced and removing the item restores Add to Cart",
+      "status": "passed"
+    },
+    {
+      "name": "Shared product links return to Browse and retain the bag",
+      "status": "passed"
+    },
+    {
+      "name": "Continue shopping restores search filters sort and scroll position",
+      "status": "passed"
+    },
+    {
+      "name": "The return destination survives a product reload",
+      "status": "passed"
+    },
+    {
+      "name": "Related product navigation keeps the original catalogue destination",
+      "status": "passed"
+    },
+    {
+      "name": "Desktop web product controls are unchanged",
+      "status": "passed"
+    },
+    {
+      "name": "No uncaught browser errors",
+      "status": "passed"
+    }
+  ]
+}

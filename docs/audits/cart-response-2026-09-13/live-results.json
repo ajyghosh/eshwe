@@ -1,0 +1,63 @@
+{
+  "origin": "https://eshwe.com",
+  "results": [
+    {
+      "name": "web: current release and immediate cart/quantity/favourite feedback",
+      "status": "passed"
+    },
+    {
+      "name": "web: guest cart and favourite survive reload and bag opens correctly",
+      "status": "passed"
+    },
+    {
+      "name": "web: no uncaught runtime errors",
+      "status": "passed"
+    },
+    {
+      "name": "PWA: current release and immediate cart/quantity/favourite feedback",
+      "status": "passed"
+    },
+    {
+      "name": "PWA: guest cart and favourite survive reload and bag opens correctly",
+      "status": "passed"
+    },
+    {
+      "name": "PWA: no uncaught runtime errors",
+      "status": "passed"
+    }
+  ],
+  "timings": [
+    {
+      "label": "web add",
+      "milliseconds": 5
+    },
+    {
+      "label": "web quantity",
+      "milliseconds": 3
+    },
+    {
+      "label": "web favourite",
+      "milliseconds": 2
+    },
+    {
+      "label": "web open bag",
+      "milliseconds": 325
+    },
+    {
+      "label": "PWA add",
+      "milliseconds": 12
+    },
+    {
+      "label": "PWA quantity",
+      "milliseconds": 7
+    },
+    {
+      "label": "PWA favourite",
+      "milliseconds": 9
+    },
+    {
+      "label": "PWA open bag",
+      "milliseconds": 273
+    }
+  ]
+}

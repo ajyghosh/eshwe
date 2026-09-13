@@ -1,0 +1,10 @@
+[
+  {
+    "name": "web waits for bag save before enabling payment",
+    "status": "passed"
+  },
+  {
+    "name": "PWA waits for bag save before enabling payment",
+    "status": "passed"
+  }
+]

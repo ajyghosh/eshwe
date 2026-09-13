@@ -1,0 +1,22 @@
+{
+  "deployed": true,
+  "pwaOnly": true,
+  "regressionTestsPassed": 65,
+  "localBrowserChecksPassed": 9,
+  "liveBrowserChecksPassed": 9,
+  "viewportWidths": [
+    320,
+    390,
+    430
+  ],
+  "lint": "passed",
+  "typecheck": "passed",
+  "productionBuild": "passed",
+  "release": {
+    "name": "sites/eshwesareestudio/releases/1789271298107000",
+    "releaseTime": "2026-09-13T03:48:18.107Z",
+    "version": "sites/eshwesareestudio/versions/2c774154c82733cf"
+  },
+  "productionDataModified": false,
+  "physicalDevicesTested": false
+}

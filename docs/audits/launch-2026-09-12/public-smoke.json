@@ -1,0 +1,106 @@
+{
+  "checkedAt": "2026-09-12T12:41:05.831Z",
+  "origin": "https://eshwe.com",
+  "notes": "Fresh anonymous browser contexts. Checkout/SMS API routes blocked. Cart interactions affect only temporary browser storage.",
+  "webShop": {
+    "title": "Shop | eshwe",
+    "text": "Shop\nKanchi Cotton\nSungudi Cotton\nTissue Silk\nMul Cotton\nSoft Silk\nSearch\nAccount\nBag\n0\n\nCURATED CATALOGUE\n\nThe saree collection\n\nFind your next drape by fabric, occasion, or colour.\n\nRESULTS\n\n95 pieces\n\nShowing the full collection\n\nSearch\nSort\nNewest\nPrice: Low to High\nPrice: High to Low\nMost Relevant\nCategory\nALL CATEGORIES\nMul Cotton\nFabric\nALL FABRICS\nMul Cotton\nAvailability\nALL\nAVAILABLE\nOUT OF STOCK\nAPPLY\nCLEAR\n\nADVANCED FILTERS\n\nBrowse mode and shopping intent.\n\nSHOW ADVANCED\n\nCATALOGUE\n\nDiscover your favourites\n\n95 pieces found\n\n-15%\nGolden Checkered Mul Cotton 084\n\nDUMMY-MUL-COTTON-084 - Mul Cotton\n\n₹1.00\n₹3,249.00\nADD TO BAG\n-15%\nGolden Checkered Mul Cotton 024\n\nDUMMY-MUL-COTTON-024 - Mul Cotton\n\n₹1.00\n₹3,249.00\nADD TO BAG\n-11%\nGolden Checkered Mul Cotton 080\n\nDUMMY-MUL-COTTON-080 - Mul Cotton\n\n₹1.00\n₹4,749.00\nADD TO BAG\n-18%\nGolden Checkered Mul Cotton 052\n\nDUMMY-MUL-COTTON-052 - Mul Cotton\n\n₹1.00\n₹2,749.00\nADD TO BAG\n-11%\nGolden Checkered Mul Cotton 020\n\nDUMMY-MUL-COTTON-020 - Mul Cotton\n\n₹1.00\n₹4,749.00\nADD TO BAG\n-12%\nGolden Checkered Mul Cotton 048\n\nDUMMY-MUL-COTTON-048 - Mul Cotton\n\n₹1.00\n₹4,249.00\nADD TO BAG\n-13%\nGolden Checkered Mul Cotton 076\n\nDUMMY-MUL-COTTON-076 - Mul Cotton\n\n₹1.00\n₹3,749.00\nADD TO BAG\n-18%\nGolden Checkered Mul Cotton 072\n\nDUMMY-MUL-COTTON-072 - Mul Cotton\n\n₹1.00\n₹2,749.00\nADD TO BAG\n-13%\nGolden Checkered Mul Cotton 016\n\nDUMMY-MUL-COTTON-016 - Mul Cotton\n\n₹1.00\n₹3,749.00\nADD TO BAG\n-15%\nGolden Checkered Mul Cotton 044\n\nDUMMY-MUL-COTTON-044 - Mul Cotton\n\n₹1.00\n₹3,249.00\nADD TO BAG\n-11%\nGolden Checkered Mul Cotton 100\n\nDUMMY-MUL-COTTON-10"
+  },
+  "catalogue": {
+    "count": 95,
+    "dummySkus": 94,
+    "priceOne": 95,
+    "invalidOrMissingStock": [],
+    "activeZeroStock": [],
+    "outOfStockPositive": [],
+    "lastPieceSkus": [
+      "DUMMY-MUL-COTTON-068",
+      "DUMMY-MUL-COTTON-086",
+      "DUMMY-MUL-COTTON-062",
+      "DUMMY-MUL-COTTON-032",
+      "DUMMY-MUL-COTTON-002",
+      "DUMMY-MUL-COTTON-050",
+      "DUMMY-MUL-COTTON-080",
+      "DUMMY-MUL-COTTON-044",
+      "DUMMY-MUL-COTTON-098",
+      "DUMMY-MUL-COTTON-074",
+      "DUMMY-MUL-COTTON-020",
+      "DUMMY-MUL-COTTON-038",
+      "DUMMY-MUL-COTTON-026"
+    ],
+    "duplicateSkus": [],
+    "duplicateSlugs": [],
+    "incorrectDiscounts": 94
+  },
+  "crossTabCart": {
+    "firstTabCart": [
+      {
+        "sku": "DUMMY-MUL-COTTON-084",
+        "quantity": 1
+      }
+    ],
+    "secondTabBody": "Shop\nKanchi Cotton\nSungudi Cotton\nTissue Silk\nMul Cotton\nSoft Silk\nSearch\nAccount\nBag\n0\n1\nBag\n→\n2\nAddress\n→\n3\nPay\n\nCHECKOUT\n\nReview your bag before secure checkout.\n\nConfirm quantities here. Address and payment happen in the next step.\n\nCart Items\n\nYour cart is empty. Add a few sarees from the catalogue to start checkout.\n\nCONTINUE SHOPPING\n\nFree Shipping\n\nOn all prepaid orders\n\nSecure Payments\n\n100% protected\n\nQuality Assured\n\nHandpicked with care\n\nCHECKOUT SUMMARY\n\nYour address and payment will be completed in the secure Razorpay step.\n\nSubtotal\n₹0.00\nShipping\n₹0.00\nPackaging\n₹0.00\nTotal\n₹0.00\n\nInclusive of all taxes\n\nADD ITEMS TO CONTINUE\n\nESHWE SAREE STUDIO\n\nSarees chosen with softness, occasion, and timeless charm in mind.\n\nDiscover boutique drapes for celebrations, gifting, and every"
+  },
+  "productHref": "/product/golden-checkered-mul-cotton-test-saree-084-dummy-mul-cotton-084/",
+  "webProduct": {
+    "url": "https://eshwe.com/product/golden-checkered-mul-cotton-test-saree-084-dummy-mul-cotton-084/",
+    "headings": [
+      "Golden Checkered Mul Cotton 084"
+    ],
+    "hasReservationPromise": true
+  },
+  "desktopErrors": [],
+  "sameOriginHttpErrors": [
+    {
+      "url": "https://eshwe.com/checkout/index.txt?_rsc=qXN8NJmu_w0Hw17h",
+      "status": 404
+    },
+    {
+      "url": "https://eshwe.com/index.txt?_rsc=qXN8NJmu_w0Hw17h",
+      "status": 404
+    },
+    {
+      "url": "https://eshwe.com/checkout/index.txt?_rsc=yj88YyKOxggfll8C",
+      "status": 404
+    },
+    {
+      "url": "https://eshwe.com/index.txt?_rsc=yj88YyKOxggfll8C",
+      "status": 404
+    },
+    {
+      "url": "https://eshwe.com/contact/index.txt?_rsc=yj88YyKOxggfll8C",
+      "status": 404
+    },
+    {
+      "url": "https://eshwe.com/shop/index.txt?_rsc=yj88YyKOxggfll8C",
+      "status": 404
+    }
+  ],
+  "mobileHome": {
+    "url": "https://eshwe.com/app/",
+    "title": "eshwe | Premium Saree Studio | eshwe",
+    "overflow": false,
+    "text": "OPENING SHORTLY\nWe are currently in a soft launch preview.\n\nHandpicked drapes in mul cotton, tissue and more. Soft on you, perfect for every occasion.\n\nSHOP SAREES\nWedding\nGifting\nEveryday\nNew\nUnder ₹2,000\n\nCURATED EDITS\n\nShop by category\nView all\n\nKanchi Cotton\n\nSungudi Cotton\n\nTissue Silk\n\nMul Cotton\n\nSoft Silk\n\nFRESH DROPS\n\nNew arrivals\nView all\n-15%\nGolden Checkered Mul Cotton 084\n\nMul Cotton\n\n₹1.00\n₹3,249.00\nADD TO CART\n-15%\nGolden Checkered Mul Cotton 024\n\nMul Cotton\n\n₹1.00\n₹3,249.00\nADD TO CART\n-11%\nGolden Checkered Mul Cotton 080\n\nMul Cotton\n\n₹1.00\n₹4,749.00\nADD TO CART\n-18%\nGolden Checkered Mul Cotton 052\n\nMul Cotton\n\n₹1.00\n₹2,749.00\nADD TO CART\n\nBOUTIQUE PICKS\n\nFeatured products\nView all\n-13%\nGolden Checkered Mul Cotton 036\n\nMul Cotton\n\n₹1.00\n₹3,749.00\nADD TO CART\n-12%\nGolden Checkered Mul Cotton 008\n\nMul Cotton\n\n₹1.00\n₹4,249.00\nNOTIFY ME\nOur promise\n\nEvery saree is chosen for "
+  },
+  "serviceWorker": {
+    "controller": "https://eshwe.com/sw.js",
+    "registrations": [
+      {
+        "scope": "https://eshwe.com/",
+        "active": "https://eshwe.com/sw.js"
+      }
+    ]
+  },
+  "mobileSearch": {
+    "url": "https://eshwe.com/app/search/",
+    "overflow": false,
+    "text": "Popular searches\n\n0 results\n\nMul Cotton\nKanchi Cotton\nTissue Silk\nSoft Silk\nWedding\n\nNo sarees available right now\n\nTry another category or open the full collection.\n\nVIEW ALL SAREES\nContact\nTerms\nPrivacy\nShipping & Returns\n\n© 2026 eshwe Saree Studio\n\nHome\nCategories\nWishlist\nAccount"
+  },
+  "offlineReload": {
+    "error": "page.reload: net::ERR_INTERNET_DISCONNECTED"
+  },
+  "mobileErrors": [],
+  "unauthenticatedAdmin": {
+    "text": "OWNER ORDERS\n\nOrders\n\nReview paid orders, print slips and address labels, and manage dispatch.\n\nSign in to view orders\n\nUse Google login with an authorized owner account to open paid orders and print slips.\n\nSIGN IN WITH GOOGLE\nOrders notes\nThis section shows successful paid orders from Razorpay checkout.\nNew orders stay at the top until they are marked complete.\nUse `Print Slip` for the box and `Print Address` for the outer cover label."
+  }
+}

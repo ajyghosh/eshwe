@@ -1,0 +1,162 @@
+{
+  "environment": "Local static build; real Auth/Firestore emulators; simulated SMS/payment; Chrome desktop/mobile viewports",
+  "results": [
+    {
+      "name": "Web route and layout /",
+      "status": "passed"
+    },
+    {
+      "name": "Web route and layout /shop/",
+      "status": "passed"
+    },
+    {
+      "name": "Web route and layout /product/golden-checkered-mul-cotton-test-saree-068-dummy-mul-cotton-068/",
+      "status": "passed"
+    },
+    {
+      "name": "Web route and layout /checkout/",
+      "status": "passed"
+    },
+    {
+      "name": "Web route and layout /account/",
+      "status": "passed"
+    },
+    {
+      "name": "Web route and layout /orders/",
+      "status": "passed"
+    },
+    {
+      "name": "Web route and layout /saved/",
+      "status": "passed"
+    },
+    {
+      "name": "Web route and layout /contact/",
+      "status": "passed"
+    },
+    {
+      "name": "Web route and layout /terms-and-conditions/",
+      "status": "passed"
+    },
+    {
+      "name": "Web route and layout /privacy-policy/",
+      "status": "passed"
+    },
+    {
+      "name": "Web route and layout /return-policy/",
+      "status": "passed"
+    },
+    {
+      "name": "PWA route and layout /app/",
+      "status": "passed"
+    },
+    {
+      "name": "PWA route and layout /app/search/",
+      "status": "passed"
+    },
+    {
+      "name": "PWA route and layout /app/product/?slug=golden-checkered-mul-cotton-test-saree-068-dummy-mul-cotton-068",
+      "status": "passed"
+    },
+    {
+      "name": "PWA route and layout /app/checkout/",
+      "status": "passed"
+    },
+    {
+      "name": "PWA route and layout /app/account/",
+      "status": "passed"
+    },
+    {
+      "name": "PWA route and layout /app/orders/",
+      "status": "passed"
+    },
+    {
+      "name": "PWA route and layout /app/favorites/",
+      "status": "passed"
+    },
+    {
+      "name": "PWA route and layout /app/terms-and-conditions/",
+      "status": "passed"
+    },
+    {
+      "name": "PWA route and layout /app/privacy-policy/",
+      "status": "passed"
+    },
+    {
+      "name": "PWA route and layout /app/return-policy/",
+      "status": "passed"
+    },
+    {
+      "name": "Web search submits query, narrows products and clears an empty result",
+      "status": "failed",
+      "error": "Expected values to be strictly equal:\n\n3 !== 1\n",
+      "url": "http://127.0.0.1:3000/shop/",
+      "screenshot": "web-search-submits-query-narrows-products-and-clears-an-empty-result-failure.png"
+    },
+    {
+      "name": "Web price sort changes product order",
+      "status": "failed",
+      "error": "locator.selectOption: Timeout 12000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel('Sort', { exact: true })\u001b[22m\n",
+      "url": "http://127.0.0.1:3000/shop/",
+      "screenshot": "web-price-sort-changes-product-order-failure.png"
+    },
+    {
+      "name": "Web header SMS sign-in validates phone and recovers from incorrect OTP",
+      "status": "failed",
+      "error": "locator.waitFor: Timeout 12000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByText('Office test street', { exact: true }).first() to be visible\u001b[22m\n",
+      "url": "http://127.0.0.1:3000/account/",
+      "screenshot": "web-header-sms-sign-in-validates-phone-and-recovers-from-incorrect-otp-failure.png"
+    },
+    {
+      "name": "Wishlist added on web appears on PWA and removal syncs back",
+      "status": "failed",
+      "error": "locator.click: Timeout 12000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'Remove from favorites', exact: true }).first()\u001b[22m\n",
+      "url": "http://127.0.0.1:3000/product/golden-checkered-mul-cotton-test-saree-057-dummy-mul-cotton-057/",
+      "screenshot": "wishlist-added-on-web-appears-on-pwa-and-removal-syncs-back-failure.png"
+    },
+    {
+      "name": "PWA address edit updates web and preserves another saved address",
+      "status": "failed",
+      "error": "locator.waitFor: Timeout 12000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByText('UI audit edited Office address', { exact: true }).first() to be visible\u001b[22m\n",
+      "url": "http://127.0.0.1:3000/app/account/",
+      "screenshot": "pwa-address-edit-updates-web-and-preserves-another-saved-address-failure.png"
+    },
+    {
+      "name": "PWA search submits, clears and opens filter controls",
+      "status": "passed"
+    },
+    {
+      "name": "Web contact validates fields and stores the support request",
+      "status": "passed"
+    },
+    {
+      "name": "PWA contact sheet submits without leaving the app",
+      "status": "passed"
+    },
+    {
+      "name": "Sold-out product waitlist accepts customer contact",
+      "status": "passed"
+    },
+    {
+      "name": "PWA manifest and worker register with same-origin install assets",
+      "status": "passed"
+    },
+    {
+      "name": "Web navigation at 360px has no horizontal page overflow",
+      "status": "passed"
+    },
+    {
+      "name": "Web navigation at 768px has no horizontal page overflow",
+      "status": "passed"
+    },
+    {
+      "name": "Web navigation at 1024px has no horizontal page overflow",
+      "status": "passed"
+    },
+    {
+      "name": "No unexpected customer UI JavaScript exceptions",
+      "status": "passed"
+    }
+  ],
+  "observations": [],
+  "runtimeErrors": []
+}

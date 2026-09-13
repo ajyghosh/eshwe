@@ -1,0 +1,62 @@
+[
+  {
+    "name": "projects/eshwesareestudio/databases/(default)/collectionGroups/checkoutOrders/indexes/CICAgJim14AK",
+    "queryScope": "COLLECTION",
+    "fields": [
+      {
+        "fieldPath": "reservationState",
+        "order": "ASCENDING"
+      },
+      {
+        "fieldPath": "reservationExpiresAt",
+        "order": "ASCENDING"
+      },
+      {
+        "fieldPath": "__name__",
+        "order": "ASCENDING"
+      }
+    ],
+    "state": "READY",
+    "density": "SPARSE_ALL"
+  },
+  {
+    "name": "projects/eshwesareestudio/databases/(default)/collectionGroups/sarees/indexes/CICAgOjXh4EK",
+    "queryScope": "COLLECTION",
+    "fields": [
+      {
+        "fieldPath": "status",
+        "order": "ASCENDING"
+      },
+      {
+        "fieldPath": "createdAt",
+        "order": "DESCENDING"
+      },
+      {
+        "fieldPath": "__name__",
+        "order": "DESCENDING"
+      }
+    ],
+    "state": "READY",
+    "density": "SPARSE_ALL"
+  },
+  {
+    "name": "projects/eshwesareestudio/databases/(default)/collectionGroups/checkoutOrders/indexes/CICAgJiUpoMK",
+    "queryScope": "COLLECTION",
+    "fields": [
+      {
+        "fieldPath": "userId",
+        "order": "ASCENDING"
+      },
+      {
+        "fieldPath": "createdAt",
+        "order": "DESCENDING"
+      },
+      {
+        "fieldPath": "__name__",
+        "order": "DESCENDING"
+      }
+    ],
+    "state": "READY",
+    "density": "SPARSE_ALL"
+  }
+]

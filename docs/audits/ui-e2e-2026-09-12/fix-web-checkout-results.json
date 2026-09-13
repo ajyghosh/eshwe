@@ -1,0 +1,17 @@
+{
+  "environment": "Desktop Chrome, local Firebase emulators and simulated Razorpay",
+  "results": [
+    {
+      "name": "Desktop web checkout opens server-priced payment using selected saved address",
+      "status": "passed"
+    },
+    {
+      "name": "Web verification shows authorized as pending capture, never prematurely paid",
+      "status": "passed"
+    },
+    {
+      "name": "Web reconciliation confirms capture, authoritative total and receipt access",
+      "status": "passed"
+    }
+  ]
+}

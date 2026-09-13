@@ -1,0 +1,63 @@
+{
+  "environment": "Local static build; real Auth/Firestore emulators; simulated SMS/payment; Chrome desktop/mobile viewports",
+  "results": [
+    {
+      "name": "Web search submits query, narrows products and clears an empty result",
+      "status": "passed"
+    },
+    {
+      "name": "Web price sort changes product order",
+      "status": "passed"
+    },
+    {
+      "name": "Web header SMS sign-in validates phone and recovers from incorrect OTP",
+      "status": "passed"
+    },
+    {
+      "name": "Wishlist added on web appears on PWA and removal syncs back",
+      "status": "passed"
+    },
+    {
+      "name": "PWA address edit updates web and preserves another saved address",
+      "status": "passed"
+    },
+    {
+      "name": "PWA search submits, clears and opens filter controls",
+      "status": "passed"
+    },
+    {
+      "name": "Web contact validates fields and stores the support request",
+      "status": "passed"
+    },
+    {
+      "name": "PWA contact sheet submits without leaving the app",
+      "status": "passed"
+    },
+    {
+      "name": "Sold-out product waitlist accepts customer contact",
+      "status": "passed"
+    },
+    {
+      "name": "PWA manifest and worker register with same-origin install assets",
+      "status": "passed"
+    },
+    {
+      "name": "Web navigation at 360px has no horizontal page overflow",
+      "status": "passed"
+    },
+    {
+      "name": "Web navigation at 768px has no horizontal page overflow",
+      "status": "passed"
+    },
+    {
+      "name": "Web navigation at 1024px has no horizontal page overflow",
+      "status": "passed"
+    },
+    {
+      "name": "No unexpected customer UI JavaScript exceptions",
+      "status": "passed"
+    }
+  ],
+  "observations": [],
+  "runtimeErrors": []
+}

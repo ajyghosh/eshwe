@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { createCheckout, openCheckout } from "@/lib/checkout";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -12,7 +13,7 @@ import { CheckoutProgress } from "@/components/checkout-progress";
 import { SiteFooter } from "@/components/site-footer";
 import { StorefrontHeader } from "@/components/storefront-header";
 import { syncCustomerDisplayName } from "@/lib/auth";
-import { getCustomerProfile, saveCustomerProfile } from "@/lib/customer-profiles";
+import { subscribeToCustomerProfile, saveCustomerAddress, selectCustomerAddress } from "@/lib/customer-profiles";
 import { isCartItemUnavailable } from "@/lib/inventory";
 import { saveLatestOrderConfirmation, type OrderConfirmationData } from "@/lib/order-confirmation";
 import { buildProtectedJsonHeadersForPath } from "@/lib/protected-request";
@@ -70,7 +71,7 @@ const emptyAddressDialogForm: AddressDialogFormState = {
 };
 
 export function PaymentPage() {
-  const { items, isReady, subtotal, savings, shippingFee, packagingFee, total, clearCart } = useCart();
+  const { stockReady, items, isReady, isSyncing, subtotal, savings, shippingFee, packagingFee, total, clearCart } = useCart();
   const { user, signIn } = useAuthSession();
   const router = useRouter();
   const [savedAddresses, setSavedAddresses] = useState<CustomerAddress[]>([]);
@@ -94,70 +95,22 @@ export function PaymentPage() {
 
   const selectedAddress = savedAddresses.find((address) => address.id === selectedAddressId) ?? null;
   const hasUnavailableItems = items.some((item) => isCartItemUnavailable(item));
-  const canProceedToPayment = items.length > 0 && !hasUnavailableItems && Boolean(user && selectedAddress);
+  const canProceedToPayment = !isSyncing && stockReady && items.length > 0 && !hasUnavailableItems && Boolean(user && selectedAddress);
   const itemCount = items.reduce((count, item) => count + item.quantity, 0);
   const subtotalLabel = `Subtotal${itemCount > 0 ? ` (${itemCount} item${itemCount === 1 ? "" : "s"})` : ""}`;
 
+  const addressBaselineRef = useRef<CustomerAddress | null>(null);
   useEffect(() => {
-    if (!user?.uid) {
-      setSavedAddresses([]);
-      setSelectedAddressId("");
+    if (!user) { setSavedAddresses([]); setSelectedAddressId(""); setProfileLoading(false); return; }
+    const uid = user.uid;
+    setProfileLoading(true); setProfileError(null);
+    return subscribeToCustomerProfile(uid, profile => {
+      setSavedAddresses(profile?.addresses ?? []);
+      setSelectedAddressId(profile?.selectedAddressId ?? profile?.addresses?.[0]?.id ?? "");
       setProfileLoading(false);
-      setProfileResolvedUserId("");
-      autoPromptedAddressUserIdRef.current = "";
-      return;
-    }
-
-    const activeUserId = user.uid;
-    const userDisplayName = user.displayName ?? "";
-    const userEmail = user.email ?? "";
-    const userPhone = user.phoneNumber ?? "";
-    let isMounted = true;
-
-    async function loadCustomerProfile() {
-      setProfileLoading(true);
-      setProfileResolvedUserId("");
-      setProfileError(null);
-
-      try {
-        const customerProfile = await getCustomerProfile(activeUserId);
-
-        if (!isMounted) {
-          return;
-        }
-
-        const nextSavedAddresses = (customerProfile?.addresses ?? []).map((address) =>
-          applyVerifiedPhoneToAddress(address, userPhone)
-        );
-        const nextSelectedAddressId = customerProfile?.selectedAddressId ?? nextSavedAddresses[0]?.id ?? "";
-
-        setSavedAddresses(nextSavedAddresses);
-        setSelectedAddressId(nextSelectedAddressId);
-        setAddressDialogForm((currentForm) => ({
-          ...currentForm,
-          fullName: currentForm.fullName || userDisplayName,
-          email: currentForm.email || userEmail,
-          phone: resolveVerifiedPhone(userPhone, currentForm.phone)
-        }));
-
-      } catch (error) {
-        if (isMounted) {
-          setProfileError(error instanceof Error ? error.message : "Failed to load saved addresses.");
-        }
-      } finally {
-        if (isMounted) {
-          setProfileLoading(false);
-          setProfileResolvedUserId(activeUserId);
-        }
-      }
-    }
-
-    void loadCustomerProfile();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [user?.uid, user?.displayName, user?.email, user?.phoneNumber]);
+      setProfileResolvedUserId(uid);
+    }, error => { setProfileLoading(false); setProfileError(error.message); });
+  }, [user]);
 
   useEffect(() => {
     if (!profileMessage) {
@@ -178,10 +131,10 @@ export function PaymentPage() {
       return;
     }
 
-    if (items.length === 0 && !orderConfirmationRedirectRef.current) {
+    if (items.length === 0 && !orderConfirmationRedirectRef.current && !paymentSubmitting) {
       router.replace("/checkout");
     }
-  }, [isReady, items.length, router]);
+  }, [isReady, items.length, router, paymentSubmitting]);
 
   useEffect(() => {
     if (items.length === 0) {
@@ -201,6 +154,7 @@ export function PaymentPage() {
   }
 
   function handleOpenAddressDialog() {
+    addressBaselineRef.current = null;
     setProfileError(null);
     setEditingAddressId("");
     setAddressDialogForm({
@@ -217,6 +171,7 @@ export function PaymentPage() {
   }
 
   function handleEditSavedAddress(address: CustomerAddress) {
+    addressBaselineRef.current = address;
     setProfileError(null);
     setEditingAddressId(address.id);
     setAddressDialogForm({
@@ -235,6 +190,7 @@ export function PaymentPage() {
   function handleSelectSavedAddress(addressId: string) {
     setSelectedAddressId(addressId);
     setProfileError(null);
+    if (user) void selectCustomerAddress(user.uid, addressId).catch(error => setProfileError(error.message));
   }
 
   async function handleSignIn() {
@@ -278,13 +234,8 @@ export function PaymentPage() {
     setProfileError(null);
 
     try {
-      const nextSavedAddresses = editingAddressId
-        ? savedAddresses.map((address) => (address.id === editingAddressId ? nextAddress : address))
-        : [...savedAddresses, nextAddress];
       await syncCustomerDisplayName(nextAddress.fullName);
-      await saveCustomerProfile(user.uid, buildProfilePayload(nextSavedAddresses, nextAddress.id));
-      setSavedAddresses(nextSavedAddresses);
-      setSelectedAddressId(nextAddress.id);
+      await saveCustomerAddress(user.uid, nextAddress, addressBaselineRef.current);
       setAddressDialogOpen(false);
       setEditingAddressId("");
       setProfileMessage(
@@ -298,6 +249,7 @@ export function PaymentPage() {
   }
 
   async function handleProceedToPayment() {
+    if (isSyncing) return;
     if (!user) {
       setProfileError("Continue with mobile verification to unlock your saved address and payment.");
       try {
@@ -332,86 +284,16 @@ export function PaymentPage() {
     }
 
     setPaymentSubmitting(true);
-    setPaymentMessage("Redirecting to secure payment");
     setProfileError(null);
-
     try {
-      const order = await createOrder(deliveryAddress);
-
-      if (!window.Razorpay) {
-        await loadRazorpayCheckoutScript();
-      }
-
-      let checkoutFinished = false;
-
-      if (!window.Razorpay) {
-        throw new Error("Razorpay checkout is unavailable right now.");
-      }
-
-      const checkoutOptions: RazorpayCheckoutOptions = {
-        key: order.keyId,
-        amount: order.amount,
-        currency: order.currency,
-        description: `Secure checkout for ${order.lineItems.length} item${order.lineItems.length === 1 ? "" : "s"}`,
-        order_id: order.razorpayOrderId,
-        prefill: {
-          name: deliveryAddress.fullName,
-          email: deliveryAddress.email,
-          contact: deliveryAddress.phone
-        },
-        notes: {
-          internalOrderId: order.internalOrderId,
-          customerPhone: deliveryAddress.phone
-        },
-        modal: {
-          ondismiss: () => {
-            if (checkoutFinished) {
-              return;
-            }
-
-            setPaymentOverlayStep(null);
-            setPaymentSubmitting(false);
-            setPaymentMessage(null);
-          }
-        },
-        handler: async (paymentResponse) => {
-          checkoutFinished = true;
-          setPaymentSubmitting(true);
-          setPaymentOverlayStep("verifying");
-          setPaymentMessage("Preparing your receipt...");
-
-          try {
-            await verifyPayment(order.internalOrderId, paymentResponse);
-            const confirmation = buildOrderConfirmation(order, deliveryAddress, paymentResponse);
-
-            orderConfirmationRedirectRef.current = true;
-            saveLatestOrderConfirmation(confirmation);
-            clearCart();
-            router.replace("/order-confirmation");
-          } catch (error) {
-            setPaymentOverlayStep(null);
-            setPaymentMessage(error instanceof Error ? error.message : "Payment verification failed.");
-          } finally {
-            setPaymentSubmitting(false);
-          }
-        }
-      };
-
-      const razorpay = new window.Razorpay(checkoutOptions);
-      razorpay.on("payment.failed", (response: RazorpayEventResponse) => {
-        checkoutFinished = true;
-        setPaymentSubmitting(false);
-        setPaymentMessage(getPaymentFailureMessage(response));
-      });
-
-      razorpay.open();
-      setPaymentSubmitting(false);
-      setPaymentMessage(null);
-    } catch (error) {
-      setPaymentOverlayStep(null);
-      setPaymentSubmitting(false);
-      setPaymentMessage(null);
-      setProfileError(error instanceof Error ? error.message : "Unable to start payment.");
+      const order = await createCheckout(items, deliveryAddress, orderNotes.trim());
+      await openCheckout(order, id => {
+        orderConfirmationRedirectRef.current = true;
+        router.replace(`/order-confirmation/?order=${encodeURIComponent(id)}`);
+      }, () => { setPaymentSubmitting(false); setPaymentOverlayStep(null); }, message => { setPaymentSubmitting(false); setProfileError(message); });
+    } catch(error) {
+      setPaymentSubmitting(false); setPaymentOverlayStep(null);
+      setProfileError(error instanceof Error ? error.message : "Check your existing payment before trying again.");
     }
   }
 
@@ -448,118 +330,6 @@ export function PaymentPage() {
     setAddressDialogOpen(true);
   }, [addressDialogOpen, profileLoading, profileResolvedUserId, selectedAddress, user]);
 
-  async function createOrder(deliveryAddress: PaymentFormState): Promise<CreateOrderResponse> {
-    let response: Response;
-    const requestUrl = getRazorpayApiUrl("create-order");
-    const headers = await buildProtectedJsonHeadersForPath(requestUrl);
-
-    try {
-      response = await fetch(requestUrl, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          items: items.map((item) => ({
-            sku: item.sku,
-            quantity: item.quantity
-          })),
-          customer: deliveryAddress,
-          notes: orderNotes.trim(),
-          sourcePath: window.location.pathname
-        })
-      });
-    } catch (error) {
-      throw new Error(
-        error instanceof Error
-          ? error.message
-          : "Unable to reach the payment server. Check your connection and try again."
-      );
-    }
-
-    const result = (await response.json().catch(() => ({}))) as Partial<CreateOrderResponse> & {
-      error?: string;
-    };
-
-    if (!response.ok) {
-      throw new Error(result.error || "Unable to create payment order.");
-    }
-
-    if (
-      !result ||
-      typeof result.keyId !== "string" ||
-      typeof result.razorpayOrderId !== "string" ||
-      typeof result.internalOrderId !== "string" ||
-      typeof result.amount !== "number" ||
-      typeof result.currency !== "string" ||
-      !Array.isArray(result.lineItems)
-    ) {
-      throw new Error("Payment order response is invalid.");
-    }
-
-    return result as CreateOrderResponse;
-  }
-
-  async function verifyPayment(internalOrderId: string, paymentResponse: RazorpayHandlerResponse) {
-    const requestUrl = getRazorpayApiUrl("verify-payment");
-    const headers = await buildProtectedJsonHeadersForPath(requestUrl);
-    const response = await fetch(requestUrl, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        internalOrderId,
-        ...paymentResponse
-      })
-    });
-
-    const result = (await response.json().catch(() => ({}))) as {
-      error?: string;
-      success?: boolean;
-    };
-
-    if (!response.ok || !result.success) {
-      throw new Error(result.error || "Payment verification failed.");
-    }
-  }
-
-  function buildOrderConfirmation(
-    order: CreateOrderResponse,
-    deliveryAddress: PaymentFormState,
-    paymentResponse: RazorpayHandlerResponse
-  ): OrderConfirmationData {
-    return {
-      createdAtIso: new Date().toISOString(),
-      customer: {
-        address: deliveryAddress.address,
-        city: deliveryAddress.city,
-        email: deliveryAddress.email,
-        fullName: deliveryAddress.fullName,
-        phone: deliveryAddress.phone,
-        pincode: deliveryAddress.pincode,
-        state: deliveryAddress.state
-      },
-      internalOrderId: order.internalOrderId,
-      items: order.lineItems.map((item) => ({
-        color: item.color,
-        name: item.name,
-        primaryImageUrl: item.primaryImageUrl,
-        quantity: item.quantity,
-        sku: item.sku,
-        unitOriginalPrice: item.unitOriginalPrice,
-        unitPrice: item.unitPrice
-      })),
-      notes: orderNotes.trim(),
-      paymentStatus: "captured",
-      razorpayOrderId: paymentResponse.razorpay_order_id,
-      razorpayPaymentId: paymentResponse.razorpay_payment_id,
-      summary: {
-        currency: order.currency,
-        packagingFee,
-        savings,
-        shippingFee,
-        subtotal,
-        total
-      }
-    };
-  }
 
   return (
     <main className="web-storefront web-checkout min-h-screen bg-[#fbf4e8] text-[#4f5942]">
@@ -767,7 +537,7 @@ export function PaymentPage() {
                         <rect x="4.5" y="8" width="11" height="8.5" rx="2" />
                       </svg>
                     </span>
-                    {paymentSubmitting
+                    {isSyncing ? "SAVING BAG…" : paymentSubmitting
                       ? paymentMessage === "Redirecting to secure payment"
                         ? "REDIRECTING TO RAZORPAY"
                         : "PROCESSING"

@@ -1,0 +1,27 @@
+
+> eshwe@0.1.0 build:hosting
+> npm run build && node scripts/prepare-hosting-export.mjs
+
+
+> eshwe@0.1.0 build
+> node scripts/snapshot-catalogue.cjs && next build
+
+   ▲ Next.js 15.5.22
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 13.4s
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/131) ...
+Error occurred prerendering page "/product/golden-checkered-mul-cotton-test-saree-091-dummy-mul-cotton-091". Read more: https://nextjs.org/docs/messages/prerender-error
+[Error [PageNotFoundError]: Cannot find module for page: /product/[slug]/page] {
+  code: 'ENOENT'
+}
+Export encountered an error on /product/[slug]/page: /product/golden-checkered-mul-cotton-test-saree-091-dummy-mul-cotton-091, exiting the build.
+Error occurred prerendering page "/product/golden-checkered-mul-cotton-test-saree-004-dummy-mul-cotton-004". Read more: https://nextjs.org/docs/messages/prerender-error
+[Error [PageNotFoundError]: Cannot find module for page: /product/[slug]/page] {
+  code: 'ENOENT'
+}
+Export encountered an error on /product/[slug]/page: /product/golden-checkered-mul-cotton-test-saree-004-dummy-mul-cotton-004, exiting the build.
+ ⨯ Next.js build worker exited with code: 1 and signal: null

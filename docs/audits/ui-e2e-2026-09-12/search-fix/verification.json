@@ -1,0 +1,47 @@
+{
+  "browserChecksPassed": 9,
+  "regressionTestsPassed": 54,
+  "lint": "passed",
+  "typecheck": "passed",
+  "productionBuild": "passed",
+  "deployed": false,
+  "productionDataChanged": false,
+  "results": [
+    {
+      "name": "Live stock update preserves an unfinished web search",
+      "status": "passed"
+    },
+    {
+      "name": "Live stock update preserves an applied web availability filter",
+      "status": "passed"
+    },
+    {
+      "name": "Guest cart quantity changes sync between web and PWA and remove cleanly",
+      "status": "passed"
+    },
+    {
+      "name": "Available filter stays selected while sold-out cards update live",
+      "status": "passed"
+    },
+    {
+      "name": "Submitting a search preserves fabric availability and sort",
+      "status": "passed"
+    },
+    {
+      "name": "Category and query deep links survive initial load and reload",
+      "status": "passed"
+    },
+    {
+      "name": "Back forward navigation and Clear restore the intended form state",
+      "status": "passed"
+    },
+    {
+      "name": "Category-card refresh preserves an unfinished query and selected availability",
+      "status": "passed"
+    },
+    {
+      "name": "No catalogue runtime errors",
+      "status": "passed"
+    }
+  ]
+}

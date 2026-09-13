@@ -1,0 +1,2 @@
+PASS HTTP-cached navigation reaches offline fallback
+PASS Automatic reconnect restores the catalogue

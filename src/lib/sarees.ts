@@ -13,6 +13,8 @@ import {
 } from "firebase/firestore";
 import { updateDoc, where } from "firebase/firestore";
 
+import { postJson } from "@/lib/api";
+
 import { db } from "@/lib/firebase";
 import { getEffectiveAvailabilityStatus, normalizeAvailableStock } from "@/lib/inventory";
 import { normalizeOccasionTags } from "@/lib/product-discovery";
@@ -40,10 +42,12 @@ export async function getSarees(options: SareeQueryOptions = {}): Promise<Saree[
 export function subscribeToSarees(
   onData: (sarees: Saree[]) => void,
   options: SareeQueryOptions & { max?: number } = {},
-  onError?: (error: Error) => void
+  onError?: (error: Error) => void,
+  onFreshness?: (fresh: boolean) => void
 ) {
   if (!db) {
-    onData([]);
+    onError?.(new Error("The catalogue is unavailable. Please check the site configuration."));
+    onFreshness?.(false);
     return () => undefined;
   }
 
@@ -57,13 +61,16 @@ export function subscribeToSarees(
 
   return onSnapshot(
     sareesQuery,
+    { includeMetadataChanges: true },
     (snapshot) => {
+      onFreshness?.(!snapshot.metadata.fromCache);
+      if (snapshot.metadata.fromCache && snapshot.empty) return;
       onData(
         snapshot.docs.map((productDoc) => hydrateSaree(productDoc.id, productDoc.data()))
       );
     },
     (error) => {
-      onData([]);
+      onFreshness?.(false);
       onError?.(error);
     }
   );
@@ -78,42 +85,25 @@ function hydrateSaree(id: string, data: Record<string, unknown>) {
     id,
     ...data,
     occasionTags,
+    publicationStatus: (data.status as SareeStatus) || "draft",
+    reservedStock: normalizeAvailableStock(data.reservedStock),
+    version: (data.updatedAt as { toMillis?: () => number })?.toMillis?.() ?? null,
     availableStock,
     status
   } as Saree;
 }
 
-export async function createSaree(
-  saree: Omit<Saree, "id" | "createdAt" | "updatedAt">
-) {
-  if (!db) {
-    throw new Error("Firebase is not configured. Add NEXT_PUBLIC_FIREBASE_* variables.");
-  }
-
-  return addDoc(collection(db, COLLECTION_NAME), {
-    ...saree,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp()
-  });
+export async function createSaree(saree: Omit<Saree, "id" | "createdAt" | "updatedAt">) {
+  return postJson<{ id: string }>("/api/owner/product", { changes: saree });
 }
 
-export async function updateSaree(id: string, updates: Partial<Omit<Saree, "id" | "createdAt">>) {
-  if (!db) {
-    throw new Error("Firebase is not configured. Add NEXT_PUBLIC_FIREBASE_* variables.");
-  }
-
-  return updateDoc(doc(db, COLLECTION_NAME, id), {
-    ...updates,
-    updatedAt: serverTimestamp()
-  });
+export async function updateSaree(id: string, updates: Partial<Omit<Saree, "id" | "createdAt">>, expectedVersion?: number | null) {
+  return postJson<{ id: string }>("/api/owner/product", { id, changes: updates, expectedVersion });
 }
 
-export async function deleteSaree(id: string) {
-  if (!db) {
-    throw new Error("Firebase is not configured. Add NEXT_PUBLIC_FIREBASE_* variables.");
-  }
-
-  return deleteDoc(doc(db, COLLECTION_NAME, id));
+export async function deleteSaree(id: string, expectedVersion?: number | null) {
+  // Archive instead of destroying product/media needed by existing orders.
+  return updateSaree(id, { status: "draft" }, expectedVersion);
 }
 
 export function slugifySareeName(value: string) {

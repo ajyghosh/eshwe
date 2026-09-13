@@ -4,11 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "build:hosting": "next build && node scripts/prepare-hosting-export.mjs",
+    "build": "node scripts/snapshot-catalogue.cjs && next build",
+    "build:hosting": "npm run build && node scripts/prepare-hosting-export.mjs",
     "start": "next start",
     "lint": "next lint",
-    "test:owner": "node --test tests/owner-reporting.test.cjs"
+    "test:owner": "node --test tests/owner-reporting.test.cjs",
+    "test": "node --test tests/*.test.cjs",
+    "test:emulator": "node --test tests/emulator/*.test.cjs"
   },
   "dependencies": {
     "firebase": "^12.0.0",

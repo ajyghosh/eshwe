@@ -13,23 +13,7 @@ export function MobileAppPwaRegistration() {
       window.location.hostname === "127.0.0.1" ||
       window.location.hostname === "[::1]";
 
-    if (isLocalhost) {
-      void navigator.serviceWorker.getRegistrations().then((registrations) => {
-        void Promise.all(registrations.map((registration) => registration.unregister()));
-      });
-
-      if ("caches" in window) {
-        void caches.keys().then((keys) => {
-          void Promise.all(
-            keys
-              .filter((key) => key.startsWith("eshwe-app-"))
-              .map((key) => caches.delete(key))
-          );
-        });
-      }
-
-      return;
-    }
+    if (isLocalhost && process.env.NODE_ENV !== "production") return;
 
     void navigator.serviceWorker
       .register("/sw.js")

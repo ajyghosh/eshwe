@@ -1,3 +1,6 @@
+import { paymentLabel } from "@/lib/order-status";
+import { auth } from "@/lib/firebase";
+
 export type OrderConfirmationCustomer = {
   address: string;
   city: string;
@@ -28,6 +31,9 @@ export type OrderConfirmationSummary = {
 };
 
 export type OrderConfirmationData = {
+  userId?: string;
+  refundStatus?: string | null;
+  attentionRequired?: boolean;
   createdAtIso: string;
   customer: OrderConfirmationCustomer;
   internalOrderId: string;
@@ -40,30 +46,27 @@ export type OrderConfirmationData = {
 };
 
 const STORAGE_KEY = "eshwe.latestOrderConfirmation";
+let receiptCache: { uid: string; confirmation: OrderConfirmationData } | null = null;
 
 export function saveLatestOrderConfirmation(confirmation: OrderConfirmationData) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(confirmation));
+  const uid = auth?.currentUser?.uid;
+  if (!uid || confirmation.userId !== uid) return;
+  receiptCache = { uid, confirmation };
+  try {
+    sessionStorage.removeItem(STORAGE_KEY);
+    localStorage.setItem(`eshwe.latestOrder:${uid}`, confirmation.internalOrderId);
+  } catch { /* A storage failure never changes payment success. */ }
 }
 
 export function readLatestOrderConfirmation() {
-  if (typeof window === "undefined") {
-    return null;
-  }
+  const uid = auth?.currentUser?.uid;
+  return uid && receiptCache?.uid === uid ? receiptCache.confirmation : null;
+}
 
-  const rawValue = window.sessionStorage.getItem(STORAGE_KEY);
-
-  if (!rawValue) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(rawValue) as OrderConfirmationData;
-  } catch {
-    return null;
+export function clearReceiptCache() {
+  receiptCache = null;
+  if (typeof window !== "undefined") {
+    try { sessionStorage.removeItem(STORAGE_KEY); sessionStorage.removeItem("eshwe.clearCartAfterPayment"); } catch { /* Memory is already cleared. */ }
   }
 }
 
@@ -152,7 +155,7 @@ function buildOrderReceiptHtml(
   const displayOrderId = formatOrderConfirmationId(confirmation.internalOrderId);
   const placedAt = formatOrderConfirmationDate(confirmation.createdAtIso);
   const noteValue = confirmation.notes.trim() ? escapeHtml(confirmation.notes) : "No note added";
-  const paymentStatus = formatOrderConfirmationPaymentStatus(confirmation.paymentStatus.trim() || "pending");
+  const paymentStatus = paymentLabel({ paymentStatus: confirmation.paymentStatus, refundStatus: confirmation.refundStatus || undefined });
   const itemCount = String(confirmation.items.length);
   const shareText = [
     "Eshwe order receipt",

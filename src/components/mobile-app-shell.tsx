@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 
 import { useCart } from "@/components/cart-provider";
+import { rememberPwaProductVisit, restorePwaShoppingPosition } from "@/lib/pwa-shopping-navigation";
 import { createCustomerMessage } from "@/lib/customer-messages";
 import {
   buildAppCheckoutHref,
@@ -63,10 +64,20 @@ export function MobileAppShell({
   showFooter?: boolean;
 }) {
   const pathname = usePathname();
+  const frameRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const frame = frameRef.current;
+    if (frame) return restorePwaShoppingPosition(frame);
+  }, [pathname, children]);
 
   return (
-    <main className="mobile-app relative min-h-screen bg-[#fffaf2] text-[#243124]">
-      <div className="mobile-app-frame relative mx-auto min-h-screen max-w-[440px] bg-[#fffaf2]">
+    <main className="mobile-app relative min-h-screen bg-[#fffaf2] text-[#243124]" onClickCapture={event => {
+      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const link = (event.target as Element).closest<HTMLAnchorElement>("a[href]");
+      if (link && (!link.target || link.target === "_self")) rememberPwaProductVisit(link.href);
+    }}>
+      <div ref={frameRef} className="mobile-app-frame relative mx-auto min-h-screen max-w-[440px] bg-[#fffaf2]">
         <div
           key={pathname ?? "/app"}
           className={`mobile-app-page-enter ${showBottomNav ? "pb-[calc(5.6rem+env(safe-area-inset-bottom))]" : "pb-[calc(6.8rem+env(safe-area-inset-bottom))]"}`}

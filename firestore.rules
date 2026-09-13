@@ -54,7 +54,8 @@ service cloud.firestore {
           && resource.data.userId is string
           && resource.data.userId == request.auth.uid
         );
-      allow write: if isOwner();
+      allow write: if false;
+      match /history/{eventId} { allow read: if isOwner(); allow write: if false; }
     }
 
     match /customerMessages/{messageId} {
@@ -125,8 +126,9 @@ service cloud.firestore {
     }
 
     match /sarees/{sareeId} {
-      allow read: if isOwner() || resource.data.status != "draft";
-      allow write: if isOwner();
+      allow read: if isOwner() || resource.data.status in ["active", "out_of_stock"];
+      allow write: if false;
+      match /inventoryHistory/{eventId} { allow read: if isOwner(); allow write: if false; }
     }
   }
 }

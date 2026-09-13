@@ -1,0 +1,12 @@
+{
+  "environment": "Chrome with local Firebase emulators; Razorpay and external tracking destination mocked",
+  "results": [
+    "Web top navigation opens India Post in a new tab",
+    "PWA account tracking link is visible without sign-in and fits a 390px screen",
+    "Tracking remains available in the signed-in PWA account",
+    "Admin refund dialog rejects zero, excessive and malformed amounts",
+    "Admin submits ₹25.25 through the real API handler and displays the ₹74.75 balance",
+    "Refunding the remaining amount completes the refund and removes the refund button",
+    "No browser runtime errors"
+  ]
+}

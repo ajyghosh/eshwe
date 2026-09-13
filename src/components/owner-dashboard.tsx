@@ -34,7 +34,7 @@ import {
   updateSaree
 } from "@/lib/sarees";
 import { subscribeToCustomerMessages } from "@/lib/customer-messages";
-import { deleteSareeImages, uploadSareeImage } from "@/lib/storage";
+import { uploadSareeImage } from "@/lib/storage";
 import { subscribeToWaitlistEntries } from "@/lib/waitlist";
 import {
   normalizeOwnerEmail,
@@ -298,7 +298,10 @@ export function OwnerDashboard() {
     }
   }
 
+  const editingVersionRef = useRef<number | null>(null);
+
   function beginEditing(product: Saree) {
+    editingVersionRef.current = product.version ?? null;
     setIsProductFormOpen(true);
     setEditingProductId(product.id ?? null);
     setRemovedGalleryPaths([]);
@@ -326,7 +329,7 @@ export function OwnerDashboard() {
       collectionLabel: product.collectionLabel ?? "",
       occasionTags: normalizeOccasionTags(product.occasionTags),
       availableStock: String(normalizeAvailableStock(product.availableStock)),
-      status: getEffectiveAvailabilityStatus(product.status, normalizeAvailableStock(product.availableStock)),
+      status: product.publicationStatus ?? product.status,
       featured: product.featured,
       primaryImageUrl: product.primaryImageUrl,
       primaryImagePath: product.primaryImagePath ?? "",
@@ -411,9 +414,6 @@ export function OwnerDashboard() {
       if (primaryImageFile) {
         const upload = await uploadSareeImage(primaryImageFile, normalizedSku);
 
-        if (editingProductId && primaryImagePath) {
-          await deleteSareeImages([primaryImagePath]);
-        }
 
         primaryImageUrl = upload.url;
         primaryImagePath = upload.path;
@@ -423,9 +423,6 @@ export function OwnerDashboard() {
         galleryFiles.map((file) => uploadSareeImage(file, normalizedSku))
       );
 
-      if (removedGalleryPaths.length > 0) {
-        await deleteSareeImages(removedGalleryPaths);
-      }
 
       const galleryImageUrls = [
         ...form.galleryImages.map((image) => image.url),
@@ -480,7 +477,11 @@ export function OwnerDashboard() {
       };
 
       if (editingProductId) {
-        await updateSaree(editingProductId, payload);
+        const changes: Partial<typeof payload> = { ...payload };
+        const baseline = JSON.parse(initialForm) as ProductFormState;
+        if (form.availableStock === baseline.availableStock) delete changes.availableStock;
+        if (form.status === baseline.status) delete changes.status;
+        await updateSaree(editingProductId, changes, editingVersionRef.current);
       } else {
         await createSaree(payload);
       }
@@ -515,19 +516,15 @@ export function OwnerDashboard() {
     setActionNotice(null);
 
     try {
-      const paths = [product.primaryImagePath ?? "", ...(product.galleryImagePaths ?? [])].filter(Boolean);
-      if (paths.length > 0) {
-        await deleteSareeImages(paths);
-      }
 
-      await deleteSaree(product.id);
+      await deleteSaree(product.id, product.version);
 
       if (editingProductId === product.id) {
         resetForm();
       }
       setDialogState(null);
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : "Deleting product failed.");
+      setActionError(error instanceof Error ? error.message : "Archiving product failed.");
     } finally {
       setIsDeletingId(null);
     }
@@ -557,21 +554,21 @@ export function OwnerDashboard() {
     dialogState?.type === "signout"
       ? "Sign out of the owner panel?"
       : dialogState?.type === "delete-product"
-        ? "Delete this product?"
+        ? "Archive this product?"
         : "";
 
   const dialogMessage =
     dialogState?.type === "signout"
       ? "You will be signed out of the owner dashboard on this device."
       : dialogState?.type === "delete-product"
-        ? `${dialogState.product.name} will be deleted from the catalogue and its uploaded images will also be removed.`
+        ? `${dialogState.product.name} will be hidden from the storefront. Its stock, images, and order history will be preserved.`
         : "";
 
   const dialogConfirmLabel =
     dialogState?.type === "signout"
       ? "SIGN OUT"
       : dialogState?.type === "delete-product"
-        ? "DELETE PRODUCT"
+        ? "ARCHIVE PRODUCT"
         : "CONFIRM";
 
   const dialogTone = dialogState?.type === "delete-product" ? "danger" : "neutral";
@@ -668,6 +665,7 @@ export function OwnerDashboard() {
             </Field>
             <Field label="SKU">
               <input
+                readOnly={Boolean(editingProductId)}
                 value={form.sku}
                 onChange={(event) => setForm((current) => ({ ...current, sku: event.target.value.toUpperCase() }))}
                 className={inputClassName}
@@ -832,7 +830,7 @@ export function OwnerDashboard() {
                 </p>
               </div>
             </Field>
-            <Field label="Available stock">
+            <Field label="Available to sell (excludes reserved units)">
               <input
                 value={form.availableStock}
                 onChange={(event) => setForm((current) => ({ ...current, availableStock: event.target.value }))}
@@ -1176,7 +1174,7 @@ export function OwnerDashboard() {
                                     <p className="mt-1 text-sm text-[#667056]">{formatOccasionSummary(product.occasionTags)}</p>
                                   ) : null}
                                   <p className="mt-1 text-sm text-[#667056]">
-                                    Stock {normalizeAvailableStock(product.availableStock)}
+                                    Available {normalizeAvailableStock(product.availableStock)} · Reserved {normalizeAvailableStock(product.reservedStock)}
                                   </p>
                                   <p className="mt-2 text-base font-semibold text-[#1f1a17]">
                                     {formatCurrency(product.price)}
@@ -1200,7 +1198,7 @@ export function OwnerDashboard() {
                                       disabled={isDeletingId === product.id}
                                       className="brand-caption rounded-full border border-[#d4c5b2] px-4 py-2 text-[0.52rem] font-semibold tracking-[0.08em] text-[#9d4b45] disabled:opacity-60"
                                     >
-                                      {isDeletingId === product.id ? "DELETING..." : "DELETE"}
+                                      {isDeletingId === product.id ? "ARCHIVING..." : "ARCHIVE"}
                                     </button>
                                   </div>
                                 </div>
@@ -1298,7 +1296,7 @@ function parseAvailableStock(value: string) {
 }
 
 function resolveStatusForSave(status: SareeStatus, availableStock: number): SareeStatus {
-  return getEffectiveAvailabilityStatus(status, availableStock);
+  return status;
 }
 
 function calculateDiscountPercent(priceValue: string, originalPriceValue: string) {

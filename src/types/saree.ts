@@ -15,6 +15,9 @@ export type Saree = {
   collectionLabel?: string | null;
   occasionTags?: string[];
   availableStock: number;
+  reservedStock?: number;
+  publicationStatus?: SareeStatus;
+  version?: number | null;
   status: SareeStatus;
   featured: boolean;
   primaryImageUrl: string;

@@ -1,13 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useAuthSession } from "@/components/auth-provider";
 import { getCustomerAuthDisplayLabel, syncCustomerDisplayName } from "@/lib/auth";
 import { SiteFooter } from "@/components/site-footer";
 import { StorefrontHeader } from "@/components/storefront-header";
-import { getCustomerProfile, saveCustomerProfile } from "@/lib/customer-profiles";
+import { subscribeToCustomerProfile, saveCustomerAddress, selectCustomerAddress } from "@/lib/customer-profiles";
 import type { CustomerAddress } from "@/types/customer-profile";
 
 type AddressDialogFormState = {
@@ -44,54 +44,17 @@ export function AccountPage() {
   const [editingAddressId, setEditingAddressId] = useState("");
   const [addressDialogForm, setAddressDialogForm] = useState<AddressDialogFormState>(emptyAddressDialogForm);
 
+  const addressBaselineRef = useRef<CustomerAddress | null>(null);
   useEffect(() => {
-    if (!user?.uid) {
-      setSavedAddresses([]);
-      setSelectedAddressId("");
+    if (!user) { setSavedAddresses([]); setSelectedAddressId(""); setProfileLoading(false); return; }
+    const uid = user.uid;
+    setProfileLoading(true); setProfileError(null);
+    return subscribeToCustomerProfile(uid, profile => {
+      setSavedAddresses(profile?.addresses ?? []);
+      setSelectedAddressId(profile?.selectedAddressId ?? profile?.addresses?.[0]?.id ?? "");
       setProfileLoading(false);
-      setProfileError(null);
-      return;
-    }
-
-    let isMounted = true;
-    const activeUserId = user.uid;
-    setProfileLoading(true);
-    setProfileError(null);
-
-    async function loadProfile() {
-      try {
-        const customerProfile = await getCustomerProfile(activeUserId);
-
-        if (!isMounted) {
-          return;
-        }
-
-        const nextSavedAddresses = (customerProfile?.addresses ?? []).map((address) =>
-          applyVerifiedPhoneToAddress(address, user?.phoneNumber)
-        );
-        const nextSelectedAddressId = customerProfile?.selectedAddressId ?? nextSavedAddresses[0]?.id ?? "";
-
-        setSavedAddresses(nextSavedAddresses);
-        setSelectedAddressId(nextSelectedAddressId);
-      } catch (error) {
-        if (isMounted) {
-          setSavedAddresses([]);
-          setSelectedAddressId("");
-          setProfileError(error instanceof Error ? error.message : "Failed to load saved addresses.");
-        }
-      } finally {
-        if (isMounted) {
-          setProfileLoading(false);
-        }
-      }
-    }
-
-    void loadProfile();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [user?.phoneNumber, user?.uid]);
+    }, error => { setProfileLoading(false); setProfileError(error.message); });
+  }, [user]);
 
   useEffect(() => {
     if (!profileMessage) {
@@ -125,6 +88,7 @@ export function AccountPage() {
   }
 
   function handleOpenAddressDialog() {
+    addressBaselineRef.current = null;
     setProfileError(null);
     setEditingAddressId("");
     setAddressDialogForm({
@@ -141,6 +105,7 @@ export function AccountPage() {
   }
 
   function handleEditSavedAddress(address: CustomerAddress) {
+    addressBaselineRef.current = address;
     setProfileError(null);
     setEditingAddressId(address.id);
     setAddressDialogForm({
@@ -178,15 +143,8 @@ export function AccountPage() {
     setProfileError(null);
 
     try {
-      const nextSavedAddresses = editingAddressId
-        ? savedAddresses.map((address) => (address.id === editingAddressId ? nextAddress : address))
-        : [...savedAddresses, nextAddress];
-      const nextSelectedAddressId = selectedAddressId || nextSavedAddresses[0]?.id || nextAddress.id;
-
       await syncCustomerDisplayName(nextAddress.fullName);
-      await saveCustomerProfile(user.uid, buildProfilePayload(nextSavedAddresses, nextSelectedAddressId));
-      setSavedAddresses(nextSavedAddresses);
-      setSelectedAddressId(nextSelectedAddressId);
+      await saveCustomerAddress(user.uid, nextAddress, addressBaselineRef.current, false);
       setAddressDialogOpen(false);
       setEditingAddressId("");
       setProfileMessage(

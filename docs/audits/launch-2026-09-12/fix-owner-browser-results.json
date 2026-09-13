@@ -1,0 +1,21 @@
+{
+  "environment": "Local static build and Firebase emulators; fake verified owner",
+  "results": [
+    {
+      "name": "Stale admin form rejected after concurrent stock change",
+      "status": "passed"
+    },
+    {
+      "name": "Fresh admin content edit saves through API and preserves available/reserved stock",
+      "status": "passed"
+    },
+    {
+      "name": "Admin archive retains product images and stock",
+      "status": "passed"
+    },
+    {
+      "name": "Owner order page renders payment recovery/refund controls without runtime errors",
+      "status": "passed"
+    }
+  ]
+}

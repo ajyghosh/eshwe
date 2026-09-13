@@ -1,0 +1,12 @@
+{
+  "regressionsPassed": 53,
+  "firestoreIntegrationPassed": 5,
+  "browserChecksPassed": 7,
+  "lint": "passed",
+  "typecheck": "passed",
+  "productionBuild": "passed in isolated copy",
+  "exportContainsDemoConfiguration": false,
+  "productionWrites": false,
+  "deployed": false,
+  "realRefundsIssued": false
+}

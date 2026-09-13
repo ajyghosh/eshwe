@@ -1,0 +1,11 @@
+{
+  "regressionTests": 41,
+  "firestoreIntegrationTests": 4,
+  "browserChecks": 17,
+  "failed": 0,
+  "skipped": 0,
+  "productPages": 95,
+  "productionExportContainsEmulatorConfiguration": false,
+  "productionDataChanged": false,
+  "deployed": false
+}

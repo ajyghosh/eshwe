@@ -1,0 +1,14 @@
+PASS Web search submits query, narrows products and clears an empty result
+PASS Web price sort changes product order
+PASS Web header SMS sign-in validates phone and recovers from incorrect OTP
+PASS Wishlist added on web appears on PWA and removal syncs back
+PASS PWA address edit updates web and preserves another saved address
+PASS PWA search submits, clears and opens filter controls
+PASS Web contact validates fields and stores the support request
+PASS PWA contact sheet submits without leaving the app
+PASS Sold-out product waitlist accepts customer contact
+PASS PWA manifest and worker register with same-origin install assets
+PASS Web navigation at 360px has no horizontal page overflow
+PASS Web navigation at 768px has no horizontal page overflow
+PASS Web navigation at 1024px has no horizontal page overflow
+PASS No unexpected customer UI JavaScript exceptions

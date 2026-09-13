@@ -1,0 +1,57 @@
+[
+  {
+    "id": "checkoutStatus",
+    "region": "asia-south1",
+    "state": "ACTIVE"
+  },
+  {
+    "id": "createRazorpayOrder",
+    "region": "asia-south1",
+    "state": "ACTIVE"
+  },
+  {
+    "id": "ownerOrderAction",
+    "region": "asia-south1",
+    "state": "ACTIVE"
+  },
+  {
+    "id": "ownerProductAction",
+    "region": "asia-south1",
+    "state": "ACTIVE"
+  },
+  {
+    "id": "razorpayAppCallback",
+    "region": "asia-south1",
+    "state": "ACTIVE"
+  },
+  {
+    "id": "razorpayWebhook",
+    "region": "asia-south1",
+    "state": "ACTIVE"
+  },
+  {
+    "id": "reconcileCheckoutOrders",
+    "region": "asia-south1",
+    "state": "ACTIVE"
+  },
+  {
+    "id": "sendContactEmailNotification",
+    "region": "asia-south1",
+    "state": "ACTIVE"
+  },
+  {
+    "id": "sendCustomerOtp",
+    "region": "asia-south1",
+    "state": "ACTIVE"
+  },
+  {
+    "id": "verifyCustomerOtp",
+    "region": "asia-south1",
+    "state": "ACTIVE"
+  },
+  {
+    "id": "verifyRazorpayPayment",
+    "region": "asia-south1",
+    "state": "ACTIVE"
+  }
+]

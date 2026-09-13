@@ -1,0 +1,80 @@
+{
+  "origin": "https://eshwe.com",
+  "checkedAt": "2026-09-12T16:19:42.761Z",
+  "results": [
+    {
+      "name": "Live shop HTML matches the verified release",
+      "status": "passed"
+    },
+    {
+      "name": "Live route renders: /",
+      "status": "passed"
+    },
+    {
+      "name": "Live route renders: /shop/",
+      "status": "passed"
+    },
+    {
+      "name": "Live route renders: /checkout/",
+      "status": "passed"
+    },
+    {
+      "name": "Live route renders: /payment/",
+      "status": "passed"
+    },
+    {
+      "name": "Live route renders: /app/",
+      "status": "passed"
+    },
+    {
+      "name": "Live route renders: /app/search/",
+      "status": "passed"
+    },
+    {
+      "name": "Live route renders: /app/account/",
+      "status": "passed"
+    },
+    {
+      "name": "Live route renders: /owner/",
+      "status": "passed"
+    },
+    {
+      "name": "Web tracking link points to India Post",
+      "status": "passed"
+    },
+    {
+      "name": "Live category and search URL survives reload",
+      "status": "failed",
+      "error": "page.waitForFunction: Timeout 20000ms exceeded."
+    },
+    {
+      "name": "PWA Account tracking link and mobile layout",
+      "status": "passed"
+    },
+    {
+      "name": "PWA worker matches the release and prevents stale worker caching",
+      "status": "passed"
+    },
+    {
+      "name": "PWA offline fallback renders and reconnect recovers",
+      "status": "failed",
+      "error": "The input did not match the regular expression /offline|reconnect/i. Input:\n\n''\n"
+    },
+    {
+      "name": "New API rejects unauthenticated requests: /api/checkout/status",
+      "status": "passed"
+    },
+    {
+      "name": "New API rejects unauthenticated requests: /api/owner/order",
+      "status": "passed"
+    },
+    {
+      "name": "New API rejects unauthenticated requests: /api/owner/product",
+      "status": "passed"
+    },
+    {
+      "name": "No uncaught browser runtime errors",
+      "status": "passed"
+    }
+  ]
+}

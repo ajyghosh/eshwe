@@ -87,10 +87,11 @@ export function CatalogueProductCard({
           {product.status === "out_of_stock" ? (
             <button
               type="button"
+              disabled={(product.reservedStock ?? 0) > 0}
               onClick={() => setWaitlistDialogOpen(true)}
               className="brand-caption inline-flex h-[38px] w-[124px] shrink-0 items-center justify-center rounded-2xl bg-[#3f4738] px-3 text-[0.5rem] font-semibold tracking-[0.05em] text-[#fbf4e8] sm:text-[0.54rem]"
             >
-              NOTIFY ME
+              {(product.reservedStock ?? 0) > 0 ? "RESERVED" : "NOTIFY ME"}
             </button>
           ) : cartQuantity > 0 ? (
             <div className="grid h-[38px] w-[124px] shrink-0 grid-cols-[28px_1fr_28px] items-center rounded-2xl border border-[#d6ccb9] bg-[#5e684f] px-1 text-[#fbf4e8]">
@@ -176,7 +177,7 @@ export function ProductMedia({ product }: { product: Saree }) {
         ) : null}
         {product.status === "out_of_stock" ? (
           <span className="brand-caption inline-flex w-fit rounded-[0.85rem] bg-[#5e684f] px-3 py-1.5 text-[0.52rem] font-semibold tracking-[0.05em] text-[#fbf4e8]">
-            OUT OF STOCK
+            {(product.reservedStock ?? 0) > 0 ? "TEMPORARILY RESERVED" : "OUT OF STOCK"}
           </span>
         ) : null}
       </div>

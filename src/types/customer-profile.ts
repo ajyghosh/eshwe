@@ -22,6 +22,9 @@ export type CustomerProfile = {
   selectedAddressId?: string;
   addresses?: CustomerAddress[];
   favoriteSkus?: string[];
+  favoriteRevision?: number;
+  cartItems?: import("@/types/cart").CartItem[];
+  cartRevision?: number;
   createdAt?: unknown;
   updatedAt?: unknown;
 };

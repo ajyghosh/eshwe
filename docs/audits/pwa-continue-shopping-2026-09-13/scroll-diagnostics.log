@@ -1,0 +1,60 @@
+origin {
+  url: 'https://eshwe.com/app/search/golden/?category=Mul+Cotton&sort=price-desc',
+  y: 1126,
+  height: 20362
+}
+product state {
+  productPath: '/app/product/golden-checkered-mul-cotton-test-saree-076-dummy-mul-cotton-076/',
+  origin: {
+    href: '/app/search/golden/?category=Mul+Cotton&sort=price-desc',
+    scrollY: 1126
+  }
+}
+0 {
+  y: 0,
+  height: 844,
+  pending: '{"href":"/app/search/golden/?category=Mul+Cotton&sort=price-desc","scrollY":1126}',
+  cards: 0
+}
+1 {
+  y: 0,
+  height: 844,
+  pending: '{"href":"/app/search/golden/?category=Mul+Cotton&sort=price-desc","scrollY":1126}',
+  cards: 0
+}
+2 {
+  y: 0,
+  height: 844,
+  pending: '{"href":"/app/search/golden/?category=Mul+Cotton&sort=price-desc","scrollY":1126}',
+  cards: 0
+}
+3 {
+  y: 0,
+  height: 20362,
+  pending: '{"href":"/app/search/golden/?category=Mul+Cotton&sort=price-desc","scrollY":1126}',
+  cards: 95
+}
+4 {
+  y: 0,
+  height: 20362,
+  pending: '{"href":"/app/search/golden/?category=Mul+Cotton&sort=price-desc","scrollY":1126}',
+  cards: 95
+}
+5 {
+  y: 0,
+  height: 20362,
+  pending: '{"href":"/app/search/golden/?category=Mul+Cotton&sort=price-desc","scrollY":1126}',
+  cards: 95
+}
+6 {
+  y: 0,
+  height: 20362,
+  pending: '{"href":"/app/search/golden/?category=Mul+Cotton&sort=price-desc","scrollY":1126}',
+  cards: 95
+}
+7 {
+  y: 0,
+  height: 20362,
+  pending: '{"href":"/app/search/golden/?category=Mul+Cotton&sort=price-desc","scrollY":1126}',
+  cards: 95
+}

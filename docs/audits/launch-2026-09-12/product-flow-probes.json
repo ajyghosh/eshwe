@@ -1,0 +1,34 @@
+{
+  "audit": "additional-product-flows",
+  "productionWrites": false,
+  "providerCalls": "mocked only",
+  "findings": [
+    {
+      "id": "FLOW-01",
+      "observed": "A stored paid/dispatched order returns HTTP 503 and no order when the provider is unavailable.",
+      "reproduced": true
+    },
+    {
+      "id": "FLOW-04",
+      "observed": "Two scheduler runs make 200 attempts on the same 100 unresolved orders; order 101 receives zero attempts.",
+      "reproduced": true,
+      "caveat": "In-memory deterministic query fixture; source has no cursor or retry rotation."
+    },
+    {
+      "id": "FLOW-05",
+      "observed": "Authenticated checkout API accepts PIN abc, reserves stock, and returns canPay=true.",
+      "reproduced": true
+    },
+    {
+      "id": "FLOW-02",
+      "observed": "After capture outside the status page, a same-bag new purchase returns the previous paid order; a changed bag returns 409. Status checking alone retains the stale local key.",
+      "reproduced": true
+    },
+    {
+      "id": "FLOW-03",
+      "observed": "Actual admin submit handlers delete the old category image before a failed metadata save, and the old home hero before carousel validation rejects the save.",
+      "reproduced": true,
+      "caveat": "Handlers extracted from TypeScript AST and executed with mocked storage; no real assets deleted."
+    }
+  ]
+}

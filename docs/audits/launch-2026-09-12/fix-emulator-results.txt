@@ -1,0 +1,21 @@
+✔ real Firestore: last item race, two-product capture, replay and stale admin edit (9293.186052ms)
+[2026-09-12T13:56:24.391Z]  @firebase/firestore: Firestore (12.17.0): GrpcConnection RPC 'Write' stream 0x57c3ce2d error. Code: 7 Message: 7 PERMISSION_DENIED:
+false for 'update' @ L130
+[2026-09-12T13:56:24.433Z]  @firebase/firestore: Firestore (12.17.0): GrpcConnection RPC 'Write' stream 0x57c3ce2e error. Code: 7 Message: 7 PERMISSION_DENIED:
+false for 'update' @ L130
+✔ real rules: public catalogue is readable, drafts and direct stock changes are blocked (447.396294ms)
+[2026-09-12T13:56:24.832Z]  @firebase/firestore: Firestore (12.17.0): GrpcConnection RPC 'Write' stream 0x57c3ce31 error. Code: 7 Message: 7 PERMISSION_DENIED:
+false for 'update' @ L57
+[2026-09-12T13:56:24.863Z]  @firebase/firestore: Firestore (12.17.0): GrpcConnection RPC 'Write' stream 0x57c3ce32 error. Code: 7 Message: 7 PERMISSION_DENIED:
+false for 'update' @ L57
+[2026-09-12T13:56:24.884Z]  @firebase/firestore: Firestore (12.17.0): GrpcConnection RPC 'Write' stream 0x57c3ce33 error. Code: 7 Message: 7 PERMISSION_DENIED: No matching allow statements
+✔ real rules: customer data and orders are isolated; owners cannot forge payment or stock commits (455.84785ms)
+✔ real customer history orders on the server before limiting and supports older pages (968.710533ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 11860.176151

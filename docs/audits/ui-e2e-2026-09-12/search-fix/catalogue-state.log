@@ -1,0 +1,6 @@
+PASS Available filter stays selected while sold-out cards update live
+PASS Submitting a search preserves fabric availability and sort
+PASS Category and query deep links survive initial load and reload
+PASS Back forward navigation and Clear restore the intended form state
+PASS Category-card refresh preserves an unfinished query and selected availability
+PASS No catalogue runtime errors

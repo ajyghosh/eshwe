@@ -3,12 +3,15 @@ import {
   doc,
   limit,
   onSnapshot,
+  orderBy,
   or,
   query,
   serverTimestamp,
   updateDoc,
   where
 } from "firebase/firestore";
+
+import { postJson } from "@/lib/api";
 
 import { db } from "@/lib/firebase";
 import { isProductPurchasable } from "@/lib/inventory";
@@ -39,14 +42,15 @@ export function buildReorderSelections(order: CheckoutOrder, catalogueProducts: 
 export function subscribeToCustomerOrders(
   userId: string,
   onData: (orders: CheckoutOrder[]) => void,
-  onError?: (error: Error) => void
+  onError?: (error: Error) => void,
+  pageSize = 50
 ) {
   if (!db) {
     onData([]);
     return () => undefined;
   }
 
-  const ordersQuery = query(collection(db, ORDER_COLLECTION), where("userId", "==", userId), limit(100));
+  const ordersQuery = query(collection(db, ORDER_COLLECTION), where("userId", "==", userId), orderBy("createdAt", "desc"), limit(pageSize));
 
   return onSnapshot(
     ordersQuery,
@@ -83,7 +87,8 @@ export function subscribeToSuccessfulOrders(
     or(
       where("paymentStatus", "==", "captured"),
       where("status", "==", "paid"),
-      where("paymentCaptured", "==", true)
+      where("paymentCaptured", "==", true),
+      where("attentionRequired", "==", true)
     )
   );
 
@@ -108,28 +113,18 @@ export function subscribeToSuccessfulOrders(
 }
 
 export async function updateOrderDispatchStatus(orderId: string, dispatchStatus: "completed" | "new") {
-  if (!db) {
-    throw new Error("Firestore is not available.");
-  }
-
-  const orderRef = doc(db, ORDER_COLLECTION, orderId);
-
-  await updateDoc(orderRef, {
-    completedAt: dispatchStatus === "completed" ? serverTimestamp() : null,
-    dispatchStatus,
-    updatedAt: serverTimestamp()
-  });
+  return postJson("/api/owner/order", { orderId, action: dispatchStatus });
 }
 
-export function getPendingDispatchCount(orders: Pick<CheckoutOrder, "dispatchStatus">[]) {
-  return orders.filter((order) => order.dispatchStatus !== "completed").length;
+export function getPendingDispatchCount(orders: Pick<CheckoutOrder, "dispatchStatus" | "refundStatus" | "attentionRequired">[]) {
+  return orders.filter((order) => order.dispatchStatus !== "completed" && !order.refundStatus && !order.attentionRequired).length;
 }
 
 function isSuccessfulOrder(order: Partial<CheckoutOrder>) {
   return (
     order.paymentStatus === "captured" ||
     order.status === "paid" ||
-    order.paymentCaptured === true
+    order.paymentCaptured === true || order.attentionRequired === true
   );
 }
 

@@ -44,6 +44,27 @@
     ],
     "rewrites": [
       {
+        "source": "/api/checkout/status",
+        "function": {
+          "functionId": "checkoutStatus",
+          "region": "asia-south1"
+        }
+      },
+      {
+        "source": "/api/owner/order",
+        "function": {
+          "functionId": "ownerOrderAction",
+          "region": "asia-south1"
+        }
+      },
+      {
+        "source": "/api/owner/product",
+        "function": {
+          "functionId": "ownerProductAction",
+          "region": "asia-south1"
+        }
+      },
+      {
         "source": "/api/razorpay/create-order",
         "function": {
           "functionId": "createRazorpayOrder",

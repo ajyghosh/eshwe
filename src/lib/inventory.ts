@@ -2,14 +2,20 @@ import type { CartItem } from "@/types/cart";
 import type { Saree, SareeStatus } from "@/types/saree";
 
 export const MAX_CART_ITEM_QUANTITY = 10;
-export const DEFAULT_AVAILABLE_STOCK = 10;
+export const DEFAULT_AVAILABLE_STOCK = 0;
 
 export function normalizeAvailableStock(value: unknown) {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
+  if (typeof value !== "number" || !Number.isInteger(value)) {
     return DEFAULT_AVAILABLE_STOCK;
   }
 
   return Math.max(0, Math.floor(value));
+}
+
+export function getStockMessage(product: { availableStock: number; reservedStock?: number; status: SareeStatus }) {
+  if (product.availableStock <= 0 && (product.reservedStock ?? 0) > 0) return "Temporarily reserved — check back shortly";
+  if (product.status !== "active" || product.availableStock <= 0) return "Out of stock";
+  return product.availableStock <= 2 ? `Only ${product.availableStock} left in stock` : "Available — reserved when you start payment";
 }
 
 export function getEffectiveAvailabilityStatus(status: SareeStatus, availableStock: number): SareeStatus {

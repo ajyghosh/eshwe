@@ -1,0 +1,18 @@
+PASS Guest web: add, quantity and favourite respond within 300 ms
+PASS Guest web: persisted values and web/PWA bag agree without doubling
+PASS Guest web: stock limits still prevent extra quantities
+PASS Guest web: no uncaught browser errors
+PASS Guest PWA: add, quantity and favourite respond within 300 ms
+PASS Guest PWA: persisted values and web/PWA bag agree without doubling
+PASS Guest PWA: stock limits still prevent extra quantities
+PASS Guest PWA: no uncaught browser errors
+PASS Signed-in web: add, quantity and favourite respond within 300 ms
+PASS Signed-in web: persisted values and web/PWA bag agree without doubling
+PASS Signed-in web: failed saves roll back and show a message
+PASS Signed-in web: stock limits still prevent extra quantities
+PASS Signed-in web: no uncaught browser errors
+PASS Signed-in PWA: add, quantity and favourite respond within 300 ms
+PASS Signed-in PWA: persisted values and web/PWA bag agree without doubling
+PASS Signed-in PWA: failed saves roll back and show a message
+PASS Signed-in PWA: stock limits still prevent extra quantities
+PASS Signed-in PWA: no uncaught browser errors

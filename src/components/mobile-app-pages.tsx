@@ -22,6 +22,7 @@ import { AffordableEleganceBanner } from "@/components/affordable-elegance-banne
 import { SareeCultureTeaser } from "@/components/saree-culture-teaser";
 import { AFFORDABLE_PRICE_RANGE, PRICE_RANGES, matchesPriceRange, normalizePriceRange, priceRangeLabel } from "@/lib/price-ranges";
 import { MobileAppShell } from "@/components/mobile-app-shell";
+import { MobileHomeSkeleton } from "@/components/mobile-home-skeleton";
 import { attachPwaProductOrigin, preparePwaShoppingReturn } from "@/lib/pwa-shopping-navigation";
 import { NotifyWaitlistDialog } from "@/components/notify-waitlist-dialog";
 import { subscribeToCategoryCards, subscribeToHomePageContent } from "@/lib/homepage";
@@ -124,10 +125,16 @@ const emptyAddressForm: PaymentFormState = {
 const POPULAR_SEARCHES = ["Mul Cotton", "Kanchi Cotton", "Tissue Silk", "Soft Silk", "Wedding"];
 const MOBILE_INTENT_OPTIONS = ["Wedding", "Gifting", "Everyday", "New", "Under ₹2,000"];
 
-export function MobileAppHomePage() {
+export function MobileAppHomePage({ initialPreviewCounts = { arrivals: 4, featured: 2 } }: {
+  initialPreviewCounts?: { arrivals: number; featured: number };
+}) {
   const [homeContent, setHomeContent] = useState<HomePageContent | null>(null);
   const [categoryCards, setCategoryCards] = useState<CategoryCard[]>([]);
   const [homeProducts, setHomeProducts] = useState<Saree[]>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [productsLoadError, setProductsLoadError] = useState(false);
+  const [categoriesLoadError, setCategoriesLoadError] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [currentMobileHeroIndex, setCurrentMobileHeroIndex] = useState(0);
   const { totalItems } = useCart();
@@ -141,6 +148,11 @@ export function MobileAppHomePage() {
   useEffect(() => {
     return subscribeToCategoryCards((cards) => {
       setCategoryCards(cards.filter((card) => card.active));
+      setCategoriesLoading(false);
+      setCategoriesLoadError(false);
+    }, () => {
+      setCategoriesLoading(false);
+      setCategoriesLoadError(true);
     });
   }, []);
 
@@ -148,8 +160,14 @@ export function MobileAppHomePage() {
     return subscribeToSarees(
       (nextProducts) => {
         setHomeProducts(nextProducts.filter((product) => product.status !== "draft"));
+        setProductsLoading(false);
+        setProductsLoadError(false);
       },
-      { status: ["active", "out_of_stock"], max: 18 }
+      { status: ["active", "out_of_stock"], max: 18 },
+      () => {
+        setProductsLoading(false);
+        setProductsLoadError(true);
+      }
     );
   }, []);
 
@@ -277,7 +295,7 @@ export function MobileAppHomePage() {
             </div>
           </div>
 
-          <div className="flex items-center justify-center px-4">
+          <div className="flex min-h-11 items-center justify-center px-4">
             {resolvedMobileHeroSlides.map((_, index) => (
               <button
                 key={`mobile-hero-dot-${index}`}
@@ -307,36 +325,32 @@ export function MobileAppHomePage() {
         </div>
 
         <MobileHomeSection
-          title="Shop by category"
-          actionHref={buildAppSearchHref()}
-          actionLabel="View all"
-          tone="warm"
-          eyebrow="Curated edits"
-        >
-          <div className="mobile-app-home-categories mt-4 grid grid-cols-2 gap-3">
-            {categoryCards.slice(0, 6).map((card) => (
-              <MobileCategoryCard key={card.id ?? card.title} card={card} products={previewProducts} />
-            ))}
-          </div>
-        </MobileHomeSection>
-
-        {homeContent?.affordableBanner?.enabled !== false ? (
-          <section aria-label="Affordable Elegance" className="mt-6">
-            <AffordableEleganceBanner content={homeContent?.affordableBanner} href={buildAppSearchHref({ priceRange: AFFORDABLE_PRICE_RANGE })} />
-          </section>
-        ) : null}
-
-        <MobileHomeSection
           title="New arrivals"
           actionHref={buildAppSearchHref({ sort: "newest" })}
           actionLabel="View all"
           tone="plain"
           eyebrow="Fresh drops"
         >
-          <MobileProductPreviewGrid products={newArrivals} sectionKey="new-arrivals" />
+          <MobileProductPreviewGrid products={newArrivals} sectionKey="new-arrivals" loading={productsLoading} error={productsLoadError} skeletonCount={initialPreviewCounts.arrivals} />
         </MobileHomeSection>
 
-        {featuredProducts.length > 0 ? (
+        <MobileHomeSection
+          title="Shop by category"
+          actionHref={buildAppSearchHref()}
+          actionLabel="View all"
+          tone="warm"
+          eyebrow="Curated edits"
+        >
+          {categoriesLoading || categoriesLoadError ? <MobileHomeSkeleton kind="categories" error={categoriesLoadError} /> : categoryCards.length === 0 ? (
+            <p className="mt-4 text-sm text-[#68735e]">New categories are coming soon.</p>
+          ) : <div className="mobile-app-home-categories mt-4 grid grid-cols-2 gap-3">
+            {categoryCards.slice(0, 6).map((card) => (
+              <MobileCategoryCard key={card.id ?? card.title} card={card} products={previewProducts} />
+            ))}
+          </div>}
+        </MobileHomeSection>
+
+        {((productsLoading || productsLoadError) && initialPreviewCounts.featured > 0) || featuredProducts.length > 0 ? (
           <MobileHomeSection
             title="Featured products"
             actionHref={buildAppSearchHref({ q: "", sort: "relevance" })}
@@ -344,15 +358,21 @@ export function MobileAppHomePage() {
             tone="sage"
             eyebrow="Boutique picks"
           >
-            <MobileProductPreviewGrid products={featuredProducts} sectionKey="featured-products" />
+            <MobileProductPreviewGrid products={featuredProducts} sectionKey="featured-products" loading={productsLoading} error={productsLoadError} skeletonCount={initialPreviewCounts.featured} />
           </MobileHomeSection>
+        ) : null}
+
+        {homeContent?.affordableBanner?.enabled !== false ? (
+          <section aria-label="Affordable Elegance" className="mt-6">
+            <AffordableEleganceBanner content={homeContent?.affordableBanner} href={buildAppSearchHref({ priceRange: AFFORDABLE_PRICE_RANGE })} />
+          </section>
         ) : null}
 
         <div className="mt-6">
           <SareeCultureTeaser />
         </div>
 
-        {promiseProduct ? (
+        {productsLoading || productsLoadError || promiseProduct ? (
           <section className="mt-6 overflow-hidden rounded-[2rem] border border-[#eadfce] bg-[linear-gradient(135deg,#fff9ef_0%,#f7efe1_100%)] shadow-none">
             <div className="grid grid-cols-[1fr_0.95fr] items-center gap-4 p-4">
               <div>
@@ -365,8 +385,8 @@ export function MobileAppHomePage() {
                 </p>
               </div>
               <div
-                className="aspect-[0.96] rounded-2xl bg-[#e8dcc8]"
-                style={buildImageBackgroundStyle(promiseProduct.primaryImageUrl)}
+                className={`aspect-[0.96] rounded-2xl bg-[#e8dcc8] ${productsLoading ? "motion-safe:animate-pulse" : ""}`}
+                style={buildImageBackgroundStyle(promiseProduct?.primaryImageUrl)}
               />
             </div>
           </section>
@@ -2881,15 +2901,25 @@ function MobileHomeSection({
 
 function MobileProductPreviewGrid({
   products,
-  sectionKey
+  sectionKey,
+  loading = false,
+  error = false,
+  skeletonCount = 4
 }: {
   products: Saree[];
   sectionKey: string;
+  loading?: boolean;
+  error?: boolean;
+  skeletonCount?: number;
 }) {
   const previewProducts = products.slice(0, 4);
 
+  if (loading || (error && previewProducts.length === 0)) {
+    return <MobileHomeSkeleton kind="products" error={error} count={skeletonCount} />;
+  }
+
   if (previewProducts.length === 0) {
-    return null;
+    return <p className="mt-4 text-sm text-[#68735e]">New sarees are coming soon.</p>;
   }
 
   return (

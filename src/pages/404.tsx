@@ -30,7 +30,7 @@ export default function Static404Page() {
         }}
       >
         <Image
-          src="/eshwelogo-transparent.png"
+          src="/eshwelogo-transparent.webp"
           alt="eshwe"
           width={96}
           height={96}

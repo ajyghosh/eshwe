@@ -2,6 +2,7 @@
 
 const crypto = require("node:crypto");
 const { createRefunds } = require("./refunds");
+const { queueOrderNotification } = require("./order-notifications");
 const HOLD_MS = 15 * 60 * 1000;
 const hash = value => crypto.createHash("sha256").update(value).digest("hex");
 const stock = value => Number.isInteger(value) && value >= 0 ? value : 0;
@@ -152,7 +153,9 @@ function createCommerce({ db, timestamp, gateway, now = Date.now }) {
         }).filter(item => item.quantity > 0);
         tx.update(profileRef, { cartItems, updatedAt: timestamp() });
       }
-      tx.update(ref, { ...updates, inventoryCommitted: true, inventoryCommittedAt: timestamp(), reservationState: "committed", dispatchStatus: "new", attentionRequired: false });
+      const confirmed = { ...order, ...updates, inventoryCommitted: true, inventoryCommittedAt: timestamp(), reservationState: "committed", dispatchStatus: "new", attentionRequired: false };
+      const notifications = queueOrderNotification(tx, ref, confirmed, "confirmation", timestamp);
+      tx.update(ref, { ...updates, inventoryCommitted: true, inventoryCommittedAt: timestamp(), reservationState: "committed", dispatchStatus: "new", attentionRequired: false, notifications });
     });
     return readOrder(id);
   }
@@ -230,7 +233,7 @@ function createCommerce({ db, timestamp, gateway, now = Date.now }) {
     return readOrder(id);
   }
 
-  async function fulfilment(id, action, actor) {
+  async function fulfilment(id, action, actor, details = {}) {
     if (action === "retry-refund") {
       await db.runTransaction(async tx => {
         const ref = orderRef(id); const s = await tx.get(ref);
@@ -258,12 +261,26 @@ function createCommerce({ db, timestamp, gateway, now = Date.now }) {
       if (action === "restock") {
         if (!order.inventoryCommitted || order.inventoryRestocked || order.refundStatus !== "processed") throw new CommerceError(409, "Restock once, after refund and physical return inspection.");
         const products = await Promise.all(order.cartItems.map(item => tx.get(db.collection("sarees").doc(item.productId))));
-        if (products.some(s => !s.exists)) throw new CommerceError(409, "Restore the archived product before restocking.");
+        if (products.some(s => !s.exists)) throw new CommerceError(409, "A product in this order was deleted. It cannot be restocked through this order.");
         products.forEach((s,index) => tx.update(s.ref, { availableStock: stock(s.data().availableStock) + order.cartItems[index].quantity, updatedAt: timestamp() }));
         tx.update(ref, { inventoryRestocked: true, restockedAt: timestamp(), restockedBy: actor, updatedAt: timestamp() });
       } else if (["completed", "new"].includes(action)) {
         if (!order.paymentCaptured || !order.inventoryCommitted || order.refundStatus || order.attentionRequired) throw new CommerceError(409, "Resolve payment, inventory, or refund issues before dispatch.");
-        tx.update(ref, { dispatchStatus: action, completedAt: action === "completed" ? timestamp() : null, updatedAt: timestamp(), dispatchUpdatedBy: actor });
+        if (action === "completed") {
+          const awbNumber = typeof details.awbNumber === "string" ? details.awbNumber.trim() : "";
+          if (!/^[A-Za-z0-9][A-Za-z0-9-]{2,59}$/.test(awbNumber)) throw new CommerceError(400, "Enter an AWB number of 3–60 letters, numbers or hyphens.");
+          if (order.dispatchStatus === "completed") {
+            if (order.awbNumber !== awbNumber) throw new CommerceError(409, "This order is already dispatched. Its AWB number cannot be changed here.");
+            return;
+          }
+          if (order.notifications?.dispatch) throw new CommerceError(409, "Dispatch has already been recorded for this order.");
+          const completedAt = timestamp();
+          const notifications = queueOrderNotification(tx, ref, { ...order, awbNumber, completedAt, dispatchStatus: "completed" }, "dispatch", timestamp);
+          tx.update(ref, { dispatchStatus: "completed", awbNumber, completedAt, notifications, updatedAt: timestamp(), dispatchUpdatedBy: actor });
+        } else {
+          if (order.awbNumber) throw new CommerceError(409, "A dispatched order cannot be moved back to the dispatch queue.");
+          tx.update(ref, { dispatchStatus: action, completedAt: null, updatedAt: timestamp(), dispatchUpdatedBy: actor });
+        }
       } else throw new CommerceError(400, "Unknown order action.");
       tx.set(ref.collection("history").doc(), { action, actor, createdAt: timestamp() });
     });

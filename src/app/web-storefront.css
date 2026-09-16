@@ -84,7 +84,7 @@
 
 .web-storefront .web-product-card-actions {
   margin-top: auto;
-  padding-top: 16px;
+  padding-top: 8px;
 }
 
 .web-storefront .web-product-card-actions > :is(button, div) {
@@ -291,7 +291,7 @@ body:has(.web-storefront) :is(.customer-otp-panel, .customer-waitlist-panel) :is
   }
 
   .web-storefront .web-filter-toolbar {
-    grid-template-columns: minmax(200px, 1.7fr) repeat(4, minmax(115px, 1fr)) auto;
+    grid-template-columns: minmax(220px, 1.5fr) repeat(3, minmax(180px, 1fr));
     gap: 12px;
   }
 
@@ -323,3 +323,22 @@ body:has(.web-storefront) :is(.customer-otp-panel, .customer-waitlist-panel) :is
     scroll-behavior: auto !important;
   }
 }
+
+/* Readable secondary text on the cream storefront surfaces. */
+.web-storefront .text-\[\#9a9a93\],
+.web-storefront .text-\[\#768068\],
+.web-storefront .text-\[\#74786c\],
+.web-storefront .text-\[\#7d876f\],
+.web-storefront .text-\[\#667056\],
+.web-storefront .text-\[\#6d7561\],
+.web-storefront .text-\[\#657260\],
+.web-storefront .text-\[\#68735e\],
+.web-storefront .text-\[\#7b7b72\],
+.web-storefront .text-\[\#8d8b87\] {
+  color: #59644f;
+}
+.web-storefront .text-\[\#a8574d\] { color: #94473e; }
+.web-storefront .text-\[\#9a6700\] { color: #805400; }
+.web-storefront .bg-\[\#6b7a5e\] { background-color: #58674c; }
+
+.web-header-action-label { color: #59644f; }

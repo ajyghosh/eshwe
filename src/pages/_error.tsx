@@ -35,7 +35,7 @@ export default function StaticErrorPage({ statusCode }: ErrorPageProps) {
         }}
       >
         <Image
-          src="/eshwelogo-transparent.png"
+          src="/eshwelogo-transparent.webp"
           alt="eshwe"
           width={96}
           height={96}

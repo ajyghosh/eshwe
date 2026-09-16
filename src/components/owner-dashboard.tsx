@@ -28,6 +28,7 @@ import { subscribeToProductMasterOptions } from "@/lib/product-master-options";
 import { subscribeToProductGroups } from "@/lib/product-groups";
 import {
   createSaree,
+  archiveSaree,
   deleteSaree,
   slugifySareeName,
   subscribeToSarees,
@@ -41,6 +42,7 @@ import {
   subscribeToOwnerAccounts,
   type OwnerAccount
 } from "@/lib/owner-access";
+import { AFFORDABLE_PRICE_RANGE, PRICE_RANGES, matchesPriceRange } from "@/lib/price-ranges";
 import { firebaseReady } from "@/lib/firebase";
 import { DEFAULT_AVAILABLE_STOCK, getEffectiveAvailabilityStatus, normalizeAvailableStock } from "@/lib/inventory";
 import { formatOccasionSummary, MANUAL_OCCASION_TAGS, normalizeOccasionTags } from "@/lib/product-discovery";
@@ -83,11 +85,12 @@ export function OwnerDashboard() {
   const router = useRouter();
   const [dialogState, setDialogState] = useState<
     | { type: "signout" }
-    | { type: "delete-product"; product: Saree }
+    | { type: "delete-product" | "archive-product"; product: Saree }
     | null
   >(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
+  const [priceRange, setPriceRange] = useState("");
   const [products, setProducts] = useState<Saree[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
   const [productMasterOptions, setProductMasterOptions] = useState<ProductMasterOption[]>([]);
@@ -498,15 +501,16 @@ export function OwnerDashboard() {
     }
   }
 
-  function requestDeleteProduct(product: Saree) {
+  function requestDeleteProduct(product: Saree, archive = false) {
     if (!product.id) {
       return;
     }
 
-    setDialogState({ type: "delete-product", product });
+    setActionError(null);
+    setDialogState({ type: archive ? "archive-product" : "delete-product", product });
   }
 
-  async function confirmDeleteProduct(product: Saree) {
+  async function confirmDeleteProduct(product: Saree, archive: boolean) {
     if (!product.id) {
       return;
     }
@@ -517,14 +521,15 @@ export function OwnerDashboard() {
 
     try {
 
-      await deleteSaree(product.id, product.version);
+      await (archive ? archiveSaree : deleteSaree)(product.id, product.version);
 
       if (editingProductId === product.id) {
         resetForm();
       }
+      setActionNotice(`${product.name} was ${archive ? "archived" : "deleted"}.`);
       setDialogState(null);
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : "Archiving product failed.");
+      setActionError(error instanceof Error ? error.message : "Product action failed.");
     } finally {
       setIsDeletingId(null);
     }
@@ -540,20 +545,22 @@ export function OwnerDashboard() {
       return;
     }
 
-    if (dialogState.type === "delete-product") {
-      await confirmDeleteProduct(dialogState.product);
+    if (dialogState.type === "delete-product" || dialogState.type === "archive-product") {
+      await confirmDeleteProduct(dialogState.product, dialogState.type === "archive-product");
     }
   }
 
   const dialogPending =
     (dialogState?.type === "signout" && isSigningOut) ||
-    (dialogState?.type === "delete-product" &&
+    ((dialogState?.type === "delete-product" || dialogState?.type === "archive-product") &&
       Boolean(dialogState.product.id && isDeletingId === dialogState.product.id));
 
   const dialogTitle =
     dialogState?.type === "signout"
       ? "Sign out of the owner panel?"
       : dialogState?.type === "delete-product"
+        ? "Permanently delete this product?"
+        : dialogState?.type === "archive-product"
         ? "Archive this product?"
         : "";
 
@@ -561,6 +568,8 @@ export function OwnerDashboard() {
     dialogState?.type === "signout"
       ? "You will be signed out of the owner dashboard on this device."
       : dialogState?.type === "delete-product"
+        ? `${dialogState.product.name} will be permanently removed from the catalogue. This cannot be undone. Past orders and their images will remain, but this product cannot be restocked through those orders. Its SKU and URL cannot be reused. Use Archive if you may sell it again.`
+        : dialogState?.type === "archive-product"
         ? `${dialogState.product.name} will be hidden from the storefront. Its stock, images, and order history will be preserved.`
         : "";
 
@@ -568,6 +577,8 @@ export function OwnerDashboard() {
     dialogState?.type === "signout"
       ? "SIGN OUT"
       : dialogState?.type === "delete-product"
+        ? "DELETE PRODUCT"
+        : dialogState?.type === "archive-product"
         ? "ARCHIVE PRODUCT"
         : "CONFIRM";
 
@@ -580,10 +591,12 @@ export function OwnerDashboard() {
     outOfStock: products.filter((product) => product.status === "out_of_stock").length
   };
 
+  const visibleProducts = useMemo(() => products.filter((product) => matchesPriceRange(product, priceRange)), [products, priceRange]);
+
   const productsByCategory = useMemo(() => {
     const grouped = new Map<string, Saree[]>();
 
-    products.forEach((product) => {
+    visibleProducts.forEach((product) => {
       const key = product.category.trim() || "Uncategorized";
       const current = grouped.get(key) ?? [];
       current.push(product);
@@ -594,7 +607,7 @@ export function OwnerDashboard() {
       category,
       items
     }));
-  }, [products]);
+  }, [visibleProducts]);
 
   const isCreatingProduct = isProductFormOpen && !editingProductId;
   const isEditingProduct = Boolean(editingProductId);
@@ -747,6 +760,11 @@ export function OwnerDashboard() {
                 placeholder="1650"
                 required
               />
+              <p className="mt-2 text-xs leading-5 text-[#667056]">
+                {form.price && matchesPriceRange({ price: Number(form.price) }, AFFORDABLE_PRICE_RANGE)
+                  ? "This saree qualifies for Affordable Elegance. It appears there when published."
+                  : "Set a selling price between ₹399 and ₹999 to include this saree in Affordable Elegance."}
+              </p>
             </Field>
             <Field label="Original price (optional)">
               <input
@@ -1105,7 +1123,7 @@ export function OwnerDashboard() {
                   <div>
                     <h2 className="brand-copy text-3xl text-[#3f4738]">Catalogue records</h2>
                     <p className="mt-2 text-sm text-[#667056]">
-                      {products.length} product records grouped by category to keep the backoffice clean.
+                      {visibleProducts.length} of {products.length} product records grouped by category to keep the backoffice clean.
                     </p>
                   </div>
 
@@ -1120,6 +1138,17 @@ export function OwnerDashboard() {
 
                 </div>
 
+                <div className="mt-5 rounded-2xl border border-[#e3d8c9] bg-[#fbf4e8] p-4">
+                  <label className="block max-w-md text-sm font-medium text-[#4f5942]">
+                    Price range
+                    <select value={priceRange} onChange={(event) => setPriceRange(event.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-[#d6ccb9] bg-[#fffdf8] px-3 text-sm">
+                      <option value="">All prices</option>
+                      {PRICE_RANGES.map((range) => <option key={range.value} value={range.value}>{range.label}</option>)}
+                    </select>
+                  </label>
+                  <p className="mt-3 text-sm leading-6 text-[#667056]">Affordable Elegance automatically includes published sarees with a selling price of ₹399–₹999. Drafts stay hidden from shoppers.</p>
+                </div>
+
                 <div className="mt-6 space-y-6">
                   {readError ? <p className="text-sm text-[#9d4b45]">Firebase read failed: {readError}</p> : null}
                   {productsLoading ? (
@@ -1128,6 +1157,8 @@ export function OwnerDashboard() {
                     <div className="rounded-[1.3rem] border border-dashed border-[#d8cbb7] bg-[#fbf4e8] p-5 text-sm leading-7 text-[#667056]">
                       No products yet. Add the first saree from the workspace to turn the storefront live.
                     </div>
+                  ) : visibleProducts.length === 0 ? (
+                    <p className="rounded-xl border border-dashed border-[#d8cbb7] p-5 text-sm text-[#667056]">No products in this price range. Choose All prices to see every record.</p>
                   ) : (
                     productsByCategory.map(({ category, items }) => (
                       <section
@@ -1194,11 +1225,19 @@ export function OwnerDashboard() {
                                     </button>
                                     <button
                                       type="button"
-                                      onClick={() => requestDeleteProduct(product)}
+                                      onClick={() => requestDeleteProduct(product, true)}
                                       disabled={isDeletingId === product.id}
                                       className="brand-caption rounded-full border border-[#d4c5b2] px-4 py-2 text-[0.52rem] font-semibold tracking-[0.08em] text-[#9d4b45] disabled:opacity-60"
                                     >
-                                      {isDeletingId === product.id ? "ARCHIVING..." : "ARCHIVE"}
+                                      ARCHIVE
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => requestDeleteProduct(product)}
+                                      disabled={isDeletingId === product.id}
+                                      className="brand-caption rounded-full border border-[#9d4b45] px-4 py-2 text-[0.52rem] font-semibold tracking-[0.08em] text-[#9d4b45] disabled:opacity-60"
+                                    >
+                                      DELETE
                                     </button>
                                   </div>
                                 </div>
@@ -1231,6 +1270,7 @@ export function OwnerDashboard() {
               open={Boolean(dialogState)}
               title={dialogTitle}
               message={dialogMessage}
+              error={dialogState?.type !== "signout" ? actionError : null}
               confirmLabel={dialogConfirmLabel}
               tone={dialogTone}
               pending={Boolean(dialogPending)}

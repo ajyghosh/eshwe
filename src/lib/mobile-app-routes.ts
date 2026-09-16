@@ -1,4 +1,5 @@
 import { slugifySareeName } from "@/lib/sarees";
+import { normalizePriceRange } from "@/lib/price-ranges";
 
 type AppSearchParams = {
   category?: string;
@@ -6,6 +7,7 @@ type AppSearchParams = {
   intent?: string;
   q?: string;
   sort?: string;
+  priceRange?: string;
 };
 
 export function buildAppHomeHref() {
@@ -14,6 +16,8 @@ export function buildAppHomeHref() {
 
 export function buildAppSearchHref(params?: AppSearchParams) {
   const searchParams = new URLSearchParams();
+  const priceRange = normalizePriceRange(params?.priceRange);
+  if (priceRange) searchParams.set("priceRange", priceRange);
 
   if (params?.q?.trim()) {
     searchParams.set("q", params.q.trim());
@@ -41,6 +45,8 @@ export function buildAppSearchHref(params?: AppSearchParams) {
 
 export function buildAppSearchVisiblePath(params?: AppSearchParams) {
   const searchParams = new URLSearchParams();
+  const priceRange = normalizePriceRange(params?.priceRange);
+  if (priceRange) searchParams.set("priceRange", priceRange);
   const normalizedQuery = slugifySareeName(params?.q ?? "");
   const normalizedCategory = slugifySareeName(params?.category ?? "");
   const normalizedFabric = slugifySareeName(params?.fabric ?? "");
@@ -155,6 +161,7 @@ export function resolveAppSearchState(
 ) {
   const segments = pathname.split("/").filter(Boolean).map((segment) => decodeURIComponent(segment));
   const nextState: AppSearchParams = {
+    priceRange: normalizePriceRange(searchState?.priceRange),
     category: searchState?.category?.trim() ?? "",
     fabric: searchState?.fabric?.trim() ?? "",
     intent: searchState?.intent?.trim() ?? "",

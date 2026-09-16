@@ -22,11 +22,16 @@ export function useOwnerBackofficeBadges(enabled: boolean) {
   const [orders, setOrders] = useState<CheckoutOrder[]>([]);
   const [messages, setMessages] = useState<CustomerMessage[]>([]);
   const [waitlistEntries, setWaitlistEntries] = useState<WaitlistEntry[]>([]);
-  const [ordersLoading, setOrdersLoading] = useState(false);
-  const [messagesLoading, setMessagesLoading] = useState(false);
-  const [waitlistLoading, setWaitlistLoading] = useState(false);
+  const [ordersLoading, setOrdersLoading] = useState(enabled);
+  const [messagesLoading, setMessagesLoading] = useState(enabled);
+  const [waitlistLoading, setWaitlistLoading] = useState(enabled);
+
+  const [ordersError, setOrdersError] = useState(false);
+  const [messagesError, setMessagesError] = useState(false);
 
   useEffect(() => {
+    setOrdersError(false);
+    setMessagesError(false);
     if (!enabled) {
       setOrders([]);
       setMessages([]);
@@ -42,22 +47,26 @@ export function useOwnerBackofficeBadges(enabled: boolean) {
     setWaitlistLoading(true);
 
     const unsubscribeOrders = subscribeToSuccessfulOrders(
-      (nextOrders) => {
+      (nextOrders, fromCache) => {
+        setOrdersError(false);
         setOrders(nextOrders);
-        setOrdersLoading(false);
+        setOrdersLoading(Boolean(fromCache));
       },
       () => {
+        setOrdersError(true);
         setOrders([]);
         setOrdersLoading(false);
       }
     );
 
     const unsubscribeMessages = subscribeToCustomerMessages(
-      (nextMessages) => {
+      (nextMessages, fromCache) => {
+        setMessagesError(false);
         setMessages(nextMessages);
-        setMessagesLoading(false);
+        setMessagesLoading(Boolean(fromCache));
       },
       () => {
+        setMessagesError(true);
         setMessages([]);
         setMessagesLoading(false);
       }
@@ -96,6 +105,12 @@ export function useOwnerBackofficeBadges(enabled: boolean) {
 
   return {
     badges,
+    orders,
+    messages,
+    ordersLoading,
+    messagesLoading,
+    ordersError,
+    messagesError,
     pendingOrdersCount,
     unreadMessagesCount,
     waitlistCount

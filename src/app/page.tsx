@@ -1,11 +1,17 @@
-"use client";
-
 import Link from "next/link";
+import type { Metadata } from "next";
+import { homeMetadata } from "@/lib/home-metadata";
+import { SareeCultureTeaser } from "@/components/saree-culture-teaser";
 
 import { SiteFooter } from "@/components/site-footer";
 import { StorefrontHeader } from "@/components/storefront-header";
 import { StorefrontHomeContent } from "@/components/storefront-home-content";
 import { StorefrontCatalogue } from "@/components/storefront-catalogue";
+
+export const metadata: Metadata = {
+  ...homeMetadata,
+  alternates: { canonical: "/", media: { "only screen and (max-width: 767px)": "https://eshwe.com/app/" } }
+};
 
 export default function Home() {
   const homeReady = true;
@@ -115,6 +121,10 @@ export default function Home() {
             </div>
           </div>
         </section>
+
+        <div className="mx-auto max-w-7xl px-6 pb-12 sm:px-10 lg:px-12">
+          <SareeCultureTeaser />
+        </div>
 
         <SiteFooter homeHref="/" contactId="contact" />
       </div>

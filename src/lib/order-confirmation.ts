@@ -420,7 +420,7 @@ function buildOrderReceiptHtml(
         <div class="header">
           <div class="brand">
             <div class="logo">
-              <img src="${escapeHtml(origin)}/eshwelogo-transparent.png" alt="Eshwe" width="42" height="42" />
+              <img src="${escapeHtml(origin)}/eshwelogo-transparent.webp" alt="Eshwe" width="42" height="42" />
             </div>
             <div>
               <div class="eyebrow">Order Confirmation</div>

@@ -25,7 +25,6 @@ import {
   subscribeToOwnerAccounts,
   type OwnerAccount
 } from "@/lib/owner-access";
-import { useOwnerBackofficeBadges } from "@/lib/use-owner-backoffice-badges";
 import type { CustomerMessage } from "@/types/customer-message";
 
 export function OwnerMessagesPage() {
@@ -77,7 +76,6 @@ export function OwnerMessagesPage() {
   const ownerAuthorized =
     isPrimaryOwnerEmail(user?.email) ||
     ownerAccounts.some((owner) => normalizeOwnerEmail(owner.email) === normalizedUserEmail);
-  const { badges: navBadges } = useOwnerBackofficeBadges(ownerAuthorized);
 
   useEffect(() => {
     if (!user || !ownerAuthorized) {
@@ -187,7 +185,7 @@ export function OwnerMessagesPage() {
           }
         />
 
-        {ownerAuthorized ? <OwnerBackofficeNav className="mt-6" badges={navBadges} /> : null}
+        {ownerAuthorized ? <OwnerBackofficeNav className="mt-6" /> : null}
 
         {authLoading || (user && !isPrimaryOwnerEmail(user?.email) && ownerAccountsLoading) ? (
           <div className="mt-10 rounded-[1.8rem] border border-[#e3d8c9] bg-[#f8f0e3] p-8 text-sm text-[#667056]">

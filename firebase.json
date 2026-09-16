@@ -46,64 +46,64 @@
       {
         "source": "/api/checkout/status",
         "function": {
-          "functionId": "checkoutStatus",
-          "region": "asia-south1"
+          "functionId": "checkoutStatusUs",
+          "region": "us-central1"
         }
       },
       {
         "source": "/api/owner/order",
         "function": {
-          "functionId": "ownerOrderAction",
-          "region": "asia-south1"
+          "functionId": "ownerOrderActionUs",
+          "region": "us-central1"
         }
       },
       {
         "source": "/api/owner/product",
         "function": {
-          "functionId": "ownerProductAction",
-          "region": "asia-south1"
+          "functionId": "ownerProductActionUs",
+          "region": "us-central1"
         }
       },
       {
         "source": "/api/razorpay/create-order",
         "function": {
-          "functionId": "createRazorpayOrder",
-          "region": "asia-south1"
+          "functionId": "createRazorpayOrderUs",
+          "region": "us-central1"
         }
       },
       {
         "source": "/api/razorpay/verify-payment",
         "function": {
-          "functionId": "verifyRazorpayPayment",
-          "region": "asia-south1"
+          "functionId": "verifyRazorpayPaymentUs",
+          "region": "us-central1"
         }
       },
       {
         "source": "/api/razorpay/app-callback",
         "function": {
-          "functionId": "razorpayAppCallback",
-          "region": "asia-south1"
+          "functionId": "razorpayAppCallbackUs",
+          "region": "us-central1"
         }
       },
       {
         "source": "/api/razorpay/webhook",
         "function": {
-          "functionId": "razorpayWebhook",
-          "region": "asia-south1"
+          "functionId": "razorpayWebhookUs",
+          "region": "us-central1"
         }
       },
       {
         "source": "/api/customer-auth/send-otp",
         "function": {
-          "functionId": "sendCustomerOtp",
-          "region": "asia-south1"
+          "functionId": "sendCustomerOtpUs",
+          "region": "us-central1"
         }
       },
       {
         "source": "/api/customer-auth/verify-otp",
         "function": {
-          "functionId": "verifyCustomerOtp",
-          "region": "asia-south1"
+          "functionId": "verifyCustomerOtpUs",
+          "region": "us-central1"
         }
       },
       {

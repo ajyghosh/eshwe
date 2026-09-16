@@ -46,6 +46,9 @@ export function SiteFooter({
               <Link href="/contact/" className="transition-colors duration-300 hover:text-[#f3dfaa]">
                 Contact
               </Link>
+              <Link href="/saree-culture/" className="transition-colors duration-300 hover:text-[#f3dfaa]">
+                Saree culture & guide
+              </Link>
               <Link href="/terms-and-conditions" className="transition-colors duration-300 hover:text-[#f3dfaa]">
                 Terms and Conditions
               </Link>

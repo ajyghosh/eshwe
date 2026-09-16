@@ -14,6 +14,7 @@ import {
 import { updateDoc, where } from "firebase/firestore";
 
 import { postJson } from "@/lib/api";
+import { optimizedImageUrl } from "@/lib/image-assets";
 
 import { db } from "@/lib/firebase";
 import { getEffectiveAvailabilityStatus, normalizeAvailableStock } from "@/lib/inventory";
@@ -84,6 +85,8 @@ function hydrateSaree(id: string, data: Record<string, unknown>) {
   return {
     id,
     ...data,
+    primaryImageUrl: typeof data.primaryImageUrl === "string" ? optimizedImageUrl(data.primaryImageUrl) : "",
+    galleryImageUrls: Array.isArray(data.galleryImageUrls) ? data.galleryImageUrls.map(value => typeof value === "string" ? optimizedImageUrl(value) : value) : [],
     occasionTags,
     publicationStatus: (data.status as SareeStatus) || "draft",
     reservedStock: normalizeAvailableStock(data.reservedStock),
@@ -101,9 +104,12 @@ export async function updateSaree(id: string, updates: Partial<Omit<Saree, "id" 
   return postJson<{ id: string }>("/api/owner/product", { id, changes: updates, expectedVersion });
 }
 
-export async function deleteSaree(id: string, expectedVersion?: number | null) {
-  // Archive instead of destroying product/media needed by existing orders.
+export async function archiveSaree(id: string, expectedVersion?: number | null) {
   return updateSaree(id, { status: "draft" }, expectedVersion);
+}
+
+export async function deleteSaree(id: string, expectedVersion?: number | null) {
+  return postJson<{ id: string; deleted: boolean }>("/api/owner/product", { action: "delete", id, expectedVersion });
 }
 
 export function slugifySareeName(value: string) {

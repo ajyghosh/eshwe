@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { CategoryCarousel } from "@/components/category-carousel";
+import { AffordableEleganceBanner } from "@/components/affordable-elegance-banner";
+import { AFFORDABLE_PRICE_RANGE } from "@/lib/price-ranges";
 import { subscribeToCategoryCards, subscribeToHomePageContent } from "@/lib/homepage";
 import { SHOP_INTENT_TAGS } from "@/lib/product-discovery";
 import { buildShopHref } from "@/lib/storefront-routes";
@@ -227,6 +229,13 @@ export function StorefrontHomeContent({ homeReady }: { homeReady: boolean }) {
             ) : null}
 
             <CategoryCarousel categories={carouselCategories} />
+          </div>
+        </section>
+      ) : null}
+      {homePageContent.affordableBanner?.enabled !== false ? (
+        <section aria-label="Affordable Elegance" className="bg-[#fbf4e8] px-6 pb-12 pt-6 sm:px-10 lg:px-12">
+          <div className="mx-auto max-w-7xl">
+            <AffordableEleganceBanner content={homePageContent.affordableBanner} href={buildShopHref({ priceRange: AFFORDABLE_PRICE_RANGE })} />
           </div>
         </section>
       ) : null}

@@ -53,11 +53,13 @@ export function OwnerOrderActions({ order }: { order: CheckoutOrder }) {
     finally { locked.current = false; setBusy(false); }
   }
 
-  return <div className="mt-3 text-xs">
+  return <div className="owner-order-payment">
+    <div className="owner-order-payment-summary">
     <p className="font-semibold">{paymentLabel(order)} · {fulfilmentLabel(order)}</p>
     {order.paymentCaptured ? <p className="mt-1">Refunded: {money(refunded)} · Remaining: {money(remaining)}{refundPending ? " (another refund is being confirmed)" : ""}</p> : null}
     {order.attentionRequired ? <p className="mt-1 text-red-700">Needs attention: {order.attentionReason?.replaceAll("_", " ")}</p> : null}
-    <div className="mt-2 flex flex-wrap gap-3">
+    </div>
+    <div className="owner-order-payment-buttons">
       <button disabled={busy} className="underline" onClick={() => void run("reconcile")}>Check payment</button>
       {order.paymentCaptured && remaining > 0 && !refundPending ? <button disabled={busy} className="underline" onClick={openRefund}>Refund</button> : null}
       {order.refundStatus === "failed" && !order.activeRefundRequestId ? <button disabled={busy} className="underline" onClick={() => setConfirm("retry-refund")}>Retry failed refund</button> : null}

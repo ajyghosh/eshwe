@@ -1,5 +1,6 @@
 "use client";
 import { paymentLabel, fulfilmentLabel } from "@/lib/order-status";
+import { OwnerDialog } from "@/components/owner-dialog";
 import { OwnerOrderActions } from "@/components/owner-order-actions";
 
 import { useRouter } from "next/navigation";
@@ -21,7 +22,6 @@ import {
   subscribeToOwnerAccounts,
   type OwnerAccount
 } from "@/lib/owner-access";
-import { useOwnerBackofficeBadges } from "@/lib/use-owner-backoffice-badges";
 import { subscribeToSuccessfulOrders, updateOrderDispatchStatus } from "@/lib/orders";
 import type { CheckoutOrder } from "@/types/order";
 
@@ -83,6 +83,8 @@ export function OwnerOrdersPage() {
   const [ordersError, setOrdersError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [updatingOrderId, setUpdatingOrderId] = useState("");
+  const [dispatchOrder, setDispatchOrder] = useState<CheckoutOrder | null>(null);
+  const [awbNumber, setAwbNumber] = useState("");
 
   useEffect(() => {
     return subscribeToAuth((nextUser) => {
@@ -118,7 +120,6 @@ export function OwnerOrdersPage() {
   const ownerAuthorized =
     isPrimaryOwnerEmail(user?.email) ||
     ownerAccounts.some((owner) => normalizeOwnerEmail(owner.email) === normalizedUserEmail);
-  const { badges: navBadges } = useOwnerBackofficeBadges(ownerAuthorized);
 
   useEffect(() => {
     if (!user || !ownerAuthorized) {
@@ -226,7 +227,9 @@ export function OwnerOrdersPage() {
     setUpdatingOrderId(orderId);
 
     try {
-      await updateOrderDispatchStatus(orderId, "completed");
+      await updateOrderDispatchStatus(orderId, "completed", awbNumber.trim());
+      setDispatchOrder(null);
+      setAwbNumber("");
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Unable to update dispatch status.");
     } finally {
@@ -269,7 +272,7 @@ export function OwnerOrdersPage() {
         />
 
         {ownerAuthorized ? (
-          <OwnerBackofficeNav className="mt-6 print:hidden" badges={navBadges} />
+          <OwnerBackofficeNav className="mt-6 print:hidden" />
         ) : null}
 
         {authLoading || (user && !isPrimaryOwnerEmail(user?.email) && ownerAccountsLoading) ? (
@@ -345,23 +348,23 @@ export function OwnerOrdersPage() {
                     </div>
                   ) : (
                     <div className="overflow-hidden rounded-[1.5rem] border border-[#e3d8c9] bg-[#fffaf1]">
-                      <div className="hidden grid-cols-[1.1fr_1fr_0.95fr_1.2fr_1.55fr_0.8fr] gap-4 border-b border-[#e8dccd] bg-[#f6edde] px-5 py-4 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-[#7d876f] lg:grid">
+                      <div className="owner-orders-heading">
                         <span>Name</span>
                         <span>Order ID</span>
                         <span>Phone</span>
                         <span>Email</span>
-                        <span>Actions</span>
-                        <span>Status</span>
+                        <span className="owner-order-centered">Actions</span>
+                        <span className="owner-order-centered">Status</span>
                       </div>
 
                       <div className="divide-y divide-[#ece1d3]">
                         {orders.map((order) => (
                           <article
                             key={order.id}
-                            className="grid gap-4 px-5 py-5 text-sm text-[#4f5942] lg:grid-cols-[1.1fr_1fr_0.95fr_1.2fr_1.55fr_0.8fr] lg:items-center"
+                            className="owner-order-row"
                           >
                             <div>
-                              <p className="text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-[#8a836f] lg:hidden">
+                              <p className="text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-[#8a836f] xl:hidden">
                                 Name
                               </p>
                               <p className="font-semibold text-[#2b2a29]">
@@ -370,67 +373,76 @@ export function OwnerOrdersPage() {
                             </div>
 
                             <div>
-                              <p className="text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-[#8a836f] lg:hidden">
+                              <p className="text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-[#8a836f] xl:hidden">
                                 Order ID
                               </p>
-                              <p>Order ID {shortOrderId(order.id)}</p>
+                              <p>{shortOrderId(order.id)}</p>
                             </div>
 
                             <div>
-                              <p className="text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-[#8a836f] lg:hidden">
+                              <p className="text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-[#8a836f] xl:hidden">
                                 Phone
                               </p>
                               <p>{order.customer?.phone || "NA"}</p>
                             </div>
 
                             <div className="min-w-0">
-                              <p className="text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-[#8a836f] lg:hidden">
+                              <p className="text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-[#8a836f] xl:hidden">
                                 Email
                               </p>
-                              <p className="truncate">{order.customer?.email || "NA"}</p>
+                              <p className="truncate" title={order.customer?.email || undefined}>{order.customer?.email || "NA"}</p>
                             </div>
 
-                            <div>
-                              <p className="text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-[#8a836f] lg:hidden">
+                            <div className="owner-order-centered">
+                              <p className="text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-[#8a836f] xl:hidden">
                                 Actions
                               </p>
-                              <div className="flex flex-wrap items-center gap-2">
+                              <div className="owner-order-buttons">
                                 <button
                                   type="button"
                                   onClick={() => handleViewSlip(order.id)}
-                                  className="brand-caption inline-flex rounded-full border border-[#d6ccb9] bg-white/80 px-3 py-1.5 text-[0.5rem] font-semibold tracking-[0.08em] text-[#4f5942]"
+                                  className="owner-order-button"
                                 >
-                                  VIEW SLIP
+                                  View slip
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => handlePrintOrder(order.id, "address")}
-                                  className="brand-caption inline-flex rounded-full border border-[#cbbda5] bg-[#fff8eb] px-3 py-1.5 text-[0.5rem] font-semibold tracking-[0.08em] text-[#5e684f]"
+                                  className="owner-order-button"
                                 >
-                                  PRINT ADDRESS
+                                  Print address
                                 </button>
                               </div>
                             </div>
 
-                            <div>
-                              <p className="text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-[#8a836f] lg:hidden">
+                            <div className="owner-order-centered">
+                              <p className="text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-[#8a836f] xl:hidden">
                                 Status
                               </p>
                               {order.dispatchStatus === "completed" ? (
                                 <span className="inline-flex rounded-full bg-[#e6efe1] px-3 py-1.5 text-[0.68rem] font-semibold text-[#48603f]">
-                                  DISPATCHED
+                                  Dispatched
                                 </span>
                               ) : (
                                 <button
                                   type="button"
-                                  onClick={() => handleMarkComplete(order.id)}
+                                  onClick={() => { setActionError(null); setAwbNumber(""); setDispatchOrder(order); }}
                                   disabled={updatingOrderId === order.id || Boolean(order.refundStatus) || Boolean(order.attentionRequired)}
-                                  className="brand-caption inline-flex rounded-full border border-[#7d876f] px-3 py-1.5 text-[0.5rem] font-semibold tracking-[0.08em] text-[#5e684f] disabled:cursor-not-allowed disabled:opacity-60"
+                                  className="owner-order-button disabled:cursor-not-allowed disabled:opacity-60"
                                 >
-                                  {updatingOrderId === order.id ? "UPDATING..." : "MARK COMPLETE"}
+                                  {updatingOrderId === order.id ? "Updating…" : "Mark complete"}
                                 </button>
                               )}
                             </div>
+                            {order.awbNumber || Object.keys(order.notifications || {}).length > 0 ? <div className="owner-order-notifications space-y-1 text-xs text-[#626e58]">
+                              {order.awbNumber ? <p className="break-all"><strong>AWB:</strong> {order.awbNumber}</p> : null}
+                              {(["confirmation", "dispatch"] as const).map(kind => {
+                                const notification = order.notifications?.[kind];
+                                if (!notification) return null;
+                                const status = { pending: "queued", sending: "sending — awaiting confirmation", sent: "sent", failed: "delivery unconfirmed — review before resending", skipped: "not sent (no email)", awaiting_configuration: "pending SMS template configuration" }[notification.status];
+                                return <p key={kind}>{kind === "confirmation" ? "Order confirmation" : "Dispatch"}{notification.channel !== "none" ? ` (${notification.channel.toUpperCase()})` : ""}: {status}</p>;
+                              })}
+                            </div> : null}
                             <OwnerOrderActions order={order} />
                           </article>
                         ))}
@@ -443,6 +455,24 @@ export function OwnerOrdersPage() {
           </>
         )}
       </div>
+      <OwnerDialog open={Boolean(dispatchOrder)} onClose={() => { if (!updatingOrderId) setDispatchOrder(null); }} labelledBy="dispatch-dialog-title" className="owner-confirmation">
+        <form className="p-6" onSubmit={event => { event.preventDefault(); if (dispatchOrder && !updatingOrderId) void handleMarkComplete(dispatchOrder.id); }}>
+          <h2 id="dispatch-dialog-title">Mark order as dispatched</h2>
+          <p className="mt-3 text-sm">Order {dispatchOrder ? shortOrderId(dispatchOrder.id) : ""} · {dispatchOrder?.customer?.fullName}</p>
+          <label className="mt-5 block text-sm font-medium" htmlFor="dispatch-awb">AWB / tracking number</label>
+          <input id="dispatch-awb" name="awbNumber" autoComplete="off" required minLength={3} maxLength={60} pattern="[A-Za-z0-9][A-Za-z0-9\-]{2,59}" title="3–60 letters, numbers or hyphens" value={awbNumber} onChange={event => setAwbNumber(event.target.value)} disabled={Boolean(updatingOrderId)} className="mt-2 w-full rounded-xl border border-[#d4cbbd] bg-white p-3" />
+          <p className="mt-3 text-sm leading-6 text-[#626e58]">
+            {dispatchOrder?.customer?.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(dispatchOrder.customer.email)
+              ? `A dispatch email with this AWB number will be queued for ${dispatchOrder.customer.email}.`
+              : `A dispatch SMS with this AWB number will be queued for ${dispatchOrder?.customer?.phone || "the customer"}. You can check its sending status on this order.`}
+          </p>
+          {actionError ? <p role="alert" className="owner-error">{actionError}</p> : null}
+          <div className="mt-5 flex flex-wrap gap-3">
+            <button type="submit" className="owner-primary" disabled={Boolean(updatingOrderId)}>{updatingOrderId ? "Saving…" : "Mark completed"}</button>
+            <button type="button" className="owner-secondary" disabled={Boolean(updatingOrderId)} onClick={() => setDispatchOrder(null)}>Cancel</button>
+          </div>
+        </form>
+      </OwnerDialog>
     </main>
   );
 }
@@ -760,7 +790,7 @@ function buildOwnerSlipPrintHtml(order: CheckoutOrder, origin: string) {
         <div class="header">
           <div class="header-left">
             <div class="logo-box">
-              <img src="${escapeHtml(origin)}/eshwelogo-transparent.png" alt="Eshwe" width="46" height="46" />
+              <img src="${escapeHtml(origin)}/eshwelogo-transparent.webp" alt="Eshwe" width="46" height="46" />
             </div>
             <div>
               <div class="brand">Eshwe Saree Studio</div>
@@ -788,6 +818,7 @@ function buildOwnerSlipPrintHtml(order: CheckoutOrder, origin: string) {
             <div class="panel-title">Order Details</div>
             <div class="panel-body spaced">
               <div><strong>Order ID:</strong> ${escapeHtml(order.id)}</div>
+              ${order.awbNumber ? `<div><strong>AWB:</strong> ${escapeHtml(order.awbNumber)}</div>` : ""}
               ${
                 order.razorpayOrderId
                   ? `<div><strong>Razorpay Order:</strong> ${escapeHtml(order.razorpayOrderId)}</div>`

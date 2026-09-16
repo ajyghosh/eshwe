@@ -8,7 +8,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ...publishedCatalogue().map(product => ({ url: `https://eshwe.com/product/${product.slug}/`, lastModified: product.updatedAt || undefined, changeFrequency: "weekly" as const, priority: 0.8 })),
     {
       url: "https://eshwe.com/",
-      lastModified: "2026-08-06",
+      lastModified: "2026-09-16",
       changeFrequency: "weekly",
       priority: 1
     },
@@ -17,6 +17,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: "2026-09-10",
       changeFrequency: "weekly",
       priority: 0.9
+    },
+    {
+      url: "https://eshwe.com/saree-culture/",
+      lastModified: "2026-09-16",
+      changeFrequency: "monthly",
+      priority: 0.8
     },
     {
       url: "https://eshwe.com/contact/",

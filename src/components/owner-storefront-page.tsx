@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { OwnerBackofficeNav } from "@/components/owner-backoffice-nav";
 import { OwnerCategoryManager } from "@/components/owner-category-manager";
+import { OwnerAffordableBannerManager } from "@/components/owner-affordable-banner-manager";
 import { OwnerHomepageManager } from "@/components/owner-homepage-manager";
 import { OwnerProductGroupManager } from "@/components/owner-product-group-manager";
 import { OwnerProductMasterManager } from "@/components/owner-product-master-manager";
@@ -115,11 +116,13 @@ export function OwnerStorefrontPage() {
           <div className="mt-8 space-y-8">
             <nav className="owner-settings-nav" aria-label="Storefront settings sections">
               <a href="#homepage-settings">Homepage</a>
+              <a href="#affordable-banner-settings">Affordable banner</a>
               <a href="#category-settings">Category cards</a>
               <a href="#group-settings">Product groups</a>
               <a href="#option-settings">Fabrics, colours &amp; labels</a>
             </nav>
             <div id="homepage-settings" className="owner-settings-section"><OwnerHomepageManager /></div>
+            <OwnerAffordableBannerManager />
             <div id="category-settings" className="owner-settings-section"><OwnerCategoryManager /></div>
             <div id="group-settings" className="owner-settings-section"><OwnerProductGroupManager /></div>
             <div id="option-settings" className="owner-settings-section"><OwnerProductMasterManager /></div>

@@ -1,4 +1,5 @@
 import { slugifySareeName } from "@/lib/sarees";
+import { normalizePriceRange } from "@/lib/price-ranges";
 
 type ShopBrowseMode = "all" | "new-arrivals" | "featured" | "curated";
 
@@ -45,12 +46,14 @@ export function buildShopPath(options?: { browse?: ShopBrowseMode; filter?: stri
   return filterSlug ? `/shop/category/${filterSlug}/` : "/shop/";
 }
 
-export function buildShopHref(options?: { browse?: ShopBrowseMode; filter?: string }) {
+export function buildShopHref(options?: { browse?: ShopBrowseMode; filter?: string; priceRange?: string }) {
   return buildShopSearchHref(options);
 }
 
-export function buildShopSearchHref(options?: { browse?: ShopBrowseMode; filter?: string; q?: string }) {
+export function buildShopSearchHref(options?: { browse?: ShopBrowseMode; filter?: string; q?: string; priceRange?: string }) {
   const searchParams = new URLSearchParams();
+  const priceRange = normalizePriceRange(options?.priceRange);
+  if (priceRange) searchParams.set("priceRange", priceRange);
 
   if (!options || options.browse === "all" || !options.browse) {
     if (options?.q?.trim()) {
@@ -90,15 +93,17 @@ export function buildShopSearchHref(options?: { browse?: ShopBrowseMode; filter?
   return query ? `/shop/?${query}` : "/shop/";
 }
 
-export function buildShopVisiblePath(options?: { browse?: ShopBrowseMode; filter?: string; q?: string }) {
+export function buildShopVisiblePath(options?: { browse?: ShopBrowseMode; filter?: string; q?: string; priceRange?: string }) {
   const basePath = buildShopPath(options);
   const normalizedQuery = slugifySareeName(options?.q ?? "");
+  const priceRange = normalizePriceRange(options?.priceRange);
+  const suffix = priceRange ? `?priceRange=${priceRange}` : "";
 
   if (!normalizedQuery) {
-    return basePath;
+    return `${basePath}${suffix}`;
   }
 
-  return `${basePath}search/${normalizedQuery}/`;
+  return `${basePath}search/${normalizedQuery}/${suffix}`;
 }
 
 export function resolveShopLocation(

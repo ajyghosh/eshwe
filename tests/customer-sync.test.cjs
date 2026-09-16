@@ -14,3 +14,18 @@ test('interrupted guest migration belongs to first account and is never imported
  const first=claimGuestData(storage,'guest','alice');assert.equal(first.length,1);assert.equal(storage.getItem('guest'),null);assert.equal(claimGuestData(storage,'guest','bob').length,0);assert.equal(claimGuestData(storage,'guest','alice')[0].id,first[0].id);
 });
 test('wishlist migration retry cannot restore an item removed after successful import',async()=>{const f=fixture();await f.api.changeCustomerFavorites('alice',['A'],[],'job');await f.api.changeCustomerFavorites('alice',[],['A']);await f.api.changeCustomerFavorites('alice',['A'],[],'job');assert.equal(f.records.get('customerProfiles/alice').favoriteSkus.length,0);});
+
+test('cart operation retries apply once, preserve other devices, and never restore purchased items', async () => {
+ const f=fixture();const add={removed:[],changes:[{item:line,delta:1}]};
+ await Promise.all([f.api.saveCustomerCartMutation('alice','add-a',add),f.api.saveCustomerCartMutation('alice','add-a',add)]);
+ assert.equal(f.records.get('customerProfiles/alice').cartItems[0].quantity,1);
+ await f.api.changeCustomerCart('alice',items=>[...items,{...line,sku:'B'}]);
+ await f.api.saveCustomerCartMutation('alice','increase-a',add);
+ assert.equal(f.records.get('customerProfiles/alice').cartItems.find(i=>i.sku==='B').quantity,1);
+ await f.api.changeCustomerCart('alice',()=>[]); // Payment removes purchased items.
+ for(let i=0;i<35;i++)await f.api.saveCustomerCartMutation('alice','empty-'+i,{removed:[],changes:[]});
+ await f.api.saveCustomerCartMutation('alice','add-a',add);
+ assert.equal(f.records.get('customerProfiles/alice').cartItems.length,0);
+ await f.api.saveCustomerCartMutation('bob','add-a',add);
+ assert.equal(f.records.get('customerProfiles/bob').cartItems.length,1);
+});

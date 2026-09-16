@@ -66,7 +66,7 @@ type RazorpayInstance = {
 type RazorpayConstructor = new (options: RazorpayCheckoutOptions) => RazorpayInstance;
 
 const RAZORPAY_SCRIPT_SRC = "https://checkout.razorpay.com/v1/checkout.js";
-const RAZORPAY_FUNCTIONS_ORIGIN = "https://asia-south1-eshwesareestudio.cloudfunctions.net";
+const RAZORPAY_FUNCTIONS_ORIGIN = "https://us-central1-eshwesareestudio.cloudfunctions.net";
 const RAZORPAY_API_BASE_PATH = "/api/razorpay";
 
 export type { RazorpayCheckoutOptions, RazorpayEventResponse, RazorpayHandlerResponse, RazorpayInstance };
@@ -127,21 +127,21 @@ function getRazorpayApiUrl(path: "create-order" | "verify-payment" | "webhook") 
   }
 
   if (path === "create-order") {
-    return `${RAZORPAY_FUNCTIONS_ORIGIN}/createRazorpayOrder`;
+    return `${RAZORPAY_FUNCTIONS_ORIGIN}/createRazorpayOrderUs`;
   }
 
   if (path === "verify-payment") {
-    return `${RAZORPAY_FUNCTIONS_ORIGIN}/verifyRazorpayPayment`;
+    return `${RAZORPAY_FUNCTIONS_ORIGIN}/verifyRazorpayPaymentUs`;
   }
 
-  return `${RAZORPAY_FUNCTIONS_ORIGIN}/razorpayWebhook`;
+  return `${RAZORPAY_FUNCTIONS_ORIGIN}/razorpayWebhookUs`;
 }
 
 function getRazorpayCallbackUrl(path: "app-callback") {
   const endpointPath = path === "app-callback" ? "/api/razorpay/app-callback" : "/api/razorpay/app-callback";
 
   if (typeof window !== "undefined" && isLocalDevelopmentHostname(window.location.hostname)) {
-    return `${RAZORPAY_FUNCTIONS_ORIGIN}/razorpayAppCallback`;
+    return `${RAZORPAY_FUNCTIONS_ORIGIN}/razorpayAppCallbackUs`;
   }
 
   if (typeof window !== "undefined") {

@@ -1,5 +1,6 @@
 import { normalizeCart } from "@/lib/cart-state";
-import { changeCustomerCart, migrateCustomerCart, subscribeToCustomerProfile } from "@/lib/customer-profiles";
+import { migrateCustomerCart, saveCustomerCartMutation, subscribeToCustomerProfile } from "@/lib/customer-profiles";
+import { applyCartMutation, createCartMutation, type CartMutation } from "@/lib/cart-mutations";
 import { claimGuestData } from "@/lib/guest-migration";
 import { createOptimisticList } from "@/lib/optimistic-list";
 import type { CartItem } from "@/types/cart";
@@ -20,14 +21,61 @@ export function createCustomerCartSession(
   let currentItems: CartItem[] = [];
   let pendingChanges = false;
   let latestRevision = -1;
+  let pendingRecovery = 0;
+  let journalFailed = false;
+  const journalPrefix = `eshwe-cart-pending:${encodeURIComponent(uid)}:`;
+  type Job = { id: string; createdAt: number; mutation: CartMutation };
+  const savedChanges = new Map<(items: CartItem[]) => CartItem[], Job>();
+  const recoveringIds = new Set<string>();
   const publish = () => {
-    if (active) render(currentItems, pendingChanges || pendingMigrations > 0, receivedSnapshot && pendingMigrations === 0 && !migrationFailed);
+    if (active) render(currentItems, pendingChanges || pendingMigrations > 0 || pendingRecovery > 0, receivedSnapshot && pendingMigrations === 0 && pendingRecovery === 0 && !migrationFailed && !journalFailed);
   };
   const sync = createOptimisticList<CartItem>(
-    change => changeCustomerCart(uid, change),
+    async change => {
+      if (journalFailed) throw Error("An earlier bag change still needs syncing.");
+      const job = savedChanges.get(change)!;
+      const snapshot = await saveCustomerCartMutation(uid, job.id, job.mutation);
+      storage.removeItem(journalPrefix + job.id);
+      savedChanges.delete(change);
+      if (recoveringIds.delete(job.id)) pendingRecovery -= 1;
+      return snapshot;
+    },
     (items, pending) => { currentItems = items; pendingChanges = pending; publish(); },
-    () => { if (active) failed("Your bag change could not be saved. Please try again."); }
+    () => {
+      journalFailed = true;
+      if (active) failed("Your bag change is saved on this device. Reconnect and reload to finish syncing.");
+      publish();
+    }
   );
+
+  const recoveryJobs: Job[] = [];
+  try {
+    for (let index = 0; index < storage.length; index++) {
+      const key = storage.key(index);
+      if (key?.startsWith(journalPrefix)) {
+        const job = JSON.parse(storage.getItem(key) || "null") as Job;
+        if (!job || key !== journalPrefix + job.id || !Number.isFinite(job.createdAt) ||
+          !Array.isArray(job.mutation?.changes) || !Array.isArray(job.mutation?.removed) ||
+          !job.mutation.removed.every(value => typeof value === "string") ||
+          !job.mutation.changes.every(value => value && Number.isInteger(value.delta) && Math.abs(value.delta) <= 10 && normalizeCart([value.item]).length === 1)) {
+          throw Error("Invalid bag journal");
+        }
+        recoveryJobs.push(job);
+      }
+    }
+    recoveryJobs.sort((a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id));
+  } catch {
+    journalFailed = true;
+    failed("Your saved bag changes could not be read. Please allow site storage and reload.");
+  }
+  pendingRecovery = recoveryJobs.length;
+  for (const job of recoveryJobs) recoveringIds.add(job.id);
+  let sequenceTime = recoveryJobs.at(-1)?.createdAt || 0;
+  function enqueue(job: Job) {
+    const change = (items: CartItem[]) => applyCartMutation(items, job.mutation);
+    savedChanges.set(change, job);
+    sync.change(change);
+  }
 
   const jobs: { key: string; id: string; items: CartItem[] }[] = [];
   try {
@@ -50,6 +98,11 @@ export function createCustomerCartSession(
     const revision = profile?.cartRevision || 0;
     latestRevision = Math.max(latestRevision, revision);
     sync.receive({ items: profile?.cartItems || [], revision });
+    // Do not expose an empty ready cart before the journal has been replayed.
+    if (recoveryJobs.length) {
+      for (const job of recoveryJobs.splice(0)) enqueue(job);
+      // Recovery stays unresolved until the pending writes are acknowledged.
+    }
   }, error => { if (active) failed(error.message); });
 
   for (const job of jobs) {
@@ -74,7 +127,19 @@ export function createCustomerCartSession(
   }
 
   return {
-    change: sync.change,
+    change(change: (items: CartItem[]) => CartItem[]) {
+      if (!active || journalFailed) return;
+      const mutation = createCartMutation(currentItems, change(currentItems));
+      if (!mutation.removed.length && !mutation.changes.length) return;
+      const job = { id: crypto.randomUUID(), createdAt: sequenceTime = Math.max(Date.now(), sequenceTime + 1), mutation };
+      try {
+        storage.setItem(journalPrefix + job.id, JSON.stringify(job));
+      } catch {
+        failed("Your browser could not save the bag change. Please allow site storage and try again.");
+        return;
+      }
+      enqueue(job);
+    },
     dispose() { active = false; sync.dispose(); unsubscribe(); }
   };
 }

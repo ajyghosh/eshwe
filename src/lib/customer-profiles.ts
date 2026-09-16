@@ -1,5 +1,6 @@
 import { doc, getDoc, onSnapshot, runTransaction, serverTimestamp } from "firebase/firestore";
 import { mergeCartSnapshots, normalizeCart } from "@/lib/cart-state";
+import { applyCartMutation, type CartMutation } from "@/lib/cart-mutations";
 import type { CartItem } from "@/types/cart";
 
 import { db } from "@/lib/firebase";
@@ -74,6 +75,25 @@ export async function changeCustomerCart(userId: string, change: (items: CartIte
 
 export function migrateCustomerCart(userId: string, guest: CartItem[], migrationId: string) {
   return changeCustomerCart(userId,account=>mergeCartSnapshots(account,guest),migrationId);
+}
+
+export async function saveCustomerCartMutation(userId: string, operationId: string, mutation: CartMutation) {
+  if (!db) throw new Error("Bag syncing is unavailable.");
+  const profile = doc(db, CUSTOMER_PROFILES_COLLECTION, userId);
+  const receipt = doc(db, `${CUSTOMER_PROFILES_COLLECTION}/${userId}/cartOperations`, operationId);
+  return runTransaction(db, async tx => {
+    const [snapshot, applied] = await Promise.all([tx.get(profile), tx.get(receipt)]);
+    const data = snapshot.data() || {};
+    const revision = Number.isSafeInteger(data.cartRevision) && data.cartRevision >= 0 ? data.cartRevision : 0;
+    const items = normalizeCart(data.cartItems);
+    // A response can be lost after commit. Keep receipts separate from the bag
+    // so a retry cannot recreate purchased items, even after many later edits.
+    if (applied.exists()) return { items, revision };
+    const cartItems = JSON.parse(JSON.stringify(applyCartMutation(items, mutation))) as CartItem[];
+    tx.set(profile, { cartItems, cartRevision: revision + 1, updatedAt: serverTimestamp() }, { merge: true });
+    tx.set(receipt, { appliedAt: serverTimestamp() });
+    return { items: cartItems, revision: revision + 1 };
+  });
 }
 
 export async function getCustomerProfile(userId: string) {

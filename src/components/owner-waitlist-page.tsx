@@ -123,8 +123,8 @@ export function OwnerWaitlistPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#fbf4e8] px-6 py-12 text-[#4f5942] sm:px-10 lg:px-12">
-      <div className="mx-auto max-w-6xl">
+    <main className="min-h-screen bg-[#f5efe4] px-6 py-10 text-[#4f5942] sm:px-10 lg:px-12">
+      <div className="mx-auto max-w-7xl">
         <OwnerSectionHero
           eyebrow="OWNER WAITLIST"
           title="Waitlist"
@@ -193,7 +193,7 @@ export function OwnerWaitlistPage() {
             </aside>
           </div>
         ) : (
-          <section className="mt-10 rounded-[1.8rem] border border-[#e3d8c9] bg-white/70 p-7 sm:p-8">
+          <section className="owner-panel">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <h2 className="brand-copy text-2xl text-[#3f4738]">Waitlist requests</h2>

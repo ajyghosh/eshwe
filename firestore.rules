@@ -45,6 +45,13 @@ service cloud.firestore {
 
     match /customerProfiles/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
+      match /cartOperations/{operationId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow create: if request.auth != null && request.auth.uid == userId
+          && request.resource.data.keys().hasOnly(["appliedAt"])
+          && request.resource.data.appliedAt == request.time;
+        allow update, delete: if false;
+      }
     }
 
     match /checkoutOrders/{orderId} {

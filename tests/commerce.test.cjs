@@ -81,9 +81,9 @@ test('old failed/authorized states never downgrade a capture; mismatched money i
 });
 test('a refund needs an explicit, once-only physical restock; dispatch blocked after refund',async()=>{
   const f=fixture();const order=await f.service.reserve(f.request());await f.service.recordPayment(order.id,f.capture(order));
-  await f.service.fulfilment(order.id,'completed','owner');await f.service.fulfilment(order.id,'refund','owner');
+  await f.service.fulfilment(order.id,'completed','owner',{awbNumber:'TEST-AWB-123'});await f.service.fulfilment(order.id,'refund','owner');
   assert.equal(f.records.get('sarees/A').availableStock,0);
-  await assert.rejects(f.service.fulfilment(order.id,'completed','owner'));
+  await assert.rejects(f.service.fulfilment(order.id,'completed','owner',{awbNumber:'TEST-AWB-123'}));
   await f.service.fulfilment(order.id,'restock','owner');assert.equal(f.records.get('sarees/A').availableStock,1);
   await assert.rejects(f.service.fulfilment(order.id,'restock','owner'));
 });

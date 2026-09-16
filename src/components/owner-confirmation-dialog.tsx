@@ -7,6 +7,7 @@ type ConfirmationDialogProps = {
   open: boolean;
   title: string;
   message?: string;
+  error?: string | null;
   confirmLabel?: string;
   cancelLabel?: string;
   tone?: "danger" | "neutral";
@@ -19,6 +20,7 @@ export function ConfirmationDialog({
   open,
   title,
   message,
+  error,
   confirmLabel = "Confirm",
   cancelLabel = "Cancel",
   tone = "danger",
@@ -42,6 +44,8 @@ export function ConfirmationDialog({
       <div className="w-full max-w-md rounded-[1.7rem] border border-[#e1d5c5] bg-[#fbf4e8] p-6 shadow-[0_28px_70px_rgba(63,71,56,0.2)] sm:p-7">
         <h3 id={titleId} className="brand-copy text-2xl text-[#3f4738]">{title}</h3>
         {message ? <p className="mt-3 text-sm leading-7 text-[#667056]">{message}</p> : null}
+
+        {error ? <p role="alert" className="mt-3 text-sm text-[#9d4b45]">{error}</p> : null}
 
         <div className="mt-6 flex flex-wrap gap-3">
           <button

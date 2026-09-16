@@ -36,14 +36,15 @@ function orderFixture(documents) {
     orderBy: () => ({ kind: 'order' }),
     limit: count => ({ kind: 'limit', count }),
     query: (collection, ...constraints) => ({ collection, constraints }),
-    onSnapshot(query, next, error) {
+    onSnapshot(query, options, next, error) {
+      assert.equal(options.includeMetadataChanges, true);
       fail = error;
       let selected = documents;
       for (const constraint of query.constraints) {
         if (constraint.kind === 'where' || constraint.kind === 'or') selected = selected.filter(record => matches(record, constraint));
         if (constraint.kind === 'limit') selected = selected.slice(0, constraint.count);
       }
-      next({ docs: selected.map(record => ({ id: record.id, data: () => record })) });
+      next({ metadata: { fromCache: false }, docs: selected.map(record => ({ id: record.id, data: () => record })) });
       return () => { disposed = true; };
     }
   };
@@ -105,4 +106,23 @@ test('subscription errors are surfaced to the owner UI', () => {
   fixture.api.subscribeToSuccessfulOrders(() => {}, value => { error = value; });
   fixture.fail(new Error('Permission denied'));
   assert.equal(error.message, 'Permission denied');
+});
+
+const { createOwnerArrivalTracker } = loadSource('src/lib/owner-arrivals.ts');
+test('owner notifications ignore cached hydration and existing server history', () => {
+  const track = createOwnerArrivalTracker();
+  assert.equal(track([], false).length, 0);
+  assert.equal(track(['existing'], false).length, 0);
+  assert.equal(track(['existing', 'also-existing'], true).length, 0);
+  assert.deepEqual(Array.from(track(['existing', 'also-existing', 'new'], true)), ['new']);
+});
+test('owner notifications survive edits, reconnects, and removal without repeating arrivals', () => {
+  const track = createOwnerArrivalTracker();
+  track(['existing'], true);
+  assert.equal(track(['existing'], true).length, 0);
+  assert.equal(track(['existing', 'new'], false).length, 0);
+  assert.deepEqual(Array.from(track(['existing', 'new'], true)), ['new']);
+  track([], true);
+  assert.equal(track(['existing', 'new'], true).length, 0);
+  assert.equal(createOwnerArrivalTracker()(['existing', 'new'], true).length, 0);
 });

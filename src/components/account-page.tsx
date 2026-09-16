@@ -329,7 +329,7 @@ function AddressDialog({
 
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-[#3f4738]/38 px-4 py-6 sm:px-6">
-      <div className="w-full max-w-2xl rounded-[1.7rem] border border-[#e1d5c5] bg-[#fbf4e8] p-6 shadow-[0_28px_70px_rgba(63,71,56,0.2)] sm:p-7">
+      <div className="max-h-[calc(100dvh-3rem)] w-full max-w-2xl overflow-y-auto rounded-[1.7rem] border border-[#e1d5c5] bg-[#fbf4e8] p-6 shadow-[0_28px_70px_rgba(63,71,56,0.2)] sm:p-7">
         <div className="flex items-center justify-between gap-4">
           <div>
             <p className="text-xs font-semibold tracking-[0.14em] text-[#7d876f]">
@@ -353,7 +353,7 @@ function AddressDialog({
           <AccountInput label="Address label" value={form.label} onChange={(value) => onFieldChange("label", value)} />
           <AccountInput label="Full name" value={form.fullName} onChange={(value) => onFieldChange("fullName", value)} />
           <AccountInput
-            label="Email"
+            label="Email (optional)"
             type="email"
             value={form.email}
             onChange={(value) => onFieldChange("email", value)}
@@ -437,7 +437,7 @@ function buildDeliveryAddress(form: AddressDialogFormState, verifiedPhone?: stri
 
   if (
     !form.fullName.trim() ||
-    !form.email.trim() ||
+    (Boolean(form.email.trim()) && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) ||
     !lockedPhone ||
     !form.address.trim() ||
     !form.city.trim() ||

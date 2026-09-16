@@ -35,6 +35,27 @@ function createProductService({ db, timestamp }) {
     });
     return { id: ref.id };
   }
-  return { save };
+  async function remove({ id, expectedVersion }, actor) {
+    if (typeof id !== "string" || !id || id.includes("/") || id.length > 1500) throw new CommerceError(400, "A valid product is required.");
+    const ref = db.collection("sarees").doc(id);
+    await db.runTransaction(async tx => {
+      const snapshot = await tx.get(ref);
+      if (!snapshot.exists) throw new CommerceError(404, "Product not found. Refresh the catalogue.");
+      const product = snapshot.data();
+      if (expectedVersion !== (product.updatedAt?.toMillis?.() ?? product.updatedAt ?? null)) throw new CommerceError(409, "This product changed. Refresh the catalogue before deleting it.");
+      if (stock(product.reservedStock) > 0) throw new CommerceError(409, "This product is reserved for checkout. Archive it now, or delete it after the checkout is resolved.");
+      // Keep identities reserved so old cart/order references cannot resolve to a
+      // different product. Retain media used by immutable order snapshots.
+      const keys = ["sku", "slug"].filter(field => typeof product[field] === "string" && product[field]).map(field => keyRef(field, product[field]));
+      const claims = await Promise.all(keys.map(key => tx.get(key)));
+      claims.forEach((claim, index) => {
+        if (!claim.exists || claim.data().productId === id) tx.set(keys[index], { productId: id, deleted: true });
+      });
+      tx.set(ref.collection("inventoryHistory").doc(), { action: "product_deleted", actor, sku: product.sku || "", name: product.name || "", previousStock: stock(product.availableStock), createdAt: timestamp() });
+      tx.delete(ref);
+    });
+    return { id, deleted: true };
+  }
+  return { save, remove };
 }
 module.exports = { createProductService };

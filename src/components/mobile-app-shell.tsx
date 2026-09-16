@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { useCart } from "@/components/cart-provider";
 import { rememberPwaProductVisit, restorePwaShoppingPosition } from "@/lib/pwa-shopping-navigation";
-import { createCustomerMessage } from "@/lib/customer-messages";
+import { MobileContactButton } from "@/components/mobile-contact-button";
 import {
   buildAppCheckoutHref,
   buildAppAccountHref,
@@ -180,73 +180,11 @@ function MobileFloatingCartButton() {
 }
 
 function MobileAppFooter() {
-  const pathname = usePathname();
-  const [contactOpen, setContactOpen] = useState(false);
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [message, setMessage] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!notice) {
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      setNotice(null);
-    }, 2200);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [notice]);
-
-  useEffect(() => {
-    setContactOpen(false);
-  }, [pathname]);
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    if (!email.trim() || !phone.trim() || !message.trim()) {
-      setError("Email, phone, and message are required.");
-      return;
-    }
-
-    setSubmitting(true);
-    setError(null);
-    setNotice(null);
-
-    try {
-      await createCustomerMessage({
-        email,
-        phone,
-        message,
-        sourcePath: pathname || "/app/"
-      });
-      setEmail("");
-      setPhone("");
-      setMessage("");
-      setNotice("Your message has been sent.");
-    } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "Sending message failed.");
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
   return (
-    <>
       <footer className="mobile-app-footer px-4 pb-4 pt-6">
         <div className="border-t border-[#e8e3d9] pt-3">
           <div className="grid grid-cols-2 gap-x-3 text-[0.8rem] font-medium text-[#626e5b]">
-            <button
-              type="button"
-              onClick={() => setContactOpen(true)}
-              className="min-h-11 rounded-lg px-2 py-3 text-left transition-colors duration-200 hover:bg-[#f1eee5]"
-            >
-              Contact
-            </button>
+            <MobileContactButton label="Contact" className="min-h-11 rounded-lg px-2 py-3 text-left transition-colors duration-200 hover:bg-[#f1eee5]" />
             <Link href={buildAppTermsHref()} className="min-h-11 rounded-lg px-2 py-3 transition-colors duration-200 hover:bg-[#f1eee5]">
               Terms
             </Link>
@@ -262,89 +200,6 @@ function MobileAppFooter() {
         </div>
       </footer>
 
-      {contactOpen ? (
-        <div
-          className="fixed inset-0 z-[90] bg-[rgba(36,49,36,0.3)] backdrop-blur-sm"
-          onClick={() => setContactOpen(false)}
-        >
-          <div className="mobile-app-sheet-position absolute inset-x-0 bottom-0">
-            <div
-              className="mobile-app-sheet mobile-app-contact-sheet mx-auto max-w-[440px] px-5 pt-3"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <div className="mx-auto h-1.5 w-16 rounded-full bg-[#d8ccb8]" />
-              <div className="mt-4 flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-[0.74rem] font-semibold uppercase tracking-[0.22em] text-[#7d876f]">Contact</p>
-                  <p className="mt-2 text-[0.92rem] text-[#68735e]">Send a message without leaving the app.</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setContactOpen(false)}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#f3eee3] text-[#5e684f]"
-                  aria-label="Close contact form"
-                >
-                  <CloseIcon />
-                </button>
-              </div>
-
-              <form className="mt-5 space-y-3" onSubmit={(event) => void handleSubmit(event)}>
-                <label className="block">
-                  <span className="mb-2 block text-[0.8rem] font-medium text-[#4f5942]">Email</span>
-                  <input
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
-                    type="email"
-                    placeholder="you@example.com"
-                    className="h-12 w-full rounded-[1rem] border border-[#ddd1c0] bg-[#fbf7ef] px-4 text-[16px] text-[#2b2a29] outline-none focus:border-[#5e684f]"
-                  />
-                </label>
-                <label className="block">
-                  <span className="mb-2 block text-[0.8rem] font-medium text-[#4f5942]">Phone</span>
-                  <input
-                    value={phone}
-                    onChange={(event) => setPhone(event.target.value)}
-                    type="tel"
-                    placeholder="+91 98765 43210"
-                    className="h-12 w-full rounded-[1rem] border border-[#ddd1c0] bg-[#fbf7ef] px-4 text-[16px] text-[#2b2a29] outline-none focus:border-[#5e684f]"
-                  />
-                </label>
-                <label className="block">
-                  <span className="mb-2 block text-[0.8rem] font-medium text-[#4f5942]">Message</span>
-                  <textarea
-                    value={message}
-                    onChange={(event) => setMessage(event.target.value)}
-                    rows={4}
-                    placeholder="Tell us what you need help with."
-                    className="w-full rounded-[1rem] border border-[#ddd1c0] bg-[#fbf7ef] px-4 py-3 text-[16px] leading-[1.45] text-[#2b2a29] outline-none focus:border-[#5e684f]"
-                  />
-                </label>
-
-                {error ? <p className="text-[0.86rem] text-[#9d4b45]">{error}</p> : null}
-                {notice ? <p className="text-[0.86rem] text-[#4d6a41]">{notice}</p> : null}
-
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    className="brand-caption rounded-[1rem] bg-[#5e684f] px-4 py-3.5 text-[0.64rem] font-semibold tracking-[0.14em] text-[#fbf4e8] disabled:opacity-55"
-                  >
-                    {submitting ? "SENDING" : "SEND MESSAGE"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setContactOpen(false)}
-                    className="brand-caption rounded-[1rem] border border-[#d7ccb9] px-4 py-3.5 text-[0.64rem] font-semibold tracking-[0.14em] text-[#56624d]"
-                  >
-                    CLOSE
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      ) : null}
-    </>
   );
 }
 
@@ -401,15 +256,6 @@ function CartIcon() {
       <path d="M9 8.25V7a3 3 0 0 1 6 0v1.25" />
       <path d="M9.25 12.25h.01" />
       <path d="M14.75 12.25h.01" />
-    </svg>
-  );
-}
-
-function CloseIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="m6 6 12 12" />
-      <path d="M18 6 6 18" />
     </svg>
   );
 }

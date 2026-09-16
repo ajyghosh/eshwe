@@ -387,7 +387,7 @@ export function StorefrontHeader({
                   className="web-header-logo flex w-fit shrink-0 items-center rounded-full border border-[#5e684f]/38 bg-[#fbf4e8] p-1 ring-1 ring-[#5e684f]/12"
                 >
                   <Image
-                    src="/eshwelogo-transparent.png"
+                    src="/eshwelogo-transparent.webp"
                     alt="eshwe logo"
                     width={128}
                     height={128}

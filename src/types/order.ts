@@ -39,6 +39,11 @@ export type CheckoutOrder = {
   currency?: string;
   customer?: CheckoutOrderCustomer;
   dispatchStatus?: string | null;
+  awbNumber?: string;
+  notifications?: Partial<Record<"confirmation" | "dispatch", {
+    channel: "email" | "sms" | "none";
+    status: "pending" | "sending" | "sent" | "failed" | "skipped" | "awaiting_configuration";
+  }>>;
   notes?: string;
   paymentCaptured?: boolean;
   paymentMethod?: string | null;

@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useCart } from "@/components/cart-provider";
 import { FavoriteToggleButton } from "@/components/favorite-toggle-button";
 import { NotifyWaitlistDialog } from "@/components/notify-waitlist-dialog";
-import { getPurchasableQuantityLimit, isProductPurchasable } from "@/lib/inventory";
+import { getPurchasableQuantityLimit, getStockMessage, isProductPurchasable } from "@/lib/inventory";
 import { buildProductDetailHref } from "@/lib/storefront-routes";
 import type { Saree } from "@/types/saree";
 
@@ -21,6 +21,9 @@ export function CatalogueProductCard({
   const [waitlistDialogOpen, setWaitlistDialogOpen] = useState(false);
   const cartQuantity = items.find((item) => item.sku === product.sku)?.quantity ?? 0;
   const canIncreaseCartQuantity = cartQuantity < getPurchasableQuantityLimit(product.availableStock);
+  const stockMessage = product.status === "out_of_stock"
+    ? (product.reservedStock ?? 0) > 0 ? "Temporarily reserved" : "Out of stock"
+    : isProductPurchasable(product) && product.availableStock <= 2 ? getStockMessage(product) : "";
 
   function handleAddToCart() {
     if (!isProductPurchasable(product)) {
@@ -52,7 +55,7 @@ export function CatalogueProductCard({
   }
 
   return (
-    <article className="web-product-card flex flex-col">
+    <article className="web-product-card flex h-full min-w-0 flex-col">
       <div className="relative">
         <Link href={buildProductDetailHref(product.slug)} className="group block">
           <ProductMedia product={product} />
@@ -62,22 +65,24 @@ export function CatalogueProductCard({
 
       <div className="web-product-card-info pt-5">
         <Link href={buildProductDetailHref(product.slug)} className="group block">
-          <h3 className="brand-copy text-sm text-[#3f4738] transition-colors duration-300 group-hover:text-[#5e684f] sm:text-base">
+          <h3 title={product.name} className="brand-copy line-clamp-2 min-h-[2.8em] break-words text-sm leading-[1.4] text-[#3f4738] transition-colors duration-300 group-hover:text-[#5e684f] sm:text-base">
             {product.name}
           </h3>
-          <p className="mt-1 text-[0.68rem] text-[#667056] sm:text-xs">
-            {product.sku}
-            {"  -  "}
-            {product.fabric}
+          <p className="mt-1 truncate text-[0.68rem] text-[#667056] sm:text-xs">
+            {product.fabric?.trim() || product.category?.trim()}
           </p>
         </Link>
 
-        <div className="mt-2 flex flex-wrap items-end gap-4">
-          <span className="text-base font-semibold text-[#1f1a17] sm:text-[1.15rem]">
+        <p aria-hidden={!stockMessage ? true : undefined} title={stockMessage || undefined} className={`mt-1 h-5 truncate text-xs leading-5 ${stockMessage === "Out of stock" ? "text-[#a8574d]" : isProductPurchasable(product) && product.availableStock <= 2 ? "text-[#9a6700]" : "text-[#5e684f]"}`}>
+          {stockMessage || null}
+        </p>
+
+        <div className="web-product-card-price mt-1 grid h-9 grid-rows-[20px_16px]">
+          <span className="whitespace-nowrap text-base font-semibold leading-5 text-[#1f1a17] sm:text-[1.15rem]">
             {formatCurrency(product.price)}
           </span>
           {typeof product.originalPrice === "number" ? (
-            <span className="text-base text-[#8d8b87] line-through sm:text-[1.15rem]">
+            <span className="whitespace-nowrap text-sm leading-4 text-[#8d8b87] line-through">
               {formatCurrency(product.originalPrice)}
             </span>
           ) : null}
@@ -169,15 +174,10 @@ export function ProductMedia({ product }: { product: Saree }) {
         }}
       />
 
-      <div className="absolute left-5 top-5 flex flex-col gap-3">
+      <div className="absolute left-5 right-5 top-5 flex items-start">
         {typeof product.discountPercent === "number" && product.discountPercent > 0 ? (
           <span className="brand-caption inline-flex w-fit rounded-[0.85rem] bg-[#5e684f] px-3 py-1.5 text-[0.52rem] font-semibold tracking-[0.05em] text-[#fbf4e8]">
             -{product.discountPercent}%
-          </span>
-        ) : null}
-        {product.status === "out_of_stock" ? (
-          <span className="brand-caption inline-flex w-fit rounded-[0.85rem] bg-[#5e684f] px-3 py-1.5 text-[0.52rem] font-semibold tracking-[0.05em] text-[#fbf4e8]">
-            {(product.reservedStock ?? 0) > 0 ? "TEMPORARILY RESERVED" : "OUT OF STOCK"}
           </span>
         ) : null}
       </div>

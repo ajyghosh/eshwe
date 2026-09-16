@@ -13,6 +13,7 @@ import {
 
 import { db } from "@/lib/firebase";
 import type { CategoryCard, HomePageContent } from "@/types/homepage";
+import { normalizeHomeLaunchContent } from "@/types/homepage";
 
 const SITE_CONTENT_COLLECTION = "siteContent";
 const HOMEPAGE_DOCUMENT_ID = "homepage";
@@ -37,10 +38,10 @@ export function subscribeToHomePageContent(
         return;
       }
 
-      onData({
+      onData(normalizeHomeLaunchContent({
         id: snapshot.id,
         ...snapshot.data()
-      } as HomePageContent);
+      } as HomePageContent));
     },
     (error) => {
       onData(null);
@@ -124,4 +125,9 @@ export async function deleteCategoryCard(id: string) {
   }
 
   return deleteDoc(doc(db, CATEGORY_COLLECTION, id));
+}
+
+export async function saveAffordableBanner(content: import("@/types/affordable-banner").AffordableBannerContent) {
+  if (!db) throw new Error("Firebase is not configured.");
+  await setDoc(doc(db, SITE_CONTENT_COLLECTION, HOMEPAGE_DOCUMENT_ID), { affordableBanner: content, updatedAt: serverTimestamp() }, { merge: true });
 }

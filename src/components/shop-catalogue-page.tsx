@@ -15,6 +15,7 @@ import { StorefrontHeader } from "@/components/storefront-header";
 import { subscribeToCategoryCards } from "@/lib/homepage";
 import { compareProductsByAvailability } from "@/lib/inventory";
 import { matchesProductIntent, matchesProductSearch, SHOP_INTENT_TAGS } from "@/lib/product-discovery";
+import { AFFORDABLE_PRICE_RANGE, PRICE_RANGES, matchesPriceRange, normalizePriceRange, priceRangeLabel } from "@/lib/price-ranges";
 import { subscribeToSarees } from "@/lib/sarees";
 import {
   buildShopHref,
@@ -48,6 +49,8 @@ export function ShopCataloguePage() {
   const searchParams = useSearchParams();
   const currentSearchParams = searchParams ?? new URLSearchParams();
   const searchBrowse = currentSearchParams.get("browse");
+  const searchPriceRange = normalizePriceRange(currentSearchParams.get("priceRange"));
+  const [activePriceRange, setActivePriceRange] = useState<string>(searchPriceRange);
   const searchFilter = currentSearchParams.get("filter");
   const searchQueryParam = resolveShopSearchQuery(pathname, currentSearchParams.get("q"));
   const [products, setProducts] = useState<Saree[]>([]);
@@ -67,11 +70,11 @@ export function ShopCataloguePage() {
 
   // Our controls already update form state. Remember their URL writes so the
   // route effect only initializes a new navigation, not the same local edit.
-  const writeShopUrl = useCallback((nextPath: string, query: string) => {
-    const nextUrl = replaceVisibleShopUrl(nextPath, query);
+  const writeShopUrl = useCallback((nextPath: string, query: string, priceRange: string) => {
+    const nextUrl = replaceVisibleShopUrl(nextPath, query, priceRange);
     if (!nextUrl) return;
     const url = new URL(nextUrl, window.location.origin);
-    appliedLocation.current = shopLocationKey(url.pathname, url.searchParams.get("browse"), url.searchParams.get("filter"), resolveShopSearchQuery(url.pathname, url.searchParams.get("q")));
+    appliedLocation.current = shopLocationKey(url.pathname, url.searchParams.get("browse"), url.searchParams.get("filter"), resolveShopSearchQuery(url.pathname, url.searchParams.get("q")), normalizePriceRange(url.searchParams.get("priceRange")));
   }, []);
 
   useEffect(() => {
@@ -140,10 +143,11 @@ export function ShopCataloguePage() {
     // Category links may arrive before their product/category subscriptions.
     // Resolve them once data is ready, then leave draft controls alone on refresh.
     if (routeState.browse === "curated" && (loading || !categoryCardsReady)) return;
-    const locationKey = shopLocationKey(pathname, searchBrowse, searchFilter, searchQueryParam);
+    const locationKey = shopLocationKey(pathname, searchBrowse, searchFilter, searchQueryParam, searchPriceRange);
     if (appliedLocation.current === locationKey) return;
     appliedLocation.current = locationKey;
     setSearchQuery(searchQueryParam);
+    setActivePriceRange(searchPriceRange);
 
     setActiveCategory(allCategoriesLabel);
     setActiveFabric(allFabricsLabel);
@@ -153,14 +157,14 @@ export function ShopCataloguePage() {
     if (routeState.browse === "new-arrivals") {
       setActiveBrowse(browseNewArrivalsLabel);
       setActiveCuratedFilter("");
-      writeShopUrl(buildShopPath({ browse: "new-arrivals" }), searchQueryParam);
+      writeShopUrl(buildShopPath({ browse: "new-arrivals" }), searchQueryParam, searchPriceRange);
       return;
     }
 
     if (routeState.browse === "featured") {
       setActiveBrowse(browseFeaturedLabel);
       setActiveCuratedFilter("");
-      writeShopUrl(buildShopPath({ browse: "featured" }), searchQueryParam);
+      writeShopUrl(buildShopPath({ browse: "featured" }), searchQueryParam, searchPriceRange);
       return;
     }
 
@@ -176,7 +180,7 @@ export function ShopCataloguePage() {
       if (matchingOption) {
         setActiveBrowse(matchingOption.title);
         setActiveCuratedFilter(matchingOption.shopFilter);
-        writeShopUrl(buildShopPath({ browse: "curated", filter: matchingOption.shopFilter }), searchQueryParam);
+        writeShopUrl(buildShopPath({ browse: "curated", filter: matchingOption.shopFilter }), searchQueryParam, searchPriceRange);
         return;
       }
 
@@ -186,7 +190,7 @@ export function ShopCataloguePage() {
         setActiveBrowse(browseAllLabel);
         setActiveCuratedFilter("");
         setActiveIntent(matchingIntent);
-        writeShopUrl(buildShopPath({ browse: "curated", filter: matchingIntent }), searchQueryParam);
+        writeShopUrl(buildShopPath({ browse: "curated", filter: matchingIntent }), searchQueryParam, searchPriceRange);
         return;
       }
 
@@ -197,7 +201,7 @@ export function ShopCataloguePage() {
         setActiveBrowse(browseAllLabel);
         setActiveCuratedFilter("");
         setActiveCategory(matchingCategory);
-        writeShopUrl(buildShopPath({ browse: "curated", filter: matchingCategory }), searchQueryParam);
+        writeShopUrl(buildShopPath({ browse: "curated", filter: matchingCategory }), searchQueryParam, searchPriceRange);
         return;
       }
 
@@ -207,15 +211,15 @@ export function ShopCataloguePage() {
         setActiveBrowse(browseAllLabel);
         setActiveCuratedFilter("");
         setActiveFabric(matchingFabric);
-        writeShopUrl(buildShopPath({ browse: "curated", filter: matchingFabric }), searchQueryParam);
+        writeShopUrl(buildShopPath({ browse: "curated", filter: matchingFabric }), searchQueryParam, searchPriceRange);
         return;
       }
     }
 
     setActiveBrowse(browseAllLabel);
     setActiveCuratedFilter("");
-    writeShopUrl(buildShopPath(), searchQueryParam);
-  }, [browseOptions, categories, fabrics, pathname, searchBrowse, searchFilter, searchQueryParam, loading, categoryCardsReady, writeShopUrl]);
+    writeShopUrl(buildShopPath(), searchQueryParam, searchPriceRange);
+  }, [browseOptions, categories, fabrics, pathname, searchBrowse, searchFilter, searchQueryParam, searchPriceRange, loading, categoryCardsReady, writeShopUrl]);
 
   const browseFilteredProducts = products.filter((product) => {
     if (activeBrowse === browseNewArrivalsLabel) {
@@ -244,7 +248,7 @@ export function ShopCataloguePage() {
       (activeAvailability === "OUT OF STOCK" && product.status === "out_of_stock");
     const matchesSearch = matchesProductSearch(product, searchQuery);
 
-    return matchesCategory && matchesFabric && matchesIntent && matchesAvailability && matchesSearch;
+    return matchesPriceRange(product, activePriceRange) && matchesCategory && matchesFabric && matchesIntent && matchesAvailability && matchesSearch;
   });
   const sortedProducts = useMemo(
     () => sortProducts(filteredProducts, activeSort),
@@ -252,7 +256,7 @@ export function ShopCataloguePage() {
   );
   const { hasMore, loadMoreRef, visibleItemsCount } = useProgressiveProductGrid(
     sortedProducts.length,
-    [activeBrowse, activeCuratedFilter, activeIntent, activeCategory, activeFabric, activeAvailability, searchQuery, activeSort].join("|")
+    [activePriceRange, activeBrowse, activeCuratedFilter, activeIntent, activeCategory, activeFabric, activeAvailability, searchQuery, activeSort].join("|")
   );
   const visibleFilteredProducts = useMemo(
     () => sortedProducts.slice(0, visibleItemsCount),
@@ -261,6 +265,7 @@ export function ShopCataloguePage() {
   const hasFilteredProducts = sortedProducts.length > 0;
   const isEmptyFilteredState = !loading && !hasFilteredProducts;
   const emptyStateTitle =
+    activePriceRange ? "No sarees match this price range right now" :
     activeCategory !== allCategoriesLabel
       ? `${activeCategory} is being refreshed`
       : activeFabric !== allFabricsLabel
@@ -275,6 +280,7 @@ export function ShopCataloguePage() {
                 ? `${activeIntent} picks are being refreshed`
               : "The collection is being updated";
   const emptyStateDescription =
+    activePriceRange ? "Try another price range or clear your filters to explore the full collection." :
     activeCategory !== allCategoriesLabel
       ? `More ${activeCategory.toLowerCase()} pieces will be added soon. Explore other curated sarees for now.`
       : activeFabric !== allFabricsLabel
@@ -335,27 +341,27 @@ export function ShopCataloguePage() {
     if (!option || option.kind === "all") {
       setActiveBrowse(browseAllLabel);
       setActiveCuratedFilter("");
-      writeShopUrl(buildShopPath(), searchQuery);
+      writeShopUrl(buildShopPath(), searchQuery, activePriceRange);
       return;
     }
 
     if (option.kind === "new-arrivals") {
       setActiveBrowse(browseNewArrivalsLabel);
       setActiveCuratedFilter("");
-      writeShopUrl(buildShopPath({ browse: "new-arrivals" }), searchQuery);
+      writeShopUrl(buildShopPath({ browse: "new-arrivals" }), searchQuery, activePriceRange);
       return;
     }
 
     if (option.kind === "featured") {
       setActiveBrowse(browseFeaturedLabel);
       setActiveCuratedFilter("");
-      writeShopUrl(buildShopPath({ browse: "featured" }), searchQuery);
+      writeShopUrl(buildShopPath({ browse: "featured" }), searchQuery, activePriceRange);
       return;
     }
 
     setActiveBrowse(option.title);
     setActiveCuratedFilter(option.shopFilter);
-    writeShopUrl(buildShopPath({ browse: "curated", filter: option.shopFilter }), searchQuery);
+    writeShopUrl(buildShopPath({ browse: "curated", filter: option.shopFilter }), searchQuery, activePriceRange);
   }
 
   function handleIntentSelect(value: string) {
@@ -364,7 +370,8 @@ export function ShopCataloguePage() {
     setActiveIntent(value);
     writeShopUrl(
       value === allIntentLabel ? buildShopPath() : buildShopPath({ browse: "curated", filter: value }),
-      searchQuery
+      searchQuery,
+      activePriceRange
     );
   }
 
@@ -378,7 +385,8 @@ export function ShopCataloguePage() {
 
     writeShopUrl(
       value === allCategoriesLabel ? buildShopPath() : buildShopPath({ browse: "curated", filter: value }),
-      searchQuery
+      searchQuery,
+      activePriceRange
     );
   }
 
@@ -390,7 +398,14 @@ export function ShopCataloguePage() {
     setActiveAvailability(value);
   }
 
+  function handlePriceRangeSelect(value: string) {
+    const priceRange = normalizePriceRange(value);
+    setActivePriceRange(priceRange);
+    writeShopUrl(window.location.pathname, searchQuery, priceRange);
+  }
+
   function handleClearFilters() {
+    setActivePriceRange("");
     setActiveBrowse(browseAllLabel);
     setActiveCuratedFilter("");
     setActiveIntent(allIntentLabel);
@@ -399,7 +414,7 @@ export function ShopCataloguePage() {
     setActiveAvailability(allAvailabilityLabel);
     setSearchQuery("");
     setActiveSort(defaultSortLabel);
-    writeShopUrl(buildShopPath(), "");
+    writeShopUrl(buildShopPath(), "", "");
   }
 
   function handleSearchSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -416,11 +431,13 @@ export function ShopCataloguePage() {
               : activeCategory !== allCategoriesLabel
                 ? buildShopPath({ browse: "curated", filter: activeCategory })
                 : buildShopPath(),
-      searchQuery
+      searchQuery,
+      activePriceRange
     );
   }
 
   const activeFilters = buildActiveFilters({
+    activePriceRange,
     activeAvailability,
     activeBrowse,
     activeCategory,
@@ -432,6 +449,10 @@ export function ShopCataloguePage() {
   const appliedFilterCount = activeFilters.length;
 
   function clearSingleFilter(filterKey: string) {
+    if (filterKey === "priceRange") {
+      handlePriceRangeSelect("");
+      return;
+    }
     if (filterKey === "browse") {
       handleBrowseSelect(browseAllLabel);
       return;
@@ -463,7 +484,7 @@ export function ShopCataloguePage() {
     }
 
     setSearchQuery("");
-    writeShopUrl(window.location.pathname, "");
+    writeShopUrl(window.location.pathname, "", activePriceRange);
   }
 
   return (
@@ -483,10 +504,12 @@ export function ShopCataloguePage() {
                     CURATED CATALOGUE
                   </p>
                   <h1 className="brand-copy mt-2 text-3xl leading-tight text-[#2b2a29]">
-                    The saree collection
+                    {activePriceRange === AFFORDABLE_PRICE_RANGE ? "Affordable Elegance" : "The saree collection"}
                   </h1>
                   <p className="mt-2 max-w-2xl text-sm leading-6 text-[#667056]">
-                    Find your next drape by fabric, occasion, or colour.
+                    {activePriceRange === AFFORDABLE_PRICE_RANGE
+                      ? "Everyday favourites from ₹399–₹999. Find your next drape."
+                      : "Find your next drape by fabric, occasion, colour, or price."}
                   </p>
                 </div>
 
@@ -538,6 +561,12 @@ export function ShopCataloguePage() {
                   options={[allAvailabilityLabel, "AVAILABLE", "OUT OF STOCK"]}
                   activeValue={activeAvailability}
                   onSelect={handleAvailabilitySelect}
+                />
+                <FilterSelect
+                  label="Price range"
+                  options={["All prices", ...PRICE_RANGES.map((range) => range.label)]}
+                  activeValue={priceRangeLabel(activePriceRange)}
+                  onSelect={(label) => handlePriceRangeSelect(PRICE_RANGES.find((range) => range.label === label)?.value ?? "")}
                 />
                 <div className="flex items-end gap-3">
                   <button
@@ -716,12 +745,12 @@ export function ShopCataloguePage() {
   );
 }
 
-function replaceVisibleShopUrl(nextPath: string, searchQuery: string) {
+function replaceVisibleShopUrl(nextPath: string, searchQuery: string, priceRange: string) {
   if (typeof window === "undefined") {
     return;
   }
 
-  const nextUrl = `${buildShopVisiblePath({ q: searchQuery, browse: resolveBrowseModeFromPath(nextPath), filter: resolveFilterFromPath(nextPath) })}${window.location.hash}`;
+  const nextUrl = `${buildShopVisiblePath({ priceRange, q: searchQuery, browse: resolveBrowseModeFromPath(nextPath), filter: resolveFilterFromPath(nextPath) })}${window.location.hash}`;
   const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
 
   if (currentUrl !== nextUrl) {
@@ -730,8 +759,8 @@ function replaceVisibleShopUrl(nextPath: string, searchQuery: string) {
   return nextUrl;
 }
 
-function shopLocationKey(pathname: string, browse: string | null, filter: string | null, query: string) {
-  return JSON.stringify([pathname.replace(/\/$/, ""), browse || "", filter || "", query]);
+function shopLocationKey(pathname: string, browse: string | null, filter: string | null, query: string, priceRange: string) {
+  return JSON.stringify([pathname.replace(/\/$/, ""), browse || "", filter || "", query, priceRange]);
 }
 
 function resolveBrowseModeFromPath(pathname: string) {
@@ -887,6 +916,7 @@ function sortProducts(products: Saree[], activeSort: string) {
 }
 
 function buildActiveFilters({
+  activePriceRange,
   activeAvailability,
   activeBrowse,
   activeCategory,
@@ -895,6 +925,7 @@ function buildActiveFilters({
   activeSort,
   searchQuery
 }: {
+  activePriceRange: string;
   activeAvailability: string;
   activeBrowse: string;
   activeCategory: string;
@@ -904,6 +935,10 @@ function buildActiveFilters({
   searchQuery: string;
 }) {
   const filters = [];
+
+  if (activePriceRange) {
+    filters.push({ key: "priceRange", label: priceRangeLabel(activePriceRange) });
+  }
 
   if (activeBrowse !== browseAllLabel) {
     filters.push({ key: "browse", label: activeBrowse });

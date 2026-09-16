@@ -1,3 +1,5 @@
+import type { AffordableBannerContent } from "@/types/affordable-banner";
+
 export type MobileHomeHeroSlide = {
   imageUrl: string;
   imagePath?: string | null;
@@ -6,6 +8,7 @@ export type MobileHomeHeroSlide = {
 };
 
 export type HomePageContent = {
+  affordableBanner?: AffordableBannerContent;
   id?: string;
   heroImageUrl: string;
   heroImagePath?: string | null;
@@ -49,11 +52,11 @@ export const DEFAULT_HOME_PAGE_CONTENT: HomePageContent = {
   heroImageUrl: "",
   heroImagePath: "",
   heroImagePosition: "center",
-  launchEyebrow: "OPENING SHORTLY",
-  launchHeading: "We are currently in a soft launch preview.",
+  launchEyebrow: "THE ESHWE COLLECTION",
+  launchHeading: "Timeless sarees, thoughtfully yours.",
   launchBody:
-    "The boutique is live for a trial run while we fine-tune the experience and curate the first collections.",
-  mobileLaunchEyebrow: "OPENING SHORTLY",
+    "Discover handpicked sarees for everyday elegance, meaningful gifts and special celebrations.",
+  mobileLaunchEyebrow: "THE ESHWE COLLECTION",
   mobileLaunchHeading: "Timeless Sarees, thoughtfully yours",
   mobileLaunchBody:
     "Handpicked drapes in mul cotton, tissue and more. Soft on you, perfect for every occasion.",
@@ -62,13 +65,29 @@ export const DEFAULT_HOME_PAGE_CONTENT: HomePageContent = {
   launchCardMaxWidth: DEFAULT_HOME_LAUNCH_CARD_MAX_WIDTH,
   launchImageUrl: "",
   launchImagePath: "",
-  launchImageAlt: "Soft launch promotion",
+  launchImageAlt: "The eshwe saree collection",
   launchImageLayout: "right",
   categoriesHeading: "",
   categoriesSubtitle: "",
   desktopHeroSlides: [],
   mobileHeroSlides: []
 };
+
+// Retire only the original preview copy, including previously saved defaults.
+// Custom owner copy continues to take precedence and the record is untouched.
+export function normalizeHomeLaunchContent(content: HomePageContent): HomePageContent {
+  const legacy = new Set([
+    "opening shortly",
+    "we are currently in a soft launch preview.",
+    "the boutique is live for a trial run while we fine-tune the experience and curate the first collections.",
+    "soft launch promotion"
+  ]);
+  const next = { ...content };
+  for (const key of ["launchEyebrow", "launchHeading", "launchBody", "mobileLaunchEyebrow", "mobileLaunchHeading", "mobileLaunchBody", "launchImageAlt"] as const) {
+    if (legacy.has(next[key]?.trim().toLowerCase())) next[key] = DEFAULT_HOME_PAGE_CONTENT[key];
+  }
+  return next;
+}
 
 export function normalizeMobileHomeHeroSlides(value: unknown): MobileHomeHeroSlide[] {
   if (!Array.isArray(value)) {

@@ -8,6 +8,8 @@ const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { createCommerce, CommerceError, normalizeItems } = require("./commerce");
 const { createProductService } = require("./products");
+const { createOrderNotificationWorker } = require("./order-notifications");
+const { PRIMARY_REGION, shouldHandleEvent } = require("./background-region");
 const logger = require("firebase-functions/logger");
 const { defineSecret } = require("firebase-functions/params");
 const nodemailer = require("nodemailer");
@@ -23,7 +25,7 @@ if (!admin.apps.length) {
 }
 
 const db = admin.firestore();
-const REGION = "asia-south1";
+const REGION = PRIMARY_REGION;
 const CURRENCY = "INR";
 const ORDER_COLLECTION = "checkoutOrders";
 const CUSTOMER_OTP_REQUEST_COLLECTION = "customerOtpRequests";
@@ -56,7 +58,24 @@ const msg91AuthKeySecret = defineSecret("MSG91_AUTH_KEY");
 const msg91SmsTemplateIdSecret = defineSecret("MSG91_OTP_TEMPLATE_ID");
 const contactSmtpPasswordSecret = defineSecret("CONTACT_SMTP_PASSWORD");
 
-exports.sendContactEmailNotification = onDocumentCreated(
+// The owner confirmed the migration. Export only the established US names.
+function registerHttp(name, options, handler) {
+  exports[`${name}Us`] = onRequest({ ...options, region: PRIMARY_REGION }, handler);
+}
+
+function registerBackground(name, registrar, options, handler) {
+  const exportName = `${name}Us`;
+  // Preserve the cutover boundary so delayed pre-migration events are not replayed.
+  exports[exportName] = registrar({ ...options, region: PRIMARY_REGION }, async (event) => {
+    if (!await shouldHandleEvent(db, PRIMARY_REGION, event)) {
+      logger.info("Background function is on standby for this event.", { function: exportName, region: PRIMARY_REGION });
+      return;
+    }
+    return handler(event);
+  });
+}
+
+registerBackground("sendContactEmailNotification", onDocumentCreated,
   {
     document: "customerMessages/{messageId}",
     region: REGION,
@@ -94,7 +113,7 @@ exports.sendContactEmailNotification = onDocumentCreated(
 
     try {
       await transporter.sendMail({
-        from: `eshwe Contact <${CONTACT_SMTP_USER}>`,
+        from: `eshwe studio <${CONTACT_SMTP_USER}>`,
         replyTo: customerEmail || undefined,
         subject: "New Contact Us message | eshwe",
         text: buildContactEmailText(contactMessage, event.params.messageId),
@@ -107,7 +126,44 @@ exports.sendContactEmailNotification = onDocumentCreated(
   }
 );
 
-exports.sendCustomerOtp = onRequest(
+// Separate from support notifications: one durable job per order/event.
+registerBackground("sendOrderNotification", onDocumentCreated, {
+  document: "checkoutOrders/{orderId}/notifications/{kind}",
+  secrets: [contactSmtpPasswordSecret, msg91AuthKeySecret], retry: true
+}, async event => {
+  const deliver = createOrderNotificationWorker({
+    db, timestamp: () => admin.firestore.FieldValue.serverTimestamp(),
+    smsConfigured: () => Boolean(process.env.MSG91_DISPATCH_TEMPLATE_ID?.trim()),
+    sendEmail: async (to, email, messageKey) => {
+      if (!to) throw new Error("Customer email unavailable.");
+      const transporter = nodemailer.createTransport({
+        host: CONTACT_SMTP_HOST, port: CONTACT_SMTP_PORT, secure: true,
+        auth: { user: CONTACT_SMTP_USER, pass: requireConfiguredSecret(contactSmtpPasswordSecret, "Email sender is not configured.") },
+        connectionTimeout: 15000, greetingTimeout: 15000, socketTimeout: 30000
+      });
+      try {
+        const result = await transporter.sendMail({ ...email, to, from: `eshwe studio <${CONTACT_SMTP_USER}>`, replyTo: CONTACT_SMTP_USER, messageId: `<${messageKey}@eshwe.com>` });
+        if (!result.accepted?.length) throw new Error("Email was not accepted.");
+      } finally { transporter.close(); }
+    },
+    sendSms: async order => {
+      const phone = normalizeCustomerOtpPhone(order.customer?.phone).msisdn;
+      // Dispatch flow: "Your order is shipped! Track it using {#alphanumeric#}
+      // at eshwe.com under Track Order. - athmasakhi". Use the saved AWB,
+      // never the order ID or an OTP, for the template's single variable.
+      const response = await fetch(MSG91_SMS_FLOW_ENDPOINT, {
+        method: "POST", headers: { authkey: requireConfiguredSecret(msg91AuthKeySecret, "SMS sender is not configured."), "Content-Type": "application/json" },
+        body: JSON.stringify({ flow_id: process.env.MSG91_DISPATCH_TEMPLATE_ID.trim(), recipients: [{ mobiles: phone, alphanumeric: order.awbNumber }] }),
+        signal: AbortSignal.timeout(20000)
+      });
+      const payload = await response.json();
+      if (!response.ok || payload.type !== "success") throw new Error("SMS provider did not accept the notification.");
+    }
+  });
+  await deliver(event.params.orderId, event.params.kind);
+});
+
+registerHttp("sendCustomerOtp",
   {
     region: REGION,
     secrets: [msg91AuthKeySecret, msg91SmsTemplateIdSecret]
@@ -147,7 +203,7 @@ exports.sendCustomerOtp = onRequest(
   }
 );
 
-exports.verifyCustomerOtp = onRequest(
+registerHttp("verifyCustomerOtp",
   {
     region: REGION
   },
@@ -187,7 +243,7 @@ exports.verifyCustomerOtp = onRequest(
   }
 );
 
-exports.createRazorpayOrder = onRequest(
+registerHttp("createRazorpayOrder",
   {
     region: REGION,
     secrets: [razorpayKeyIdSecret, razorpayKeySecretSecret]
@@ -221,7 +277,7 @@ exports.createRazorpayOrder = onRequest(
   }
 );
 
-exports.verifyRazorpayPayment = onRequest(
+registerHttp("verifyRazorpayPayment",
   {
     region: REGION,
     secrets: [razorpayKeySecretSecret, razorpayKeyIdSecret]
@@ -267,7 +323,7 @@ exports.verifyRazorpayPayment = onRequest(
   }
 );
 
-exports.razorpayAppCallback = onRequest(
+registerHttp("razorpayAppCallback",
   {
     region: REGION,
     secrets: [razorpayKeySecretSecret, razorpayKeyIdSecret]
@@ -318,7 +374,7 @@ exports.razorpayAppCallback = onRequest(
   }
 );
 
-exports.razorpayWebhook = onRequest(
+registerHttp("razorpayWebhook",
   {
     region: REGION,
     secrets: [razorpayWebhookSecret, razorpayKeyIdSecret, razorpayKeySecretSecret]
@@ -398,7 +454,7 @@ async function requireOwner(request) {
   return user;
 }
 
-exports.checkoutStatus = onRequest({ region: REGION, secrets: [razorpayKeyIdSecret, razorpayKeySecretSecret] }, async (request, response) => {
+registerHttp("checkoutStatus", { region: REGION, secrets: [razorpayKeyIdSecret, razorpayKeySecretSecret] }, async (request, response) => {
   if (handleCors(request, response, ["POST"])) return;
   if (request.method !== "POST") return response.status(405).json({ error: "Method not allowed." });
   try {
@@ -415,7 +471,7 @@ exports.checkoutStatus = onRequest({ region: REGION, secrets: [razorpayKeyIdSecr
   } catch (error) { response.status(getErrorStatus(error, 503)).json({ error: getErrorMessage(error, "Unable to check payment. Please retry status checking before paying again.") }); }
 });
 
-exports.ownerOrderAction = onRequest({ region: REGION, secrets: [razorpayKeyIdSecret, razorpayKeySecretSecret] }, async (request, response) => {
+registerHttp("ownerOrderAction", { region: REGION, secrets: [razorpayKeyIdSecret, razorpayKeySecretSecret] }, async (request, response) => {
   if (handleCors(request, response, ["POST"])) return;
   if (request.method !== "POST") return response.status(405).json({ error: "Method not allowed." });
   try {
@@ -424,22 +480,25 @@ exports.ownerOrderAction = onRequest({ region: REGION, secrets: [razorpayKeyIdSe
     const id = requireString(payload.orderId, "Order is required.");
     const order = payload.action === "refund"
       ? await commerce.requestAmountRefund(id, { amountPaise: payload.amountPaise, requestId: payload.requestId, expectedRefundedAmountPaise: payload.expectedRefundedAmountPaise }, owner.uid)
-      : payload.action === "reconcile" ? await commerce.reconcile(id) : await commerce.fulfilment(id, payload.action, owner.uid);
+      : payload.action === "reconcile" ? await commerce.reconcile(id) : await commerce.fulfilment(id, payload.action, owner.uid, { awbNumber: payload.awbNumber });
     response.json({ order });
   } catch (error) { response.status(getErrorStatus(error, 400)).json({ error: getErrorMessage(error, "Order action failed.") }); }
 });
 
-exports.ownerProductAction = onRequest({ region: REGION }, async (request, response) => {
+registerHttp("ownerProductAction", { region: REGION }, async (request, response) => {
   if (handleCors(request, response, ["POST"])) return;
   if (request.method !== "POST") return response.status(405).json({ error: "Method not allowed." });
   try {
     const owner = await requireOwner(request);
-    const result = await createProductService({ db, timestamp: () => admin.firestore.FieldValue.serverTimestamp() }).save(parseBody(request.body), owner.uid);
+    const payload = parseBody(request.body);
+    const service = createProductService({ db, timestamp: () => admin.firestore.FieldValue.serverTimestamp() });
+    if (payload.action !== undefined && payload.action !== "delete") throw new HttpError(400, "Unknown product action.");
+    const result = payload.action === "delete" ? await service.remove(payload, owner.uid) : await service.save(payload, owner.uid);
     response.json(result);
-  } catch (error) { response.status(getErrorStatus(error, 400)).json({ error: getErrorMessage(error, "Product save failed.") }); }
+  } catch (error) { response.status(getErrorStatus(error, 400)).json({ error: getErrorMessage(error, "Product action failed.") }); }
 });
 
-exports.reconcileCheckoutOrders = onSchedule({ schedule: "every 5 minutes", region: REGION, secrets: [razorpayKeyIdSecret, razorpayKeySecretSecret] }, async () => {
+registerBackground("reconcileCheckoutOrders", onSchedule, { schedule: "every 5 minutes", region: REGION, secrets: [razorpayKeyIdSecret, razorpayKeySecretSecret] }, async () => {
   const commerce = getCommerce();
   const [expired, exceptions] = await Promise.all([
     db.collection(ORDER_COLLECTION).where("reservationState", "==", "held").where("reservationExpiresAt", "<=", Date.now()).limit(100).get(),
@@ -596,7 +655,7 @@ function normalizeCustomer(value) {
   return {
     address: requireString(value.address, "Address is required."),
     city: requireString(value.city, "City is required."),
-    email: requireEmail(value.email),
+    email: value.email == null || (typeof value.email === "string" && !value.email.trim()) ? "" : requireEmail(value.email),
     fullName: requireString(value.fullName, "Full name is required."),
     phone: requirePhone(value.phone),
     pincode: requireString(value.pincode, "Pincode is required."),

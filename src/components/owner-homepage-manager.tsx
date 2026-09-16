@@ -306,7 +306,7 @@ export function OwnerHomepageManager() {
                     setForm((current) => ({ ...current, launchEyebrow: event.target.value }))
                   }
                   className={inputClassName}
-                  placeholder="OPENING SHORTLY"
+                  placeholder="THE ESHWE COLLECTION"
                 />
               </label>
 
@@ -319,7 +319,7 @@ export function OwnerHomepageManager() {
                   }
                   className={textAreaClassName}
                   rows={3}
-                  placeholder="We are currently in a soft launch preview."
+                  placeholder="Timeless sarees, thoughtfully yours."
                 />
               </label>
 
@@ -332,7 +332,7 @@ export function OwnerHomepageManager() {
                   }
                   className={textAreaClassName}
                   rows={5}
-                  placeholder="The boutique is live for a trial run while we fine-tune the experience and curate the first collections."
+                  placeholder="Discover handpicked sarees for everyday elegance, meaningful gifts and special celebrations."
                 />
               </label>
 
@@ -461,7 +461,7 @@ export function OwnerHomepageManager() {
                       setForm((current) => ({ ...current, mobileLaunchEyebrow: event.target.value }))
                     }
                     className={inputClassName}
-                    placeholder="OPENING SHORTLY"
+                    placeholder="THE ESHWE COLLECTION"
                   />
                 </label>
 
@@ -717,7 +717,7 @@ export function OwnerHomepageManager() {
                     </div>
                     <div className="mt-auto">
                       <div className="mb-3 flex items-center gap-3 text-[0.52rem] font-semibold uppercase tracking-[0.22em] text-[#9b885f]">
-                        <span>{form.mobileLaunchEyebrow || "OPENING SHORTLY"}</span>
+                        <span>{form.mobileLaunchEyebrow || "THE ESHWE COLLECTION"}</span>
                         <span className="h-px flex-1 bg-[#d7c4a2]" />
                       </div>
                       <div className="inline-flex rounded-[0.95rem] bg-[#5e684f] px-4 py-2.5 text-[0.58rem] font-semibold tracking-[0.14em] text-[#fbf4e8]">

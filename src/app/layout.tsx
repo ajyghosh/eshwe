@@ -51,7 +51,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/eshwelogo.png",
+        url: "/eshwelogo.webp",
         width: 1254,
         height: 1254,
         alt: "eshwe logo"
@@ -63,7 +63,7 @@ export const metadata: Metadata = {
     title: "eshwe Saree Studio | Premium Sarees Online",
     description:
       "Shop curated sarees from eshwe Saree Studio, including elegant cotton, silk, tissue, and occasion-ready drapes.",
-    images: ["/eshwelogo.png"]
+    images: ["/eshwelogo.webp"]
   },
   appleWebApp: {
     capable: true,
@@ -86,7 +86,7 @@ export default function RootLayout({
         name: "eshwe",
         alternateName: "eshwe Saree Studio",
         url: "https://eshwe.com/",
-        logo: "https://eshwe.com/eshwelogo.png"
+        logo: "https://eshwe.com/eshwelogo.webp"
       },
       {
         "@type": "WebSite",

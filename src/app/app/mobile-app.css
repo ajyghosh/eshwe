@@ -1,4 +1,12 @@
 /* PWA presentation only. All rules are scoped to the mobile storefront. */
+.mobile-app-home-categories > :last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
+.mobile-app-home-categories > :last-child:nth-child(odd) .mobile-app-category-image {
+  aspect-ratio: 2.3;
+}
+
 .mobile-app {
   --app-line: #e8e3d9;
   --app-olive: #3f513b;
@@ -130,7 +138,7 @@
 
 .mobile-app-product-info > div:last-child {
   margin-top: auto;
-  padding-top: 12px;
+  padding-top: 8px;
 }
 
 .mobile-app .mobile-app-product-name {
@@ -344,3 +352,20 @@ body:has(.mobile-app) :is(.customer-otp-panel, .customer-waitlist-panel) :is(but
     scroll-behavior: auto !important;
   }
 }
+
+/* Readable secondary text on the cream storefront surfaces. */
+.mobile-app .text-\[\#9a9a93\],
+.mobile-app .text-\[\#768068\],
+.mobile-app .text-\[\#74786c\],
+.mobile-app .text-\[\#7d876f\],
+.mobile-app .text-\[\#667056\],
+.mobile-app .text-\[\#6d7561\],
+.mobile-app .text-\[\#657260\],
+.mobile-app .text-\[\#68735e\],
+.mobile-app .text-\[\#7b7b72\],
+.mobile-app .text-\[\#8d8b87\] {
+  color: #59644f;
+}
+.mobile-app .text-\[\#a8574d\] { color: #94473e; }
+.mobile-app .text-\[\#9a6700\] { color: #805400; }
+.mobile-app .bg-\[\#6b7a5e\] { background-color: #58674c; }

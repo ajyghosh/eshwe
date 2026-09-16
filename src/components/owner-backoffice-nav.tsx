@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useOwnerActivityBadges } from "@/components/owner-activity-provider";
 
 const navItems = [
   { href: "/owner", label: "Overview" },
@@ -25,6 +26,8 @@ type OwnerBackofficeNavProps = {
 
 export function OwnerBackofficeNav({ badges = {}, className = "" }: OwnerBackofficeNavProps) {
   const pathname = usePathname() ?? "/owner";
+  const sharedBadges = useOwnerActivityBadges();
+  const liveBadges = { ...badges, ...sharedBadges };
 
   return (
     <nav
@@ -33,7 +36,7 @@ export function OwnerBackofficeNav({ badges = {}, className = "" }: OwnerBackoff
     >
       {navItems.map((item) => {
         const isActive = pathname === item.href || pathname === `${item.href}/`;
-        const rawBadge = badges[item.href];
+        const rawBadge = liveBadges[item.href];
         const badge =
           rawBadge !== undefined && typeof rawBadge === "object" && "value" in rawBadge
             ? rawBadge

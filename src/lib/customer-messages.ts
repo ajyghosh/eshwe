@@ -47,7 +47,7 @@ export async function updateCustomerMessageStatus(messageId: string, status: "ne
 }
 
 export function subscribeToCustomerMessages(
-  onData: (messages: CustomerMessage[]) => void,
+  onData: (messages: CustomerMessage[], fromCache?: boolean) => void,
   onError?: (error: Error) => void
 ) {
   if (!db) {
@@ -62,12 +62,14 @@ export function subscribeToCustomerMessages(
 
   return onSnapshot(
     messagesQuery,
+    { includeMetadataChanges: true },
     (snapshot) => {
       onData(
         snapshot.docs.map((messageDoc) => ({
           id: messageDoc.id,
           ...messageDoc.data()
-        })) as CustomerMessage[]
+        })) as CustomerMessage[],
+        snapshot.metadata.fromCache
       );
     },
     (error) => {

@@ -72,7 +72,7 @@ export function subscribeToCustomerOrders(
 }
 
 export function subscribeToSuccessfulOrders(
-  onData: (orders: CheckoutOrder[]) => void,
+  onData: (orders: CheckoutOrder[], fromCache?: boolean) => void,
   onError?: (error: Error) => void
 ) {
   if (!db) {
@@ -94,6 +94,7 @@ export function subscribeToSuccessfulOrders(
 
   return onSnapshot(
     ordersQuery,
+    { includeMetadataChanges: true },
     (snapshot) => {
       const orders = snapshot.docs
         .map((orderDoc) => ({
@@ -103,7 +104,7 @@ export function subscribeToSuccessfulOrders(
         .filter(isSuccessfulOrder)
         .sort(compareOwnerOrders) as CheckoutOrder[];
 
-      onData(orders);
+      onData(orders, snapshot.metadata.fromCache);
     },
     (error) => {
       onData([]);
@@ -112,8 +113,8 @@ export function subscribeToSuccessfulOrders(
   );
 }
 
-export async function updateOrderDispatchStatus(orderId: string, dispatchStatus: "completed" | "new") {
-  return postJson("/api/owner/order", { orderId, action: dispatchStatus });
+export async function updateOrderDispatchStatus(orderId: string, dispatchStatus: "completed" | "new", awbNumber?: string) {
+  return postJson("/api/owner/order", { orderId, action: dispatchStatus, ...(awbNumber ? { awbNumber } : {}) });
 }
 
 export function getPendingDispatchCount(orders: Pick<CheckoutOrder, "dispatchStatus" | "refundStatus" | "attentionRequired">[]) {

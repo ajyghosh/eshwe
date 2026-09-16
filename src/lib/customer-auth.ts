@@ -5,7 +5,7 @@ import { signInWithCustomToken, type User } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { buildProtectedJsonHeadersForPath } from "@/lib/protected-request";
 
-const CUSTOMER_AUTH_FUNCTIONS_ORIGIN = "https://asia-south1-eshwesareestudio.cloudfunctions.net";
+const CUSTOMER_AUTH_FUNCTIONS_ORIGIN = "https://us-central1-eshwesareestudio.cloudfunctions.net";
 const CUSTOMER_AUTH_API_BASE_PATH = "/api/customer-auth";
 
 type VerifyCustomerOtpResponse = {
@@ -56,10 +56,10 @@ export function getCustomerAuthApiUrl(path: "send-otp" | "verify-otp") {
   }
 
   if (path === "send-otp") {
-    return `${CUSTOMER_AUTH_FUNCTIONS_ORIGIN}/sendCustomerOtp`;
+    return `${CUSTOMER_AUTH_FUNCTIONS_ORIGIN}/sendCustomerOtpUs`;
   }
 
-  return `${CUSTOMER_AUTH_FUNCTIONS_ORIGIN}/verifyCustomerOtp`;
+  return `${CUSTOMER_AUTH_FUNCTIONS_ORIGIN}/verifyCustomerOtpUs`;
 }
 
 function isLocalDevelopmentHostname(hostname: string) {

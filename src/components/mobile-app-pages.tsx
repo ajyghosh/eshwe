@@ -18,6 +18,9 @@ import { formatCurrency } from "@/components/catalogue-product-card";
 import { useCart } from "@/components/cart-provider";
 import { FavoriteToggleButton } from "@/components/favorite-toggle-button";
 import { useFavorites } from "@/components/favorites-provider";
+import { AffordableEleganceBanner } from "@/components/affordable-elegance-banner";
+import { SareeCultureTeaser } from "@/components/saree-culture-teaser";
+import { AFFORDABLE_PRICE_RANGE, PRICE_RANGES, matchesPriceRange, normalizePriceRange, priceRangeLabel } from "@/lib/price-ranges";
 import { MobileAppShell } from "@/components/mobile-app-shell";
 import { attachPwaProductOrigin, preparePwaShoppingReturn } from "@/lib/pwa-shopping-navigation";
 import { NotifyWaitlistDialog } from "@/components/notify-waitlist-dialog";
@@ -187,13 +190,14 @@ export function MobileAppHomePage() {
         : [
             {
               imageUrl: homeContent?.heroImageUrl || heroProduct?.primaryImageUrl || "",
+              imageAlt: "Sarees from the eshwe collection",
               position: homeContent?.heroImagePosition || "center"
             }
           ].filter((slide) => slide.imageUrl),
     [heroProduct?.primaryImageUrl, homeContent?.heroImagePosition, homeContent?.heroImageUrl, mobileHeroSlides]
   );
   const activeMobileHeroSlide = resolvedMobileHeroSlides[currentMobileHeroIndex] ?? null;
-  const mobileLaunchEyebrow = homeContent?.mobileLaunchEyebrow || homeContent?.launchEyebrow || "Opening Shortly";
+  const mobileLaunchEyebrow = homeContent?.mobileLaunchEyebrow || homeContent?.launchEyebrow || "THE ESHWE COLLECTION";
   const mobileLaunchHeading =
     homeContent?.mobileLaunchHeading || homeContent?.launchHeading || "Timeless Sarees, thoughtfully yours";
   const mobileLaunchBody =
@@ -235,12 +239,19 @@ export function MobileAppHomePage() {
               {resolvedMobileHeroSlides.map((slide, index) => (
                 <div
                   key={`${slide.imageUrl}-${index}`}
-                  className="h-full w-full shrink-0 bg-[#e8dcc8]"
-                  style={{
-                    ...buildImageBackgroundStyle(slide.imageUrl, { backgroundSize: "cover" }),
-                    backgroundPosition: "center top"
-                  }}
-                />
+                  className="relative h-full w-full shrink-0 bg-[#e8dcc8]"
+                >
+                  {slide.imageUrl ? <Image
+                    src={slide.imageUrl}
+                    alt={slide.imageAlt || "Sarees from the eshwe collection"}
+                    fill
+                    sizes="(max-width: 440px) 100vw, 440px"
+                    priority={index === 0}
+                    loading={index === 0 ? "eager" : "lazy"}
+                    className="object-cover"
+                    style={{ objectPosition: slide.position || "center top" }}
+                  /> : null}
+                </div>
               ))}
             </div>
 
@@ -302,12 +313,18 @@ export function MobileAppHomePage() {
           tone="warm"
           eyebrow="Curated edits"
         >
-          <div className="mt-4 grid grid-cols-2 gap-3">
+          <div className="mobile-app-home-categories mt-4 grid grid-cols-2 gap-3">
             {categoryCards.slice(0, 6).map((card) => (
               <MobileCategoryCard key={card.id ?? card.title} card={card} products={previewProducts} />
             ))}
           </div>
         </MobileHomeSection>
+
+        {homeContent?.affordableBanner?.enabled !== false ? (
+          <section aria-label="Affordable Elegance" className="mt-6">
+            <AffordableEleganceBanner content={homeContent?.affordableBanner} href={buildAppSearchHref({ priceRange: AFFORDABLE_PRICE_RANGE })} />
+          </section>
+        ) : null}
 
         <MobileHomeSection
           title="New arrivals"
@@ -330,6 +347,10 @@ export function MobileAppHomePage() {
             <MobileProductPreviewGrid products={featuredProducts} sectionKey="featured-products" />
           </MobileHomeSection>
         ) : null}
+
+        <div className="mt-6">
+          <SareeCultureTeaser />
+        </div>
 
         {promiseProduct ? (
           <section className="mt-6 overflow-hidden rounded-[2rem] border border-[#eadfce] bg-[linear-gradient(135deg,#fff9ef_0%,#f7efe1_100%)] shadow-none">
@@ -373,6 +394,7 @@ export function MobileAppSearchPage({ categoryFirst = false }: { categoryFirst?:
     const currentSearchParams = searchParams ?? new URLSearchParams();
 
     return resolveAppSearchState(pathname, {
+      priceRange: currentSearchParams.get("priceRange") ?? "",
       category: currentSearchParams.get("category") ?? "",
       fabric: currentSearchParams.get("fabric") ?? "",
       intent: currentSearchParams.get("intent") ?? "",
@@ -390,6 +412,8 @@ export function MobileAppSearchPage({ categoryFirst = false }: { categoryFirst?:
   const [draftFabric, setDraftFabric] = useState(resolvedSearchState.fabric ?? "");
   const [draftIntent, setDraftIntent] = useState(resolvedSearchState.intent ?? "");
   const [draftSort, setDraftSort] = useState<SearchSort>(normalizeSortValue(resolvedSearchState.sort ?? null));
+  const activePriceRange = normalizePriceRange(resolvedSearchState.priceRange);
+  const [draftPriceRange, setDraftPriceRange] = useState<string>(activePriceRange);
   const activeCategory = resolvedSearchState.category ?? "";
   const activeFabric = resolvedSearchState.fabric ?? "";
   const activeIntent = resolvedSearchState.intent ?? "";
@@ -401,7 +425,8 @@ export function MobileAppSearchPage({ categoryFirst = false }: { categoryFirst?:
     setDraftFabric(activeFabric);
     setDraftIntent(activeIntent);
     setDraftSort(activeSort);
-  }, [activeCategory, activeFabric, activeIntent, activeQuery, activeSort]);
+    setDraftPriceRange(activePriceRange);
+  }, [activePriceRange, activeCategory, activeFabric, activeIntent, activeQuery, activeSort]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -409,6 +434,7 @@ export function MobileAppSearchPage({ categoryFirst = false }: { categoryFirst?:
     }
 
     const nextUrl = `${buildAppSearchVisiblePath({
+      priceRange: activePriceRange,
       category: activeCategory,
       fabric: activeFabric,
       intent: activeIntent,
@@ -420,7 +446,7 @@ export function MobileAppSearchPage({ categoryFirst = false }: { categoryFirst?:
     if (currentUrl !== nextUrl) {
       window.history.replaceState(window.history.state, "", nextUrl);
     }
-  }, [activeCategory, activeFabric, activeIntent, activeQuery, activeSort]);
+  }, [activePriceRange, activeCategory, activeFabric, activeIntent, activeQuery, activeSort]);
 
   useEffect(() => {
     return subscribeToSarees(
@@ -441,6 +467,7 @@ export function MobileAppSearchPage({ categoryFirst = false }: { categoryFirst?:
 
   const filteredProducts = useMemo(() => {
     const visibleProducts = products.filter((product) => {
+      if (!matchesPriceRange(product, activePriceRange)) return false;
       if (activeCategory && !matchesIdentifier(product.category, activeCategory)) {
         return false;
       }
@@ -461,13 +488,15 @@ export function MobileAppSearchPage({ categoryFirst = false }: { categoryFirst?:
     });
 
     return sortProducts(visibleProducts, activeSort, activeQuery);
-  }, [activeCategory, activeFabric, activeIntent, activeQuery, activeSort, products]);
+  }, [activePriceRange, activeCategory, activeFabric, activeIntent, activeQuery, activeSort, products]);
 
-  const activeFilterCount = [activeCategory, activeFabric, activeIntent].filter(Boolean).length;
+  const activeFilterCount = [activeCategory, activeFabric, activeIntent, activePriceRange].filter(Boolean).length;
   const hasActiveSearchState = Boolean(activeQuery || activeFilterCount > 0);
   const categoryOptions = useMemo(() => uniqueOptions(products.map((product) => product.category)), [products]);
   const fabricOptions = useMemo(() => uniqueOptions(products.map((product) => product.fabric)), [products]);
-  const emptyStateTitle = activeCategory
+  const emptyStateTitle = activePriceRange
+    ? "No sarees match this price range right now"
+    : activeCategory
     ? `${activeCategory} is not available right now`
     : activeFabric
       ? `${activeFabric} is not available right now`
@@ -540,6 +569,10 @@ export function MobileAppSearchPage({ categoryFirst = false }: { categoryFirst?:
     const displayedKeys = new Set(filteredProducts.map((product) => product.id ?? product.sku));
     const activeFilterHasResults = filteredProducts.length > 0;
     const candidates = products.filter((product) => {
+      if (!matchesPriceRange(product, activePriceRange)) {
+        return false;
+      }
+
       if (displayedKeys.has(product.id ?? product.sku)) {
         return false;
       }
@@ -577,7 +610,7 @@ export function MobileAppSearchPage({ categoryFirst = false }: { categoryFirst?:
       )
       .slice(0, 4)
       .map((entry) => entry.product);
-  }, [activeCategory, activeFabric, activeIntent, activeQuery, filteredProducts, hasActiveSearchState, products]);
+  }, [activePriceRange, activeCategory, activeFabric, activeIntent, activeQuery, filteredProducts, hasActiveSearchState, products]);
   const showPopularSearches = !activeQuery && activeFilterCount === 0;
   const shouldShowEmptyStateAlternates = showPopularSearches;
   const emptyStateDescription = shouldShowEmptyStateAlternates
@@ -586,6 +619,7 @@ export function MobileAppSearchPage({ categoryFirst = false }: { categoryFirst?:
   const resultsCountLabel = `${filteredProducts.length} result${filteredProducts.length === 1 ? "" : "s"}`;
 
   function applySearch(params: {
+    priceRange?: string;
     category?: string;
     fabric?: string;
     intent?: string;
@@ -594,6 +628,7 @@ export function MobileAppSearchPage({ categoryFirst = false }: { categoryFirst?:
   }) {
     router.push(
       buildAppSearchHref({
+        priceRange: params.priceRange ?? activePriceRange,
         category: params.category,
         fabric: params.fabric,
         intent: params.intent,
@@ -606,6 +641,7 @@ export function MobileAppSearchPage({ categoryFirst = false }: { categoryFirst?:
   function handleSearchSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     applySearch({
+      priceRange: activePriceRange,
       category: activeCategory,
       fabric: activeFabric,
       intent: activeIntent,
@@ -679,7 +715,7 @@ export function MobileAppSearchPage({ categoryFirst = false }: { categoryFirst?:
         <section className="mt-5">
           <div className="flex items-center justify-between gap-3">
             <p className="text-[0.92rem] font-semibold text-[#2f342d]">
-              {showPopularSearches ? "Popular searches" : "Results"}
+              {activePriceRange === AFFORDABLE_PRICE_RANGE ? "Affordable Elegance" : showPopularSearches ? "Popular searches" : "Results"}
             </p>
             <div className="text-right">
               <p className="text-[0.86rem] font-semibold text-[#2f342d]">{resultsCountLabel}</p>
@@ -709,8 +745,9 @@ export function MobileAppSearchPage({ categoryFirst = false }: { categoryFirst?:
           ) : null}
         </section>
 
-        {(activeCategory || activeFabric || activeIntent || activeQuery) ? (
+        {(activeCategory || activeFabric || activeIntent || activeQuery || activePriceRange) ? (
           <div className="mt-4 flex flex-wrap gap-2">
+            {activePriceRange ? <ActiveFilterPill label={priceRangeLabel(activePriceRange)} onClear={() => applySearch({ priceRange: "", category: activeCategory, fabric: activeFabric, intent: activeIntent, q: activeQuery, sort: activeSort })} /> : null}
             {activeQuery ? <ActiveFilterPill label={activeQuery} onClear={() => applySearch({ category: activeCategory, fabric: activeFabric, intent: activeIntent, q: "", sort: activeSort })} /> : null}
             {activeCategory ? <ActiveFilterPill label={activeCategory} onClear={() => applySearch({ fabric: activeFabric, intent: activeIntent, q: activeQuery, sort: activeSort })} /> : null}
             {activeFabric ? <ActiveFilterPill label={activeFabric} onClear={() => applySearch({ category: activeCategory, intent: activeIntent, q: activeQuery, sort: activeSort })} /> : null}
@@ -777,6 +814,8 @@ export function MobileAppSearchPage({ categoryFirst = false }: { categoryFirst?:
         category={draftCategory}
         fabric={draftFabric}
         intent={draftIntent}
+        priceRange={draftPriceRange}
+        onChangePriceRange={setDraftPriceRange}
         sort={draftSort}
         categoryOptions={categoryOptions}
         fabricOptions={fabricOptions}
@@ -787,6 +826,7 @@ export function MobileAppSearchPage({ categoryFirst = false }: { categoryFirst?:
         onChangeSort={setDraftSort}
         onApply={() => {
           applySearch({
+            priceRange: draftPriceRange,
             q: searchValue.trim(),
             category: draftCategory,
             fabric: draftFabric,
@@ -801,7 +841,8 @@ export function MobileAppSearchPage({ categoryFirst = false }: { categoryFirst?:
           setDraftFabric("");
           setDraftIntent("");
           setDraftSort("relevance");
-          applySearch({});
+          setDraftPriceRange("");
+          applySearch({ priceRange: "" });
           setFilterSheetOpen(false);
         }}
       />
@@ -1504,8 +1545,8 @@ export function MobileAppProductPage() {
           >
             <ArrowLeftIcon />
           </button>
-          <Image src="/eshwelogo-transparent.png" alt="eshwe" width={72} height={72} className="h-16 w-16 object-contain" />
-          <Link href={buildAppCheckoutHref()} className="relative inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#e3d8c8] bg-white/80 text-[#5e684f] shadow-none">
+          <Image src="/eshwelogo-transparent.webp" alt="eshwe" width={72} height={72} className="h-16 w-16 object-contain" />
+          <Link href={buildAppCheckoutHref()} aria-label={`View bag with ${totalItems} item${totalItems === 1 ? "" : "s"}`} className="relative inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#e3d8c8] bg-white/80 text-[#5e684f] shadow-none">
             <BagOutlineIcon />
             {totalItems > 0 ? (
               <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#a8574d] px-1 text-[0.68rem] font-semibold text-[#fbf4e8]">
@@ -1913,7 +1954,7 @@ export function MobileAppCheckoutPage() {
   }
 
   function handleContinueFromBag() {
-    if (items.length === 0) {
+    if (!isReady || !stockReady || isSyncing || items.length === 0) {
       return;
     }
 
@@ -2040,7 +2081,7 @@ export function MobileAppCheckoutPage() {
             <ArrowLeftIcon />
           </button>
           <div className="text-center">
-            <Image src="/eshwelogo-transparent.png" alt="eshwe" width={64} height={64} className="mx-auto h-14 w-14 object-contain" />
+            <Image src="/eshwelogo-transparent.webp" alt="eshwe" width={64} height={64} className="mx-auto h-14 w-14 object-contain" />
           </div>
           <span className="h-11 w-11" />
         </div>
@@ -2113,7 +2154,7 @@ export function MobileAppCheckoutPage() {
               ))}
             </div>
 
-            {hasUnavailableItems ? (
+            {stockReady && hasUnavailableItems ? (
               <p className="mt-4 rounded-[1.1rem] bg-[#fff1ea] px-4 py-3 text-[0.9rem] leading-6 text-[#a8574d]">
                 One or more sarees are no longer available. Please update the bag before paying.
               </p>
@@ -2304,23 +2345,23 @@ export function MobileAppCheckoutPage() {
 
       <div className="mobile-app-action-bar fixed inset-x-0 bottom-0 z-40">
         <div className="mx-auto max-w-[440px] px-4 py-3">
-          {checkoutStep === "pay" && profileError ? <p role="alert" className="mb-2 text-sm text-[#a8574d]">{profileError}</p> : null}
+          {syncError || profileError ? <p role="alert" className="mb-2 text-sm text-[#a8574d]">{syncError || profileError}</p> : null}
           <CheckoutPaymentAction
             orderId={checkoutStep === "pay" ? recovery.orderId : null}
             recoveryError={checkoutStep === "pay" ? recovery.error : null}
             mobile
             processing={paymentSubmitting}
             onClick={() => void handlePrimaryCheckoutAction()}
-            busy={paymentSubmitting || profileSaving || isSyncing || (!isReady && !syncError)}
+            busy={paymentSubmitting || profileSaving || isSyncing || (!isReady && !syncError) || (checkoutStep === "bag" && !stockReady && !syncError)}
             disabled={
               !isReady ||
-              (checkoutStep === "bag" && items.length === 0) ||
+              (checkoutStep === "bag" && (!stockReady || isSyncing || items.length === 0 || hasUnavailableItems)) ||
               (checkoutStep === "address" && (profileLoading || profileSaving)) ||
               (checkoutStep === "pay" && (!canProceed || paymentSubmitting || profileSaving))
             }
             className="brand-caption inline-flex h-14 w-full items-center justify-center rounded-[1.15rem] bg-[#a8574d] px-5 text-[0.66rem] font-semibold tracking-[0.15em] text-[#fbf4e8] disabled:opacity-55"
           >
-            {!isReady ? (syncError ? "BAG SYNC PAUSED" : "GETTING YOUR BAG READY…") : checkoutStep === "pay" && isSyncing ? "SAVING BAG…" : primaryButtonLabel}
+            {!isReady ? (syncError ? "BAG SYNC PAUSED" : "GETTING YOUR BAG READY…") : isSyncing ? "SAVING BAG…" : checkoutStep === "bag" && !stockReady ? "CHECKING AVAILABILITY…" : primaryButtonLabel}
             {paymentSubmitting || profileSaving || isSyncing || (!isReady && !syncError) ? <LoadingDots /> : null}
           </CheckoutPaymentAction>
         </div>
@@ -2371,7 +2412,7 @@ function MobileHomeHeader({
         href={buildAppHomeHref()}
         className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center"
       >
-        <Image src="/eshwelogo-transparent.png" alt="eshwe" width={72} height={72} className="h-16 w-16 object-contain" />
+        <Image src="/eshwelogo-transparent.webp" alt="eshwe" width={72} height={72} className="h-16 w-16 object-contain" />
       </Link>
 
       <div className="ml-auto flex items-center gap-2">
@@ -2420,6 +2461,9 @@ function MobileMenuSheet({
         </Link>
         <Link href={buildAppSearchHref({ sort: "newest" })} onClick={onClose} className="block rounded-[1.2rem] bg-[#faf6ef] px-4 py-4 text-[1rem] font-medium text-[#2f342d]">
           New arrivals
+        </Link>
+        <Link href="/saree-culture/" onClick={onClose} className="block rounded-[1.2rem] bg-[#faf6ef] px-4 py-4 text-[1rem] font-medium text-[#2f342d]">
+          Saree culture & guide
         </Link>
         {categoryCards.map((card) => (
           <Link
@@ -2485,6 +2529,10 @@ function MobileProductCard({
   const cartQuantity = items.find((item) => item.sku === product.sku)?.quantity ?? 0;
   const canIncreaseQuantity = cartQuantity < getPurchasableQuantityLimit(product.availableStock);
 
+  const stockMessage = product.status === "out_of_stock"
+    ? (product.reservedStock ?? 0) > 0 ? "Temporarily reserved" : "Out of stock"
+    : isProductPurchasable(product) && product.availableStock <= 2 ? getStockMessage(product) : "";
+
   return (
     <article className="mobile-app-product-card overflow-hidden rounded-2xl border border-[#e8e3d9] bg-[#fffdf8]">
       <div className="relative">
@@ -2498,11 +2546,13 @@ function MobileProductCard({
             />
             <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(36,49,36,0)_50%,rgba(36,49,36,0.12)_100%)]" />
           </div>
-          {typeof product.discountPercent === "number" && product.discountPercent > 0 ? (
-            <span className="brand-caption absolute left-3 top-3 rounded-full bg-[#5e684f] px-3 py-1.5 text-[0.56rem] font-semibold tracking-[0.12em] text-[#fbf4e8]">
-              -{product.discountPercent}%
-            </span>
-          ) : null}
+          <div className="absolute left-3 right-3 top-3 flex items-start">
+            {typeof product.discountPercent === "number" && product.discountPercent > 0 ? (
+              <span className="brand-caption rounded-full bg-[#5e684f] px-3 py-1.5 text-[0.56rem] font-semibold tracking-[0.12em] text-[#fbf4e8]">
+                -{product.discountPercent}%
+              </span>
+            ) : null}
+          </div>
         </Link>
 
         <FavoriteToggleButton sku={product.sku} className="absolute right-2 top-2 z-10" />
@@ -2511,16 +2561,16 @@ function MobileProductCard({
       <div className="mobile-app-product-info px-3 pb-3 pt-3">
         <Link href={buildAppProductHref(product.slug)} className="block flex-1">
           <h3 title={product.name} className="mobile-app-product-name text-[#2f342d]">{product.name}</h3>
-          <p aria-hidden={product.availableStock > 2 ? true : undefined} className="mt-1 min-h-5 text-xs leading-5 text-[#5e684f]">
-            {product.availableStock <= 2 ? getStockMessage(product) : null}
+          <p title={getMobileProductLabel(product)} className="mt-1 h-5 truncate text-[0.8rem] leading-5 text-[#68735e]">{getMobileProductLabel(product)}</p>
+          <p aria-hidden={!stockMessage ? true : undefined} title={stockMessage || undefined} className={`mt-1 h-5 truncate text-xs leading-5 ${stockMessage === "Out of stock" ? "text-[#a8574d]" : isProductPurchasable(product) && product.availableStock <= 2 ? "text-[#9a6700]" : "text-[#5e684f]"}`}>
+            {stockMessage || null}
           </p>
-          <p title={getMobileProductLabel(product)} className="mt-1 truncate text-[0.8rem] leading-5 text-[#68735e]">{getMobileProductLabel(product)}</p>
         </Link>
 
-        <div className={`flex flex-wrap items-end gap-1.5 ${slim ? "mt-1" : "mt-1.25"}`}>
-          <span className="text-[1rem] font-semibold text-[#2b2a29]">{formatCurrency(product.price)}</span>
+        <div className="mobile-app-product-price mt-1 grid h-9 grid-rows-[20px_16px]">
+          <span className="whitespace-nowrap text-[1rem] font-semibold leading-5 text-[#2b2a29]">{formatCurrency(product.price)}</span>
           {typeof product.originalPrice === "number" ? (
-            <span className={slim ? "text-[0.68rem] text-[#9a9a93] line-through" : "text-[0.7rem] text-[#9a9a93] line-through"}>{formatCurrency(product.originalPrice)}</span>
+            <span className="whitespace-nowrap text-[0.7rem] leading-4 text-[#9a9a93] line-through">{formatCurrency(product.originalPrice)}</span>
           ) : null}
         </div>
 
@@ -2592,7 +2642,7 @@ function MobileCategoryCard({
       className="relative overflow-hidden rounded-2xl bg-[#efe5d7]"
     >
       <div
-        className="aspect-[1.15] w-full bg-[#efe5d7]"
+        className="mobile-app-category-image aspect-[1.15] w-full bg-[#efe5d7]"
         style={{
           ...buildImageBackgroundStyle(previewImage, {
             focalPosition: card.backgroundPosition || "center 12%"
@@ -2617,6 +2667,8 @@ function MobileFilterSheet({
   fabric,
   intent,
   sort,
+  priceRange,
+  onChangePriceRange,
   categoryOptions,
   fabricOptions,
   onChangeSearch,
@@ -2634,6 +2686,8 @@ function MobileFilterSheet({
   fabric: string;
   intent: string;
   sort: SearchSort;
+  priceRange: string;
+  onChangePriceRange: (value: string) => void;
   categoryOptions: string[];
   fabricOptions: string[];
   onChangeSearch: (value: string) => void;
@@ -2653,6 +2707,7 @@ function MobileFilterSheet({
       <div className="space-y-4">
         <MobileInput label="Search" value={searchValue} onChange={onChangeSearch} />
         <MobileSelect label="Sort" value={sort} options={["relevance", "newest", "price-asc", "price-desc"]} onChange={(value) => onChangeSort(value as SearchSort)} formatLabel={formatSortLabel} />
+        <MobileSelect label="Price range" value={priceRange} options={["", ...PRICE_RANGES.map((range) => range.value)]} onChange={onChangePriceRange} formatLabel={priceRangeLabel} />
         <MobileSelect label="Category" value={category} options={["", ...categoryOptions]} onChange={onChangeCategory} />
         <MobileSelect label="Fabric" value={fabric} options={["", ...fabricOptions]} onChange={onChangeFabric} />
         <MobileSelect label="Intent" value={intent} options={["", ...MOBILE_INTENT_OPTIONS]} onChange={onChangeIntent} />
@@ -2705,7 +2760,7 @@ function MobileAddressSheet({
     <MobileBottomSheet open={open} onClose={onClose} title={title}>
       <div className="grid gap-3">
         <MobileInput label="Full name" value={form.fullName} onChange={(value) => onFieldChange("fullName", value)} />
-        <MobileInput label="Email" value={form.email} onChange={(value) => onFieldChange("email", value)} />
+        <MobileInput label="Email (optional)" value={form.email} onChange={(value) => onFieldChange("email", value)} />
         <MobileInput label="Phone" value={verifiedPhone} onChange={() => undefined} readOnly />
         <MobileInput label="Address" value={form.address} onChange={(value) => onFieldChange("address", value)} />
         <div className="grid grid-cols-2 gap-3">
@@ -3197,7 +3252,7 @@ function isPlaceholderCategoryImage(imageUrl?: string | null) {
     return true;
   }
 
-  return normalized.endsWith("/eshwelogo.png") || normalized.endsWith("/eshwelogo-transparent.png");
+  return normalized.endsWith("/eshwelogo.webp") || normalized.endsWith("/eshwelogo-transparent.webp") || normalized.endsWith("/eshwelogo.png") || normalized.endsWith("/eshwelogo-transparent.png");
 }
 
 function MobileCheckoutItem({
@@ -3289,7 +3344,7 @@ function MobileReceiptOverlay({
       <div className="w-full max-w-[430px] rounded-[2rem] border border-[#ddd0bc] bg-[linear-gradient(180deg,rgba(255,250,242,0.98)_0%,rgba(247,237,224,0.96)_100%)] px-6 py-8 shadow-[0_30px_100px_rgba(94,104,79,0.18)]">
         <div className="flex flex-col items-center text-center">
           <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-[#dcc9ad] bg-[linear-gradient(135deg,#fff3df_0%,#efd8ab_100%)] shadow-none">
-            <Image src="/eshwelogo-transparent.png" alt="Eshwe" width={64} height={64} className="h-16 w-16 object-contain" priority />
+            <Image src="/eshwelogo-transparent.webp" alt="Eshwe" width={64} height={64} className="h-16 w-16 object-contain" priority />
           </div>
           <p className="brand-caption mt-5 text-[0.62rem] font-semibold tracking-[0.18em] text-[#7d876f]">PAYMENT RECEIVED</p>
           <h2 className="brand-copy mt-4 text-[2rem] leading-tight text-[#2b2a29]">Preparing your receipt.</h2>
@@ -3438,7 +3493,7 @@ function buildGuestDeliveryAddress(form: PaymentFormState, verifiedPhone?: strin
 
   if (
     !form.fullName.trim() ||
-    !form.email.trim() ||
+    (Boolean(form.email.trim()) && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) ||
     !lockedPhone ||
     !form.address.trim() ||
     !form.city.trim() ||

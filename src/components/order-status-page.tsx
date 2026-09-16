@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAuthSession } from "@/components/auth-provider";
 import { LoadingDots } from "@/components/loading-dots";
+import { MobileContactButton } from "@/components/mobile-contact-button";
 import { checkCheckout, openCheckout, pendingCheckout, type CheckoutResponse } from "@/lib/checkout";
 import { openOrderReceiptPreview, saveLatestOrderConfirmation } from "@/lib/order-confirmation";
 import { paymentLabel, fulfilmentLabel } from "@/lib/order-status";
@@ -30,6 +31,7 @@ export function OrderStatusPage({ mobile = false }: { mobile?: boolean }) {
     };void refresh();return()=>{active=false;clearTimeout(timer);};
   },[user,tick]);
   const base=mobile?"/app":"";
+  const contactClassName="inline-flex min-h-12 items-center justify-center rounded-xl border border-[#5e684f] bg-white px-5 py-3 text-center font-semibold !text-[#5e684f] transition-colors hover:bg-[#f4f5f0] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#5e684f] sm:flex-1";
   async function cancel(){if(busy||!result?.internalOrderId)return;setPendingAction("cancel");setError(null);try{const response=await checkCheckout(result.internalOrderId,true);setState({uid:user!.uid,result:response});}catch(e){setError(e instanceof Error?e.message:"Unable to cancel.");}finally{setPendingAction(null);}}
   async function resume(){if(busy||!result)return;setPendingAction("resume");setError(null);try{const fresh=await checkCheckout(result.internalOrderId);await openCheckout(fresh,()=>{setPendingAction(null);setTick(t=>t+1);},()=>{setPendingAction(null);setTick(t=>t+1);},message=>{setPendingAction(null);setError(message);});}catch(e){setPendingAction(null);setError(e instanceof Error?e.message:"Unable to resume payment.");}}
   return <main className="min-h-screen bg-[#fbf4e8] px-5 py-12 text-[#2f342d]"><section className="mx-auto max-w-2xl rounded-3xl border border-[#dfd2bd] bg-white p-6 sm:p-10">
@@ -51,6 +53,9 @@ export function OrderStatusPage({ mobile = false }: { mobile?: boolean }) {
       </>:result?<p className="mt-5">No order found. Open your order history to check earlier purchases.</p>:null}
       <button disabled={busy} className="mt-6 underline" onClick={()=>setTick(t=>t+1)}>Check status again</button>
     </>}
-    <p className="mt-8"><Link className="underline" href={mobile?"/app/search/":"/shop/"}>Continue shopping</Link> · <Link className="underline" href="/contact/">Contact us</Link></p>
+    <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+      <Link className="inline-flex min-h-12 items-center justify-center rounded-xl border border-transparent bg-[#5e684f] px-5 py-3 text-center font-semibold !text-white transition-colors hover:bg-[#4d5740] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#5e684f] sm:flex-1" href={mobile?"/app/search/":"/shop/"}>Continue shopping</Link>
+      {mobile ? <MobileContactButton className={contactClassName} /> : <Link className={contactClassName} href="/contact/">Contact us</Link>}
+    </div>
   </section></main>;
 }

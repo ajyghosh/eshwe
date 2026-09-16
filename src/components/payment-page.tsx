@@ -609,7 +609,7 @@ function ReceiptPreparingOverlay({
         <div className="flex flex-col items-center text-center">
           <div className="flex h-20 w-20 items-center justify-center rounded-[1.6rem] border border-[#dcc9ad] bg-[linear-gradient(135deg,#fff3df_0%,#efd8ab_100%)] shadow-[0_18px_40px_rgba(176,111,61,0.16)]">
             <Image
-              src="/eshwelogo.png"
+              src="/eshwelogo.webp"
               alt="Eshwe"
               width={64}
               height={64}
@@ -784,7 +784,7 @@ function AddressDialog({
 
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-[#3f4738]/38 px-4 py-6 sm:px-6">
-      <div className="w-full max-w-2xl rounded-[1.7rem] border border-[#e1d5c5] bg-[#fbf4e8] p-6 shadow-[0_28px_70px_rgba(63,71,56,0.2)] sm:p-7">
+      <div className="max-h-[calc(100dvh-3rem)] w-full max-w-2xl overflow-y-auto rounded-[1.7rem] border border-[#e1d5c5] bg-[#fbf4e8] p-6 shadow-[0_28px_70px_rgba(63,71,56,0.2)] sm:p-7">
         <div className="flex items-center justify-between gap-4">
           <div>
             <p className="text-xs font-semibold tracking-[0.14em] text-[#7d876f]">
@@ -816,7 +816,7 @@ function AddressDialog({
             onChange={(value) => onFieldChange("fullName", value)}
           />
           <PaymentInput
-            label="Email"
+            label="Email (optional)"
             type="email"
             value={form.email}
             onChange={(value) => onFieldChange("email", value)}
@@ -883,7 +883,7 @@ function buildGuestDeliveryAddress(form: PaymentFormState, verifiedPhone?: strin
 
   if (
     !form.fullName.trim() ||
-    !form.email.trim() ||
+    (Boolean(form.email.trim()) && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) ||
     !lockedPhone ||
     !form.address.trim() ||
     !form.city.trim() ||

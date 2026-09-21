@@ -8,19 +8,18 @@ import "./web-storefront.css";
 export const metadata: Metadata = {
   metadataBase: new URL("https://eshwe.com"),
   title: {
-    default: "eshwe Saree Studio | Premium Sarees Online",
+    default: "eshwe studio | Premium Sarees Online",
     template: "%s | eshwe"
   },
   applicationName: "eshwe",
   description:
-    "Shop curated sarees from eshwe Saree Studio, including elegant cotton, silk, tissue, and occasion-ready drapes selected for comfort, quality, and timeless style.",
+    "Shop curated sarees from eshwe studio, including elegant cotton, silk, tissue, and occasion-ready drapes selected for comfort, quality, and timeless style.",
   keywords: [
     "eshwe",
-    "eshwe saree studio",
-    "saree studio",
+    "eshwe studio",
     "premium sarees",
     "designer sarees",
-    "Thrissur saree studio"
+    "Thrissur sarees"
   ],
   alternates: {
     canonical: "/"
@@ -42,9 +41,9 @@ export const metadata: Metadata = {
     telephone: false
   },
   openGraph: {
-    title: "eshwe Saree Studio | Premium Sarees Online",
+    title: "eshwe studio | Premium Sarees Online",
     description:
-      "Shop curated sarees from eshwe Saree Studio, including elegant cotton, silk, tissue, and occasion-ready drapes.",
+      "Shop curated sarees from eshwe studio, including elegant cotton, silk, tissue, and occasion-ready drapes.",
     url: "https://eshwe.com/",
     siteName: "eshwe",
     locale: "en_IN",
@@ -60,9 +59,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary",
-    title: "eshwe Saree Studio | Premium Sarees Online",
+    title: "eshwe studio | Premium Sarees Online",
     description:
-      "Shop curated sarees from eshwe Saree Studio, including elegant cotton, silk, tissue, and occasion-ready drapes.",
+      "Shop curated sarees from eshwe studio, including elegant cotton, silk, tissue, and occasion-ready drapes.",
     images: ["/eshwelogo.webp"]
   },
   appleWebApp: {
@@ -84,7 +83,7 @@ export default function RootLayout({
         "@type": "Organization",
         "@id": "https://eshwe.com/#organization",
         name: "eshwe",
-        alternateName: "eshwe Saree Studio",
+        alternateName: "eshwe studio",
         url: "https://eshwe.com/",
         logo: "https://eshwe.com/eshwelogo.webp"
       },
@@ -94,7 +93,7 @@ export default function RootLayout({
         url: "https://eshwe.com/",
         name: "eshwe",
         description:
-          "eshwe Saree Studio curates premium sarees with timeless craftsmanship and contemporary elegance.",
+          "eshwe studio curates premium sarees with timeless craftsmanship and contemporary elegance.",
         publisher: {
           "@id": "https://eshwe.com/#organization"
         },

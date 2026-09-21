@@ -474,7 +474,7 @@ export function OwnerHomepageManager() {
                     }
                     className={textAreaClassName}
                     rows={3}
-                    placeholder="Timeless Sarees, thoughtfully yours"
+                    placeholder="Timeless sarees, thoughtfully yours."
                   />
                 </label>
 
@@ -708,7 +708,7 @@ export function OwnerHomepageManager() {
                   <div className="absolute inset-0 flex flex-col p-4">
                     <div className="max-w-[15rem]">
                       <p className="font-serif text-[1.55rem] leading-[1.05] text-[#354233]">
-                        {form.mobileLaunchHeading || "Timeless Sarees, thoughtfully yours"}
+                        {form.mobileLaunchHeading || "Timeless sarees, thoughtfully yours."}
                       </p>
                       <p className="mt-3 text-[0.82rem] leading-6 text-[#61705d]">
                         {form.mobileLaunchBody ||

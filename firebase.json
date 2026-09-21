@@ -107,6 +107,14 @@
         }
       },
       {
+        "source": "/app/product/**/*.txt",
+        "destination": "/app/product/index.txt"
+      },
+      {
+        "source": "/app/search/**/*.txt",
+        "destination": "/app/search/index.txt"
+      },
+      {
         "source": "/product/**",
         "destination": "/product/index.html"
       },

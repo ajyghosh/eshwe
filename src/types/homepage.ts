@@ -57,7 +57,7 @@ export const DEFAULT_HOME_PAGE_CONTENT: HomePageContent = {
   launchBody:
     "Discover handpicked sarees for everyday elegance, meaningful gifts and special celebrations.",
   mobileLaunchEyebrow: "THE ESHWE COLLECTION",
-  mobileLaunchHeading: "Timeless Sarees, thoughtfully yours",
+  mobileLaunchHeading: "Timeless sarees, thoughtfully yours.",
   mobileLaunchBody:
     "Handpicked drapes in mul cotton, tissue and more. Soft on you, perfect for every occasion.",
   mobileLaunchButtonLabel: "SHOP SAREES",
@@ -85,6 +85,9 @@ export function normalizeHomeLaunchContent(content: HomePageContent): HomePageCo
   const next = { ...content };
   for (const key of ["launchEyebrow", "launchHeading", "launchBody", "mobileLaunchEyebrow", "mobileLaunchHeading", "mobileLaunchBody", "launchImageAlt"] as const) {
     if (legacy.has(next[key]?.trim().toLowerCase())) next[key] = DEFAULT_HOME_PAGE_CONTENT[key];
+  }
+  if (next.mobileLaunchHeading?.trim() === "Timeless Sarees, thoughtfully yours") {
+    next.mobileLaunchHeading = DEFAULT_HOME_PAGE_CONTENT.mobileLaunchHeading;
   }
   return next;
 }

@@ -19,7 +19,6 @@ import { useCart } from "@/components/cart-provider";
 import { FavoriteToggleButton } from "@/components/favorite-toggle-button";
 import { useFavorites } from "@/components/favorites-provider";
 import { AffordableEleganceBanner } from "@/components/affordable-elegance-banner";
-import { SareeCultureTeaser } from "@/components/saree-culture-teaser";
 import { AFFORDABLE_PRICE_RANGE, PRICE_RANGES, matchesPriceRange, normalizePriceRange, priceRangeLabel } from "@/lib/price-ranges";
 import { MobileAppShell } from "@/components/mobile-app-shell";
 import { MobileHomeSkeleton } from "@/components/mobile-home-skeleton";
@@ -217,7 +216,7 @@ export function MobileAppHomePage({ initialPreviewCounts = { arrivals: 4, featur
   const activeMobileHeroSlide = resolvedMobileHeroSlides[currentMobileHeroIndex] ?? null;
   const mobileLaunchEyebrow = homeContent?.mobileLaunchEyebrow || homeContent?.launchEyebrow || "THE ESHWE COLLECTION";
   const mobileLaunchHeading =
-    homeContent?.mobileLaunchHeading || homeContent?.launchHeading || "Timeless Sarees, thoughtfully yours";
+    homeContent?.mobileLaunchHeading || homeContent?.launchHeading || "Timeless sarees, thoughtfully yours.";
   const mobileLaunchBody =
     homeContent?.mobileLaunchBody ||
     homeContent?.launchBody ||
@@ -325,16 +324,6 @@ export function MobileAppHomePage({ initialPreviewCounts = { arrivals: 4, featur
         </div>
 
         <MobileHomeSection
-          title="New arrivals"
-          actionHref={buildAppSearchHref({ sort: "newest" })}
-          actionLabel="View all"
-          tone="plain"
-          eyebrow="Fresh drops"
-        >
-          <MobileProductPreviewGrid products={newArrivals} sectionKey="new-arrivals" loading={productsLoading} error={productsLoadError} skeletonCount={initialPreviewCounts.arrivals} />
-        </MobileHomeSection>
-
-        <MobileHomeSection
           title="Shop by category"
           actionHref={buildAppSearchHref()}
           actionLabel="View all"
@@ -348,6 +337,16 @@ export function MobileAppHomePage({ initialPreviewCounts = { arrivals: 4, featur
               <MobileCategoryCard key={card.id ?? card.title} card={card} products={previewProducts} />
             ))}
           </div>}
+        </MobileHomeSection>
+
+        <MobileHomeSection
+          title="New arrivals"
+          actionHref={buildAppSearchHref({ sort: "newest" })}
+          actionLabel="View all"
+          tone="plain"
+          eyebrow="Fresh drops"
+        >
+          <MobileProductPreviewGrid products={newArrivals} sectionKey="new-arrivals" loading={productsLoading} error={productsLoadError} skeletonCount={initialPreviewCounts.arrivals} />
         </MobileHomeSection>
 
         {((productsLoading || productsLoadError) && initialPreviewCounts.featured > 0) || featuredProducts.length > 0 ? (
@@ -367,10 +366,6 @@ export function MobileAppHomePage({ initialPreviewCounts = { arrivals: 4, featur
             <AffordableEleganceBanner content={homeContent?.affordableBanner} href={buildAppSearchHref({ priceRange: AFFORDABLE_PRICE_RANGE })} />
           </section>
         ) : null}
-
-        <div className="mt-6">
-          <SareeCultureTeaser />
-        </div>
 
         {productsLoading || productsLoadError || promiseProduct ? (
           <section className="mt-6 overflow-hidden rounded-[2rem] border border-[#eadfce] bg-[linear-gradient(135deg,#fff9ef_0%,#f7efe1_100%)] shadow-none">

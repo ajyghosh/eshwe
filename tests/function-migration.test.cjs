@@ -70,6 +70,22 @@ test('deployment exports only the expected US functions and all Hosting routes r
   }
 });
 
+test('PWA friendly routes preserve Next route-data responses before HTML fallbacks', () => {
+  const rewrites = require('../firebase.json').hosting.rewrites;
+  for (const route of ['product', 'search']) {
+    const dataSource = `/app/${route}/**/*.txt`;
+    const htmlSource = `/app/${route}/**`;
+    const dataIndex = rewrites.findIndex(rewrite => rewrite.source === dataSource);
+    const htmlIndex = rewrites.findIndex(rewrite => rewrite.source === htmlSource);
+
+    assert.ok(dataIndex >= 0, `${dataSource} route-data rewrite is required`);
+    assert.ok(htmlIndex >= 0, `${htmlSource} HTML fallback is required`);
+    assert.ok(dataIndex < htmlIndex, `${dataSource} must run before ${htmlSource}`);
+    assert.equal(rewrites[dataIndex].destination, `/app/${route}/index.txt`);
+    assert.equal(rewrites[htmlIndex].destination, `/app/${route}/index.html`);
+  }
+});
+
 test('local development targets US copies while production keeps stable API URLs', () => {
   const { loadSource } = require('./helpers/source.cjs');
   const mocks = {

@@ -20,7 +20,7 @@ export function SiteFooter({
         <div className="web-footer-columns grid gap-10 border-b border-[#f3dfaa]/20 pb-10 lg:grid-cols-[1.3fr_0.8fr_0.9fr] lg:gap-14">
           <div>
             <p className="brand-caption text-[0.64rem] font-semibold tracking-[0.22em] text-[#f3dfaa]">
-              ESHWE SAREE STUDIO
+              ESHWE STUDIO
             </p>
             <h2 className="brand-copy mt-4 max-w-md text-3xl leading-[1.15] text-[#f8ecd2] sm:text-[2.4rem]">
               Sarees chosen with softness, occasion, and timeless charm in mind.
@@ -72,7 +72,7 @@ export function SiteFooter({
         </div>
 
         <div className="flex flex-col gap-3 pt-6 text-xs text-[#f8f1e3]/68 sm:flex-row sm:items-center sm:justify-between sm:text-sm">
-          <p>© 2026 eshwe Saree Studio. All rights reserved.</p>
+          <p>© 2026 eshwe studio. All rights reserved.</p>
           <p>Curated drapes for modern celebrations.</p>
         </div>
       </div>

@@ -196,7 +196,7 @@ function MobileAppFooter() {
             </Link>
           </div>
 
-          <p className="mt-3 px-2 text-[0.72rem] text-[#74786c]">© 2026 eshwe Saree Studio</p>
+          <p className="mt-3 px-2 text-[0.72rem] text-[#74786c]">© 2026 eshwe studio</p>
         </div>
       </footer>
 

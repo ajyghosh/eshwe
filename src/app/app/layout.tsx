@@ -7,7 +7,7 @@ import "./mobile-app.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "eshwe | Premium Saree Studio",
+    default: "eshwe studio | Premium Sarees",
     template: "%s | eshwe"
   },
   applicationName: "eshwe",
